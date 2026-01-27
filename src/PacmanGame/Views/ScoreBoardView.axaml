@@ -1,0 +1,112 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:PacmanGame.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="896" d:DesignHeight="1024"
+             x:Class="PacmanGame.Views.ScoreBoardView"
+             x:DataType="vm:ScoreBoardViewModel"
+             Background="Black">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        
+        <!-- Title -->
+        <StackPanel Grid.Row="0" 
+                    Margin="0,40,0,30">
+            <TextBlock Text="🏆 HIGH SCORES 🏆"
+                      FontSize="60"
+                      FontWeight="Bold"
+                      Foreground="#FFFF00"
+                      HorizontalAlignment="Center"
+                      FontFamily="Consolas, Courier New">
+                <TextBlock.Effect>
+                    <DropShadowEffect Color="#2121FF" 
+                                     BlurRadius="15" 
+                                     OffsetX="0" 
+                                     OffsetY="0"/>
+                </TextBlock.Effect>
+            </TextBlock>
+        </StackPanel>
+        
+        <!-- Scores list -->
+        <Border Grid.Row="1"
+                Background="#1A1A1A"
+                BorderBrush="#FFFF00"
+                BorderThickness="3"
+                CornerRadius="10"
+                Margin="100,0"
+                Padding="40">
+            
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Scores}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#0A0A0A"
+                                   BorderBrush="#2121FF"
+                                   BorderThickness="2"
+                                   CornerRadius="5"
+                                   Padding="20"
+                                   Margin="0,5">
+                                
+                                <Grid ColumnDefinitions="60,120,*,150">
+                                    
+                                    <!-- Rank -->
+                                    <TextBlock Grid.Column="0"
+                                              Text="{Binding Rank, StringFormat='#{0}'}"
+                                              FontSize="24"
+                                              FontWeight="Bold"
+                                              Foreground="#FFFF00"
+                                              VerticalAlignment="Center"
+                                              FontFamily="Consolas, Courier New"/>
+                                    
+                                    <!-- Player Name -->
+                                    <TextBlock Grid.Column="1"
+                                              Text="{Binding PlayerName}"
+                                              FontSize="24"
+                                              FontWeight="Bold"
+                                              Foreground="White"
+                                              VerticalAlignment="Center"
+                                              FontFamily="Consolas, Courier New"/>
+                                    
+                                    <!-- Score -->
+                                    <TextBlock Grid.Column="2"
+                                              Text="{Binding Score, StringFormat='{}{0:N0} pts'}"
+                                              FontSize="22"
+                                              Foreground="#00FF00"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Right"
+                                              FontFamily="Consolas, Courier New"/>
+                                    
+                                    <!-- Date -->
+                                    <TextBlock Grid.Column="3"
+                                              Text="{Binding Date, StringFormat='{}{0:MMM dd, yyyy}'}"
+                                              FontSize="14"
+                                              Foreground="#888888"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Right"
+                                              FontFamily="Consolas, Courier New"/>
+                                    
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+            
+        </Border>
+        
+        <!-- Back button -->
+        <StackPanel Grid.Row="2"
+                   Margin="0,30,0,40"
+                   HorizontalAlignment="Center">
+            
+            <Button Classes="arcade"
+                    Content="🏠 RETURN TO MENU"
+                    Command="{Binding ReturnToMenuCommand}"
+                    MinWidth="300"/>
+            
+        </StackPanel>
+        
+    </Grid>
+    
+</UserControl>

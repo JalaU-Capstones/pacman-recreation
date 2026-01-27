@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:PacmanGame.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="896" d:DesignHeight="1024"
+             x:Class="PacmanGame.Views.GameView"
+             x:DataType="vm:GameViewModel"
+             Background="Black">
+
+    <Grid RowDefinitions="80,*,60">
+        
+        <!-- Top HUD - Score, Lives, Level -->
+        <Border Grid.Row="0" 
+                Background="#1A1A1A"
+                BorderBrush="#FFFF00"
+                BorderThickness="0,0,0,2">
+            
+            <Grid ColumnDefinitions="*,*,*">
+                
+                <!-- Score -->
+                <StackPanel Grid.Column="0" 
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           Margin="20,0">
+                    <TextBlock Text="SCORE"
+                              FontSize="14"
+                              Foreground="#888888"
+                              FontFamily="Consolas, Courier New"/>
+                    <TextBlock Text="{Binding Score, StringFormat='{}{0:N0}'}"
+                              FontSize="24"
+                              FontWeight="Bold"
+                              Foreground="#FFFF00"
+                              FontFamily="Consolas, Courier New"/>
+                </StackPanel>
+                
+                <!-- Level -->
+                <StackPanel Grid.Column="1"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center">
+                    <TextBlock Text="LEVEL"
+                              FontSize="14"
+                              Foreground="#888888"
+                              HorizontalAlignment="Center"
+                              FontFamily="Consolas, Courier New"/>
+                    <TextBlock Text="{Binding Level}"
+                              FontSize="24"
+                              FontWeight="Bold"
+                              Foreground="White"
+                              HorizontalAlignment="Center"
+                              FontFamily="Consolas, Courier New"/>
+                </StackPanel>
+                
+                <!-- Lives -->
+                <StackPanel Grid.Column="2"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Margin="20,0">
+                    <TextBlock Text="LIVES"
+                              FontSize="14"
+                              Foreground="#888888"
+                              HorizontalAlignment="Right"
+                              FontFamily="Consolas, Courier New"/>
+                    <TextBlock Text="{Binding Lives}"
+                              FontSize="24"
+                              FontWeight="Bold"
+                              Foreground="#FF0000"
+                              HorizontalAlignment="Right"
+                              FontFamily="Consolas, Courier New"/>
+                </StackPanel>
+                
+            </Grid>
+        </Border>
+        
+        <!-- Game Canvas - Where the actual game is rendered -->
+        <Border Grid.Row="1" 
+                Background="Black"
+                BorderBrush="#2121FF"
+                BorderThickness="2">
+            
+            <Canvas x:Name="GameCanvas"
+                    Background="Black"
+                    ClipToBounds="True">
+                <!-- Game will be rendered here via code-behind -->
+                
+                <!-- Temporary placeholder text -->
+                <TextBlock Canvas.Left="300" Canvas.Top="400"
+                          Text="GAME CANVAS"
+                          FontSize="32"
+                          Foreground="#333333"
+                          FontFamily="Consolas, Courier New"/>
+                
+                <TextBlock Canvas.Left="250" Canvas.Top="450"
+                          Text="(Game rendering coming soon)"
+                          FontSize="16"
+                          Foreground="#222222"
+                          FontFamily="Consolas, Courier New"/>
+                
+            </Canvas>
+        </Border>
+        
+        <!-- Bottom controls -->
+        <Border Grid.Row="2"
+                Background="#1A1A1A"
+                BorderBrush="#FFFF00"
+                BorderThickness="0,2,0,0">
+            
+            <StackPanel Orientation="Horizontal"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Spacing="20">
+                
+                <Button Content="⏸️ PAUSE"
+                       Command="{Binding PauseGameCommand}"
+                       IsEnabled="{Binding IsGameRunning}"
+                       Classes="arcade"
+                       MinWidth="120"/>
+                
+                <Button Content="▶️ RESUME"
+                       Command="{Binding ResumeGameCommand}"
+                       IsEnabled="{Binding IsPaused}"
+                       Classes="arcade"
+                       MinWidth="120"/>
+                
+                <Button Content="🏠 MENU"
+                       Command="{Binding ReturnToMenuCommand}"
+                       Classes="arcade"
+                       MinWidth="120"/>
+                
+            </StackPanel>
+        </Border>
+        
+    </Grid>
+    
+</UserControl>

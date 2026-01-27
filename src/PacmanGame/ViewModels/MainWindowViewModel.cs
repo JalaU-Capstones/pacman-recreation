@@ -1,6 +1,36 @@
-﻿namespace PacmanGame.ViewModels;
+using ReactiveUI;
+using System.Reactive;
 
-public partial class MainWindowViewModel : ViewModelBase
+namespace PacmanGame.ViewModels;
+
+/// <summary>
+/// ViewModel for the main application window.
+/// Manages navigation between different views (menu, game, scoreboard, etc.)
+/// </summary>
+public class MainWindowViewModel : ViewModelBase
 {
-    public string Greeting { get; } = "Welcome to Avalonia!";
+    private ViewModelBase _currentViewModel;
+
+    /// <summary>
+    /// The currently displayed ViewModel (for view navigation)
+    /// </summary>
+    public ViewModelBase CurrentViewModel
+    {
+        get => _currentViewModel;
+        set => this.RaiseAndSetIfChanged(ref _currentViewModel, value);
+    }
+
+    public MainWindowViewModel()
+    {
+        // Start with the main menu
+        _currentViewModel = new MainMenuViewModel(this);
+    }
+
+    /// <summary>
+    /// Navigate to a specific view
+    /// </summary>
+    public void NavigateTo(ViewModelBase viewModel)
+    {
+        CurrentViewModel = viewModel;
+    }
 }

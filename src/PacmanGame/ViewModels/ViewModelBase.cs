@@ -1,7 +1,11 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using ReactiveUI;
 
 namespace PacmanGame.ViewModels;
 
-public abstract class ViewModelBase : ObservableObject
+/// <summary>
+/// Base class for all ViewModels in the application.
+/// Provides INotifyPropertyChanged implementation via ReactiveUI.
+/// </summary>
+public class ViewModelBase : ReactiveObject
 {
 }

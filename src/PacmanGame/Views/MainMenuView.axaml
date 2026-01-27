@@ -1,0 +1,92 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:PacmanGame.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="896" d:DesignHeight="1024"
+             x:Class="PacmanGame.Views.MainMenuView"
+             x:DataType="vm:MainMenuViewModel"
+             Background="Black">
+
+    <Grid>
+        <!-- Main menu container -->
+        <StackPanel HorizontalAlignment="Center" 
+                    VerticalAlignment="Center"
+                    Spacing="25">
+            
+            <!-- Game title -->
+            <TextBlock Text="PAC-MAN"
+                      FontSize="80"
+                      FontWeight="ExtraBold"
+                      Foreground="#FFFF00"
+                      HorizontalAlignment="Center"
+                      FontFamily="Consolas, Courier New"
+                      Margin="0,0,0,30">
+                <TextBlock.Effect>
+                    <DropShadowEffect Color="#2121FF" 
+                                     BlurRadius="20" 
+                                     OffsetX="0" 
+                                     OffsetY="0"/>
+                </TextBlock.Effect>
+            </TextBlock>
+            
+            <!-- Subtitle -->
+            <TextBlock Text="EDUCATIONAL RECREATION"
+                      FontSize="16"
+                      Foreground="White"
+                      HorizontalAlignment="Center"
+                      Margin="0,0,0,10"
+                      FontFamily="Consolas, Courier New"/>
+            
+            <!-- Press Start animation -->
+            <TextBlock Text="▲ PRESS START ▲"
+                      FontSize="18"
+                      Foreground="White"
+                      HorizontalAlignment="Center"
+                      Margin="0,0,0,50"
+                      FontFamily="Consolas, Courier New">
+                <!-- TODO: Add blinking animation -->
+            </TextBlock>
+            
+            <!-- Menu buttons -->
+            <Button Classes="arcade"
+                    Content="🎮 START GAME"
+                    Command="{Binding StartGameCommand}"
+                    MinWidth="300"
+                    HorizontalContentAlignment="Center"/>
+            
+            <Button Classes="arcade"
+                    Content="🏆 SCORE BOARD"
+                    Command="{Binding ShowScoreBoardCommand}"
+                    MinWidth="300"
+                    HorizontalContentAlignment="Center"/>
+            
+            <Button Classes="arcade"
+                    Content="⚙️ SETTINGS"
+                    Command="{Binding ShowSettingsCommand}"
+                    MinWidth="300"
+                    HorizontalContentAlignment="Center"/>
+            
+            <Button Classes="arcade"
+                    Content="🚪 EXIT"
+                    Command="{Binding ExitCommand}"
+                    MinWidth="300"
+                    HorizontalContentAlignment="Center"/>
+            
+            <!-- Footer -->
+            <TextBlock Text="© 2026 - Programming 3 Project"
+                      FontSize="12"
+                      Foreground="#666666"
+                      HorizontalAlignment="Center"
+                      Margin="0,40,0,0"
+                      FontFamily="Consolas, Courier New"/>
+            
+            <TextBlock Text=".NET 9.0 + Avalonia UI"
+                      FontSize="10"
+                      Foreground="#444444"
+                      HorizontalAlignment="Center"
+                      FontFamily="Consolas, Courier New"/>
+        </StackPanel>
+    </Grid>
+    
+</UserControl>

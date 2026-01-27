@@ -1,0 +1,50 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <!-- Estilo base para botones arcade -->
+    <Style Selector="Button.arcade">
+        <Setter Property="Background" Value="#2121FF"/>
+        <Setter Property="Foreground" Value="#FFFF00"/>
+        <Setter Property="BorderBrush" Value="#FFFF00"/>
+        <Setter Property="BorderThickness" Value="3"/>
+        <Setter Property="Padding" Value="30,15"/>
+        <Setter Property="FontFamily" Value="Consolas, Courier New, monospace"/>
+        <Setter Property="FontSize" Value="20"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    
+    <!-- Estado Hover -->
+    <Style Selector="Button.arcade:pointerover">
+        <Setter Property="Background" Value="#FFFF00"/>
+        <Setter Property="Foreground" Value="#2121FF"/>
+        <Setter Property="BorderBrush" Value="#2121FF"/>
+        <Setter Property="RenderTransform" Value="scale(1.05)"/>
+    </Style>
+    
+    <!-- Estado Pressed -->
+    <Style Selector="Button.arcade:pressed">
+        <Setter Property="Background" Value="#FF0000"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="BorderBrush" Value="White"/>
+        <Setter Property="RenderTransform" Value="scale(0.95)"/>
+    </Style>
+    
+    <!-- Estado Disabled -->
+    <Style Selector="Button.arcade:disabled">
+        <Setter Property="Background" Value="#555555"/>
+        <Setter Property="Foreground" Value="#888888"/>
+        <Setter Property="BorderBrush" Value="#666666"/>
+        <Setter Property="Opacity" Value="0.5"/>
+        <Setter Property="Cursor" Value="Arrow"/>
+    </Style>
+    
+</Styles>
