@@ -9,17 +9,17 @@
              Background="Black">
 
     <Grid RowDefinitions="80,*,60">
-        
+
         <!-- Top HUD - Score, Lives, Level -->
-        <Border Grid.Row="0" 
+        <Border Grid.Row="0"
                 Background="#1A1A1A"
                 BorderBrush="#FFFF00"
                 BorderThickness="0,0,0,2">
-            
+
             <Grid ColumnDefinitions="*,*,*">
-                
+
                 <!-- Score -->
-                <StackPanel Grid.Column="0" 
+                <StackPanel Grid.Column="0"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Left"
                            Margin="20,0">
@@ -33,7 +33,7 @@
                               Foreground="#FFFF00"
                               FontFamily="Consolas, Courier New"/>
                 </StackPanel>
-                
+
                 <!-- Level -->
                 <StackPanel Grid.Column="1"
                            VerticalAlignment="Center"
@@ -50,7 +50,7 @@
                               HorizontalAlignment="Center"
                               FontFamily="Consolas, Courier New"/>
                 </StackPanel>
-                
+
                 <!-- Lives -->
                 <StackPanel Grid.Column="2"
                            VerticalAlignment="Center"
@@ -68,68 +68,93 @@
                               HorizontalAlignment="Right"
                               FontFamily="Consolas, Courier New"/>
                 </StackPanel>
-                
+
             </Grid>
         </Border>
-        
+
         <!-- Game Canvas - Where the actual game is rendered -->
-        <Border Grid.Row="1" 
+        <Border Grid.Row="1"
                 Background="Black"
                 BorderBrush="#2121FF"
                 BorderThickness="2">
-            
+
             <Canvas x:Name="GameCanvas"
                     Background="Black"
                     ClipToBounds="True">
                 <!-- Game will be rendered here via code-behind -->
-                
+
                 <!-- Temporary placeholder text -->
                 <TextBlock Canvas.Left="300" Canvas.Top="400"
                           Text="GAME CANVAS"
                           FontSize="32"
                           Foreground="#333333"
                           FontFamily="Consolas, Courier New"/>
-                
+
                 <TextBlock Canvas.Left="250" Canvas.Top="450"
                           Text="(Game rendering coming soon)"
                           FontSize="16"
                           Foreground="#222222"
                           FontFamily="Consolas, Courier New"/>
-                
+
             </Canvas>
         </Border>
-        
+
         <!-- Bottom controls -->
         <Border Grid.Row="2"
                 Background="#1A1A1A"
                 BorderBrush="#FFFF00"
                 BorderThickness="0,2,0,0">
-            
+
             <StackPanel Orientation="Horizontal"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"
-                       Spacing="20">
-                
-                <Button Content="⏸️ PAUSE"
-                       Command="{Binding PauseGameCommand}"
+                       Spacing="20"
+                       MaxWidth="640">
+
+                <Button Command="{Binding PauseGameCommand}"
                        IsEnabled="{Binding IsGameRunning}"
                        Classes="arcade"
-                       MinWidth="120"/>
-                
-                <Button Content="▶️ RESUME"
-                       Command="{Binding ResumeGameCommand}"
+                       MinWidth="120"
+                       HorizontalAlignment="Stretch">
+                    <TextBlock Text="⏸️ PAUSE"
+                               FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
+                               FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
+                               FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               TextAlignment="Center"/>
+                </Button>
+
+                <Button Command="{Binding ResumeGameCommand}"
                        IsEnabled="{Binding IsPaused}"
                        Classes="arcade"
-                       MinWidth="120"/>
-                
-                <Button Content="🏠 MENU"
-                       Command="{Binding ReturnToMenuCommand}"
+                       MinWidth="120"
+                       HorizontalAlignment="Stretch">
+                    <TextBlock Text="▶️ RESUME"
+                               FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
+                               FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
+                               FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               TextAlignment="Center"/>
+                </Button>
+
+                <Button Command="{Binding ReturnToMenuCommand}"
                        Classes="arcade"
-                       MinWidth="120"/>
-                
+                       MinWidth="120"
+                       HorizontalAlignment="Stretch">
+                    <TextBlock Text="🏠 MENU"
+                               FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
+                               FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
+                               FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               TextAlignment="Center"/>
+                </Button>
+
             </StackPanel>
         </Border>
-        
+
     </Grid>
-    
+
 </UserControl>

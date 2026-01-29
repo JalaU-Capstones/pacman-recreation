@@ -10,10 +10,12 @@
 
     <Grid>
         <!-- Main menu container -->
-        <StackPanel HorizontalAlignment="Center" 
+        <!-- Limit the width so content scales well on large screens and fits on small screens -->
+        <StackPanel HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Spacing="25">
-            
+                    Spacing="25"
+                    MaxWidth="480">
+
             <!-- Game title -->
             <TextBlock Text="PAC-MAN"
                       FontSize="80"
@@ -23,13 +25,13 @@
                       FontFamily="Consolas, Courier New"
                       Margin="0,0,0,30">
                 <TextBlock.Effect>
-                    <DropShadowEffect Color="#2121FF" 
-                                     BlurRadius="20" 
-                                     OffsetX="0" 
+                    <DropShadowEffect Color="#2121FF"
+                                     BlurRadius="20"
+                                     OffsetX="0"
                                      OffsetY="0"/>
                 </TextBlock.Effect>
             </TextBlock>
-            
+
             <!-- Subtitle -->
             <TextBlock Text="EDUCATIONAL RECREATION"
                       FontSize="16"
@@ -37,7 +39,7 @@
                       HorizontalAlignment="Center"
                       Margin="0,0,0,10"
                       FontFamily="Consolas, Courier New"/>
-            
+
             <!-- Press Start animation -->
             <TextBlock Text="▲ PRESS START ▲"
                       FontSize="18"
@@ -47,32 +49,56 @@
                       FontFamily="Consolas, Courier New">
                 <!-- TODO: Add blinking animation -->
             </TextBlock>
-            
+
             <!-- Menu buttons -->
             <Button Classes="arcade"
-                    Content="🎮 START GAME"
                     Command="{Binding StartGameCommand}"
-                    MinWidth="300"
-                    HorizontalContentAlignment="Center"/>
-            
+                    HorizontalAlignment="Stretch">
+                <TextBlock Text="🎮 START GAME"
+                           FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"/>
+            </Button>
+
             <Button Classes="arcade"
-                    Content="🏆 SCORE BOARD"
                     Command="{Binding ShowScoreBoardCommand}"
-                    MinWidth="300"
-                    HorizontalContentAlignment="Center"/>
-            
+                    HorizontalAlignment="Stretch">
+                <TextBlock Text="🏆 SCORE BOARD"
+                           FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"/>
+            </Button>
+
             <Button Classes="arcade"
-                    Content="⚙️ SETTINGS"
                     Command="{Binding ShowSettingsCommand}"
-                    MinWidth="300"
-                    HorizontalContentAlignment="Center"/>
-            
+                    HorizontalAlignment="Stretch">
+                <TextBlock Text="⚙️ SETTINGS"
+                           FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"/>
+            </Button>
+
             <Button Classes="arcade"
-                    Content="🚪 EXIT"
                     Command="{Binding ExitCommand}"
-                    MinWidth="300"
-                    HorizontalContentAlignment="Center"/>
-            
+                    HorizontalAlignment="Stretch">
+                <TextBlock Text="🚪 EXIT"
+                           FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"/>
+            </Button>
+
             <!-- Footer -->
             <TextBlock Text="© 2026 - Programming 3 Project"
                       FontSize="12"
@@ -80,7 +106,7 @@
                       HorizontalAlignment="Center"
                       Margin="0,40,0,0"
                       FontFamily="Consolas, Courier New"/>
-            
+
             <TextBlock Text=".NET 9.0 + Avalonia UI"
                       FontSize="10"
                       Foreground="#444444"
@@ -88,5 +114,5 @@
                       FontFamily="Consolas, Courier New"/>
         </StackPanel>
     </Grid>
-    
+
 </UserControl>

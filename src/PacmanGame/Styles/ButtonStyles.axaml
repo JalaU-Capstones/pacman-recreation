@@ -1,50 +1,90 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    
+
     <!-- Estilo base para botones arcade -->
     <Style Selector="Button.arcade">
         <Setter Property="Background" Value="#2121FF"/>
-        <Setter Property="Foreground" Value="#FFFF00"/>
+        <!-- Use white text by default for strong contrast on the dark background -->
+        <Setter Property="Foreground" Value="#FFFFFF"/>
         <Setter Property="BorderBrush" Value="#FFFF00"/>
         <Setter Property="BorderThickness" Value="3"/>
-        <Setter Property="Padding" Value="30,15"/>
+        <!-- Slightly smaller padding to make buttons adapt better on narrow screens -->
+        <Setter Property="Padding" Value="20,12"/>
+        <Setter Property="MinHeight" Value="48"/>
         <Setter Property="FontFamily" Value="Consolas, Courier New, monospace"/>
         <Setter Property="FontSize" Value="20"/>
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
-                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.1"/>
-            </Transitions>
-        </Setter>
     </Style>
-    
-    <!-- Estado Hover -->
+
+    <!-- Ensure any TextBlock inside Button.arcade inherits the Button's visual properties -->
+    <Style Selector="Button.arcade TextBlock">
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="FontFamily" Value="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"/>
+        <Setter Property="FontSize" Value="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"/>
+        <Setter Property="FontWeight" Value="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextAlignment" Value="Center"/>
+        <Setter Property="TextWrapping" Value="NoWrap"/>
+    </Style>
+
+    <!-- TextBlock state for hover - use black text on yellow background for contrast -->
+    <Style Selector="Button.arcade:pointerover TextBlock">
+        <Setter Property="Foreground" Value="#0B0B0B"/>
+    </Style>
+
+    <!-- TextBlock state for pressed - white text on red background -->
+    <Style Selector="Button.arcade:pressed TextBlock">
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <!-- TextBlock state for focus - white text on blue background -->
+    <Style Selector="Button.arcade:focus TextBlock">
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+
+    <!-- TextBlock state for disabled - light gray text on gray background -->
+    <Style Selector="Button.arcade:disabled TextBlock">
+        <Setter Property="Foreground" Value="#BBBBBB"/>
+    </Style>
+
+    <!-- Estado Hover / Pointer Over -->
     <Style Selector="Button.arcade:pointerover">
+        <!-- Bright background for clear affordance -->
         <Setter Property="Background" Value="#FFFF00"/>
-        <Setter Property="Foreground" Value="#2121FF"/>
-        <Setter Property="BorderBrush" Value="#2121FF"/>
-        <Setter Property="RenderTransform" Value="scale(1.05)"/>
+        <!-- Use a strong, readable text color (black) on yellow -->
+        <Setter Property="Foreground" Value="#0B0B0B"/>
+        <Setter Property="BorderBrush" Value="#0B0B0B"/>
+        <Setter Property="RenderTransform" Value="scale(1.04)"/>
+        <Setter Property="Opacity" Value="1"/>
     </Style>
-    
+
     <!-- Estado Pressed -->
     <Style Selector="Button.arcade:pressed">
         <Setter Property="Background" Value="#FF0000"/>
-        <Setter Property="Foreground" Value="White"/>
-        <Setter Property="BorderBrush" Value="White"/>
-        <Setter Property="RenderTransform" Value="scale(0.95)"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#FFFFFF"/>
+        <Setter Property="RenderTransform" Value="scale(0.98)"/>
     </Style>
-    
+
+    <!-- Focus visual - keyboard users should see a clear outline (use border changes supported by Button) -->
+    <Style Selector="Button.arcade:focus">
+        <Setter Property="BorderBrush" Value="#FFFF00"/>
+        <Setter Property="BorderThickness" Value="4"/>
+        <Setter Property="Background" Value="#2A2AFF"/>
+    </Style>
+
     <!-- Estado Disabled -->
     <Style Selector="Button.arcade:disabled">
         <Setter Property="Background" Value="#555555"/>
-        <Setter Property="Foreground" Value="#888888"/>
+        <Setter Property="Foreground" Value="#BBBBBB"/>
         <Setter Property="BorderBrush" Value="#666666"/>
-        <Setter Property="Opacity" Value="0.5"/>
+        <Setter Property="Opacity" Value="0.6"/>
         <Setter Property="Cursor" Value="Arrow"/>
     </Style>
-    
+
 </Styles>

@@ -9,9 +9,9 @@
              Background="Black">
 
     <Grid RowDefinitions="Auto,*,Auto">
-        
+
         <!-- Title -->
-        <StackPanel Grid.Row="0" 
+        <StackPanel Grid.Row="0"
                     Margin="0,40,0,30">
             <TextBlock Text="🏆 HIGH SCORES 🏆"
                       FontSize="60"
@@ -20,14 +20,14 @@
                       HorizontalAlignment="Center"
                       FontFamily="Consolas, Courier New">
                 <TextBlock.Effect>
-                    <DropShadowEffect Color="#2121FF" 
-                                     BlurRadius="15" 
-                                     OffsetX="0" 
+                    <DropShadowEffect Color="#2121FF"
+                                     BlurRadius="15"
+                                     OffsetX="0"
                                      OffsetY="0"/>
                 </TextBlock.Effect>
             </TextBlock>
         </StackPanel>
-        
+
         <!-- Scores list -->
         <Border Grid.Row="1"
                 Background="#1A1A1A"
@@ -35,8 +35,9 @@
                 BorderThickness="3"
                 CornerRadius="10"
                 Margin="100,0"
-                Padding="40">
-            
+                Padding="40"
+                MaxWidth="960">
+
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding Scores}">
                     <ItemsControl.ItemTemplate>
@@ -47,9 +48,9 @@
                                    CornerRadius="5"
                                    Padding="20"
                                    Margin="0,5">
-                                
+
                                 <Grid ColumnDefinitions="60,120,*,150">
-                                    
+
                                     <!-- Rank -->
                                     <TextBlock Grid.Column="0"
                                               Text="{Binding Rank, StringFormat='#{0}'}"
@@ -58,7 +59,7 @@
                                               Foreground="#FFFF00"
                                               VerticalAlignment="Center"
                                               FontFamily="Consolas, Courier New"/>
-                                    
+
                                     <!-- Player Name -->
                                     <TextBlock Grid.Column="1"
                                               Text="{Binding PlayerName}"
@@ -67,7 +68,7 @@
                                               Foreground="White"
                                               VerticalAlignment="Center"
                                               FontFamily="Consolas, Courier New"/>
-                                    
+
                                     <!-- Score -->
                                     <TextBlock Grid.Column="2"
                                               Text="{Binding Score, StringFormat='{}{0:N0} pts'}"
@@ -76,7 +77,7 @@
                                               VerticalAlignment="Center"
                                               HorizontalAlignment="Right"
                                               FontFamily="Consolas, Courier New"/>
-                                    
+
                                     <!-- Date -->
                                     <TextBlock Grid.Column="3"
                                               Text="{Binding Date, StringFormat='{}{0:MMM dd, yyyy}'}"
@@ -85,28 +86,36 @@
                                               VerticalAlignment="Center"
                                               HorizontalAlignment="Right"
                                               FontFamily="Consolas, Courier New"/>
-                                    
+
                                 </Grid>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
-            
+
         </Border>
-        
+
         <!-- Back button -->
         <StackPanel Grid.Row="2"
                    Margin="0,30,0,40"
                    HorizontalAlignment="Center">
-            
+
             <Button Classes="arcade"
-                    Content="🏠 RETURN TO MENU"
                     Command="{Binding ReturnToMenuCommand}"
-                    MinWidth="300"/>
-            
+                    MinWidth="300"
+                    HorizontalAlignment="Stretch">
+                <TextBlock Text="🏠 RETURN TO MENU"
+                           FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"/>
+            </Button>
+
         </StackPanel>
-        
+
     </Grid>
-    
+
 </UserControl>
