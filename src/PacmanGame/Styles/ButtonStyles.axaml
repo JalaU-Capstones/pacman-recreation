@@ -18,6 +18,14 @@
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                <BrushTransition Property="Foreground" Duration="0:0:0.2"/>
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.2"/>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2"/>
+            </Transitions>
+        </Setter>
     </Style>
 
     <!-- Ensure any TextBlock inside Button.arcade inherits the Button's visual properties -->
@@ -32,9 +40,9 @@
         <Setter Property="TextWrapping" Value="NoWrap"/>
     </Style>
 
-    <!-- TextBlock state for hover - use black text on yellow background for contrast -->
+    <!-- TextBlock state for hover - letters blend into background -->
     <Style Selector="Button.arcade:pointerover TextBlock">
-        <Setter Property="Foreground" Value="#0B0B0B"/>
+        <Setter Property="Foreground" Value="#FFFF00"/>
     </Style>
 
     <!-- TextBlock state for pressed - white text on red background -->
@@ -56,9 +64,10 @@
     <Style Selector="Button.arcade:pointerover">
         <!-- Bright background for clear affordance -->
         <Setter Property="Background" Value="#FFFF00"/>
-        <!-- Use a strong, readable text color (black) on yellow -->
-        <Setter Property="Foreground" Value="#0B0B0B"/>
-        <Setter Property="BorderBrush" Value="#0B0B0B"/>
+        <!-- Text blends into background -->
+        <Setter Property="Foreground" Value="#FFFF00"/>
+        <!-- Border blends into background -->
+        <Setter Property="BorderBrush" Value="#FFFF00"/>
         <Setter Property="RenderTransform" Value="scale(1.04)"/>
         <Setter Property="Opacity" Value="1"/>
     </Style>
