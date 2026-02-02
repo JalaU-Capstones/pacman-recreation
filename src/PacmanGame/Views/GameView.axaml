@@ -80,22 +80,10 @@
 
             <Canvas x:Name="GameCanvas"
                     Background="Black"
-                    ClipToBounds="True">
+                    ClipToBounds="True"
+                    Width="896"
+                    Height="992">
                 <!-- Game will be rendered here via code-behind -->
-
-                <!-- Temporary placeholder text -->
-                <TextBlock Canvas.Left="300" Canvas.Top="400"
-                          Text="GAME CANVAS"
-                          FontSize="32"
-                          Foreground="#333333"
-                          FontFamily="Consolas, Courier New"/>
-
-                <TextBlock Canvas.Left="250" Canvas.Top="450"
-                          Text="(Game rendering coming soon)"
-                          FontSize="16"
-                          Foreground="#222222"
-                          FontFamily="Consolas, Courier New"/>
-
             </Canvas>
         </Border>
 

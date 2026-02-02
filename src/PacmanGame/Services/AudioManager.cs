@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using PacmanGame.Helpers;
 using PacmanGame.Services.Interfaces;
@@ -97,11 +96,11 @@ public class AudioManager : IAudioManager
         if (_isMuted || !_isInitialized)
             return;
 
-        string filePath = Path.Combine(_musicPath, $"{musicName}.wav");
+        string filePath = Path.Combine(_musicPath, $"{musicName}");
 
         if (!File.Exists(filePath))
         {
-            Console.WriteLine($"⚠️  Music file not found: {musicName}.wav");
+            Console.WriteLine($"⚠️  Music file not found: {musicName}");
             return;
         }
 

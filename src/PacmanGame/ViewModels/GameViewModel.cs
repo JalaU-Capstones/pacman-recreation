@@ -1,4 +1,7 @@
 using ReactiveUI;
+using PacmanGame.Helpers;
+using PacmanGame.Services;
+using PacmanGame.Services.Interfaces;
 using System;
 using System.Reactive;
 
@@ -11,6 +14,9 @@ namespace PacmanGame.ViewModels;
 public class GameViewModel : ViewModelBase
 {
     private readonly MainWindowViewModel _mainWindowViewModel;
+    private readonly IGameEngine _engine;
+    private readonly IAudioManager _audioManager;
+    private int _extraLifeThreshold;
 
     // Game state properties
     private int _score;
@@ -64,6 +70,11 @@ public class GameViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _isPaused, value);
     }
 
+    /// <summary>
+    /// Get the game engine
+    /// </summary>
+    public IGameEngine Engine => _engine;
+
     // Commands
     public ReactiveCommand<Unit, Unit> PauseGameCommand { get; }
     public ReactiveCommand<Unit, Unit> ResumeGameCommand { get; }
@@ -79,27 +90,56 @@ public class GameViewModel : ViewModelBase
         _level = 1;
         _isGameRunning = false;
         _isPaused = false;
+        _extraLifeThreshold = Constants.ExtraLifeScore;
+
+        // Create audio manager first (used in event handlers)
+        _audioManager = new AudioManager();
+
+        // Create engine with required services
+        // TODO: Inject these properly via DI container in production
+        _engine = new GameEngine(
+            new MapLoader(),
+            new SpriteManager(),
+            _audioManager,
+            new CollisionDetector());
+
+        // Subscribe to engine events
+        _engine.ScoreChanged += OnScoreChanged;
+        _engine.LifeLost += OnLifeLost;
+        _engine.LevelComplete += OnLevelComplete;
+        _engine.GameOver += OnGameOver;
 
         // Initialize commands
         PauseGameCommand = ReactiveCommand.Create(PauseGame);
         ResumeGameCommand = ReactiveCommand.Create(ResumeGame);
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
     }
-
     /// <summary>
     /// Start the game
     /// </summary>
     public void StartGame()
     {
-        // TODO: Initialize game engine
-        // TODO: Load level
-        // TODO: Start game loop
-        // TODO: Play game start sound
+        try
+        {
+            Console.WriteLine($"📝 StartGame called, Level={_level}");
+            _engine.LoadLevel(_level);
+            Console.WriteLine($"✅ Level {_level} loaded");
+            _engine.Start();
+            Console.WriteLine("✅ Engine started");
+            _audioManager.PlayMusic(Constants.BackgroundMusic);
+            Console.WriteLine("✅ Background music playing");
+            _audioManager.PlaySoundEffect("game-start");
+            Console.WriteLine("✅ Game start sound played");
 
-        IsGameRunning = true;
-        IsPaused = false;
-
-        Console.WriteLine($"Game started - Level {Level}");
+            IsGameRunning = true;
+            IsPaused = false;
+            Console.WriteLine("✅ Game state updated");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error in StartGame: {ex}");
+            throw;
+        }
     }
 
     /// <summary>
@@ -109,10 +149,9 @@ public class GameViewModel : ViewModelBase
     {
         if (IsGameRunning && !IsPaused)
         {
+            _engine.Pause();
             IsPaused = true;
-            // TODO: Stop game loop
-            // TODO: Play pause sound
-            Console.WriteLine("Game paused");
+            _audioManager.PauseMusic();
         }
     }
 
@@ -123,10 +162,9 @@ public class GameViewModel : ViewModelBase
     {
         if (IsGameRunning && IsPaused)
         {
+            _engine.Resume();
             IsPaused = false;
-            // TODO: Resume game loop
-            // TODO: Play resume sound
-            Console.WriteLine("Game resumed");
+            _audioManager.ResumeMusic();
         }
     }
 
@@ -135,8 +173,8 @@ public class GameViewModel : ViewModelBase
     /// </summary>
     private void ReturnToMenu()
     {
-        // TODO: Stop game loop
-        // TODO: Play menu select sound
+        _engine.Stop();
+        _audioManager.StopMusic();
         IsGameRunning = false;
         _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel));
     }
@@ -147,30 +185,32 @@ public class GameViewModel : ViewModelBase
     public void GameOver()
     {
         IsGameRunning = false;
-        // TODO: Save score
-        // TODO: Play game over sound
-        // TODO: Show game over screen
+        _engine.Stop();
+        _audioManager.StopMusic();
+        _audioManager.PlayMusic(Constants.GameOverMusic, loop: false);
         Console.WriteLine($"Game Over! Final Score: {Score}");
     }
 
     /// <summary>
-    /// Add points to the score
+    /// Add points to the score and check for extra life
     /// </summary>
-    public void AddScore(int points)
+    private void OnScoreChanged(int points)
     {
         Score += points;
-        // TODO: Check for extra life milestone
+        if (Score >= _extraLifeThreshold && Lives < Constants.MaxLives)
+        {
+            Lives++;
+            _extraLifeThreshold += Constants.ExtraLifeScore;
+            _audioManager.PlaySoundEffect("extra-life");
+        }
     }
 
     /// <summary>
     /// Lose a life
     /// </summary>
-    public void LoseLife()
+    private void OnLifeLost()
     {
         Lives--;
-        // TODO: Play death sound
-        // TODO: Reset positions
-        
         if (Lives <= 0)
         {
             GameOver();
@@ -180,12 +220,21 @@ public class GameViewModel : ViewModelBase
     /// <summary>
     /// Complete the current level
     /// </summary>
-    public void CompleteLevel()
+    private void OnLevelComplete()
     {
-        // TODO: Play level complete sound
-        // TODO: Show level complete animation
+        _audioManager.PlaySoundEffect("level-complete");
         Level++;
-        // TODO: Load next level
         Console.WriteLine($"Level {Level - 1} complete! Starting level {Level}");
+
+        // TODO: Add delay before loading next level
+        _engine.LoadLevel(Level);
+    }
+
+    /// <summary>
+    /// Handle game over event
+    /// </summary>
+    private void OnGameOver()
+    {
+        GameOver();
     }
 }
