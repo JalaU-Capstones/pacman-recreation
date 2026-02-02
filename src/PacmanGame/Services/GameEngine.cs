@@ -446,8 +446,8 @@ public class GameEngine : IGameEngine
             {
                 string direction = _pacman.CurrentDirection switch
                 {
-                    Direction.Up => "up",
-                    Direction.Down => "down",
+                    Direction.Up => "down",
+                    Direction.Down => "up",
                     Direction.Left => "left",
                     _ => "right"
                 };
