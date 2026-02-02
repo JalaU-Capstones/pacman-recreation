@@ -44,20 +44,36 @@ public partial class GameView : UserControl
                 {
                     Interval = TimeSpan.FromMilliseconds(1000.0 / Constants.TargetFps)
                 };
+
+                int frameCount = 0;
                 _gameLoopTimer.Tick += (_, _) =>
                 {
                     try
                     {
+                        if (gameViewModel?.Engine == null)
+                        {
+                            Console.WriteLine("❌ Engine is null!");
+                            return;
+                        }
+
                         gameViewModel.Engine.Update(Constants.FixedDeltaTime);
                         gameViewModel.Engine.Render(GameCanvas);
+
+                        frameCount++;
+                        if (frameCount % 60 == 0)
+                        {
+                            Console.WriteLine($"🎮 Game loop running - Frame {frameCount}");
+                        }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"❌ Game loop error: {ex}");
+                        Console.WriteLine($"❌ Game loop error: {ex.Message}");
+                        Console.WriteLine($"   Stack: {ex.StackTrace}");
                         _gameLoopTimer?.Stop();
                     }
                 };
                 _gameLoopTimer.Start();
+                Console.WriteLine("✅ Game loop timer started");
                 Console.WriteLine("✅ Game loop timer started");
             }
             catch (Exception ex)

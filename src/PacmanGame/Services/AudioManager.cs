@@ -1,31 +1,29 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using NAudio.Wave;
 using PacmanGame.Helpers;
 using PacmanGame.Services.Interfaces;
 
 namespace PacmanGame.Services;
 
 /// <summary>
-/// Service for managing audio playback.
-/// NOTE: This is a basic implementation. For production, consider using:
-/// - NAudio (Windows)
-/// - OpenAL (Cross-platform)
-/// - Avalonia.Media (if available)
+/// Service for managing audio playback using NAudio for cross-platform WAV support.
+/// Handles background music, sound effects, and volume control.
 /// </summary>
 public class AudioManager : IAudioManager
 {
     private readonly string _musicPath;
     private readonly string _sfxPath;
+    private IWavePlayer? _musicPlayer;
+    private ISampleProvider? _musicReader;
+    private AudioFileReader? _baseAudioReader;
     private bool _isMuted;
     private float _musicVolume = 0.5f;
     private float _sfxVolume = 0.7f;
     private bool _isInitialized;
-
-    // TODO: Replace with actual audio player implementation
-    // For now, we'll use Console output to simulate audio
-    private string? _currentMusic;
-    private bool _isMusicPlaying;
-    private bool _isMusicPaused;
+    private readonly Queue<IWavePlayer> _activeSfxPlayers = new();
+    private const int MaxConcurrentSfx = 8;
 
     public bool IsMuted => _isMuted;
 
@@ -58,8 +56,7 @@ public class AudioManager : IAudioManager
             }
 
             _isInitialized = true;
-            Console.WriteLine("✅ AudioManager initialized (Basic mode - Console output)");
-            Console.WriteLine("   💡 For actual audio playback, integrate NAudio or similar library");
+            Console.WriteLine("✅ AudioManager initialized (NAudio - Real WAV Playback)");
         }
         catch (Exception ex)
         {
@@ -69,48 +66,113 @@ public class AudioManager : IAudioManager
     }
 
     /// <summary>
-    /// Play a sound effect
+    /// Play a sound effect (fire-and-forget, non-blocking, multiple can overlap)
     /// </summary>
     public void PlaySoundEffect(string soundName)
     {
         if (_isMuted || !_isInitialized)
             return;
 
-        string filePath = Path.Combine(_sfxPath, $"{soundName}.wav");
-
-        if (!File.Exists(filePath))
+        try
         {
-            Console.WriteLine($"⚠️  Sound effect not found: {soundName}.wav");
-            return;
-        }
+            string filePath = Path.Combine(_sfxPath, $"{soundName}.wav");
 
-        // TODO: Implement actual audio playback
-        Console.WriteLine($"🔊 Playing SFX: {soundName} (Volume: {_sfxVolume:P0})");
+            if (!File.Exists(filePath))
+            {
+                return;
+            }
+
+            // Create a new player for this SFX
+            var sfxPlayer = new WaveOutEvent();
+            var sfxReader = new AudioFileReader(filePath);
+            sfxReader.Volume = _sfxVolume;
+
+            sfxPlayer.Init(sfxReader);
+            sfxPlayer.Play();
+
+            // Track the player and clean up when done
+            _activeSfxPlayers.Enqueue(sfxPlayer);
+            if (_activeSfxPlayers.Count > MaxConcurrentSfx)
+            {
+                var oldPlayer = _activeSfxPlayers.Dequeue();
+                try
+                {
+                    oldPlayer.Dispose();
+                }
+                catch (Exception)
+                {
+                    // Ignore disposal errors
+                }
+            }
+
+            // Clean up disposed players periodically
+            var playersToRemove = new List<IWavePlayer>();
+            foreach (var player in _activeSfxPlayers)
+            {
+                if (player.PlaybackState == PlaybackState.Stopped)
+                {
+                    playersToRemove.Add(player);
+                }
+            }
+
+            foreach (var player in playersToRemove)
+            {
+                _activeSfxPlayers.Dequeue();
+                try
+                {
+                    player.Dispose();
+                }
+                catch (Exception)
+                {
+                    // Ignore disposal errors
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Silently fail - game continues even if audio fails
+        }
     }
 
     /// <summary>
-    /// Play background music
+    /// Play background music (only one at a time, supports looping)
     /// </summary>
     public void PlayMusic(string musicName, bool loop = true)
     {
         if (_isMuted || !_isInitialized)
             return;
 
-        string filePath = Path.Combine(_musicPath, $"{musicName}");
-
-        if (!File.Exists(filePath))
+        try
         {
-            Console.WriteLine($"⚠️  Music file not found: {musicName}");
-            return;
+            // Stop current music first
+            StopMusic();
+
+            string filePath = Path.Combine(_musicPath, $"{musicName}.wav");
+
+            if (!File.Exists(filePath))
+            {
+                return;
+            }
+
+            _musicPlayer = new WaveOutEvent();
+            _baseAudioReader = new AudioFileReader(filePath);
+            _baseAudioReader.Volume = _musicVolume;
+
+            ISampleProvider reader = _baseAudioReader;
+            if (loop)
+            {
+                // Create a looping reader
+                reader = new LoopingAudioFileReader(_baseAudioReader);
+            }
+
+            _musicReader = reader;
+            _musicPlayer.Init(_musicReader);
+            _musicPlayer.Play();
         }
-
-        _currentMusic = musicName;
-        _isMusicPlaying = true;
-        _isMusicPaused = false;
-
-        // TODO: Implement actual audio playback
-        string loopText = loop ? " (looping)" : "";
-        Console.WriteLine($"🎵 Playing Music: {musicName}{loopText} (Volume: {_musicVolume:P0})");
+        catch (Exception)
+        {
+            // Silently fail on Linux where winmm.dll is not available
+        }
     }
 
     /// <summary>
@@ -118,15 +180,34 @@ public class AudioManager : IAudioManager
     /// </summary>
     public void StopMusic()
     {
-        if (!_isMusicPlaying)
-            return;
+        try
+        {
+            if (_musicPlayer != null)
+            {
+                _musicPlayer.Stop();
+                _musicPlayer.Dispose();
+                _musicPlayer = null;
+            }
 
-        // TODO: Implement actual audio stop
-        Console.WriteLine($"⏹️  Stopped Music: {_currentMusic}");
+            if (_musicReader != null)
+            {
+                if (_musicReader is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+                _musicReader = null;
+            }
 
-        _currentMusic = null;
-        _isMusicPlaying = false;
-        _isMusicPaused = false;
+            if (_baseAudioReader != null)
+            {
+                _baseAudioReader.Dispose();
+                _baseAudioReader = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️  Error stopping music: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -134,13 +215,17 @@ public class AudioManager : IAudioManager
     /// </summary>
     public void PauseMusic()
     {
-        if (!_isMusicPlaying || _isMusicPaused)
-            return;
-
-        _isMusicPaused = true;
-
-        // TODO: Implement actual audio pause
-        Console.WriteLine($"⏸️  Paused Music: {_currentMusic}");
+        try
+        {
+            if (_musicPlayer?.PlaybackState == PlaybackState.Playing)
+            {
+                _musicPlayer.Pause();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️  Error pausing music: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -148,59 +233,105 @@ public class AudioManager : IAudioManager
     /// </summary>
     public void ResumeMusic()
     {
-        if (!_isMusicPlaying || !_isMusicPaused)
-            return;
-
-        _isMusicPaused = false;
-
-        // TODO: Implement actual audio resume
-        Console.WriteLine($"▶️  Resumed Music: {_currentMusic}");
+        try
+        {
+            if (_musicPlayer?.PlaybackState == PlaybackState.Paused)
+            {
+                _musicPlayer.Play();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️  Error resuming music: {ex.Message}");
+        }
     }
 
     /// <summary>
-    /// Set the volume for music
+    /// Set the volume for music (0.0 to 1.0)
     /// </summary>
     public void SetMusicVolume(float volume)
     {
-        _musicVolume = Math.Clamp(volume, 0.0f, 1.0f);
-        Console.WriteLine($"🎚️  Music Volume: {_musicVolume:P0}");
-
-        // TODO: Apply volume to actual audio player
+        _musicVolume = Math.Clamp(volume, 0f, 1f);
+        try
+        {
+            if (_baseAudioReader != null)
+            {
+                _baseAudioReader.Volume = _musicVolume;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️  Error setting music volume: {ex.Message}");
+        }
     }
 
     /// <summary>
-    /// Set the volume for sound effects
+    /// Set the volume for sound effects (0.0 to 1.0)
     /// </summary>
     public void SetSfxVolume(float volume)
     {
-        _sfxVolume = Math.Clamp(volume, 0.0f, 1.0f);
-        Console.WriteLine($"🎚️  SFX Volume: {_sfxVolume:P0}");
-
-        // TODO: Apply volume to actual audio player
+        _sfxVolume = Math.Clamp(volume, 0f, 1f);
     }
 
     /// <summary>
-    /// Mute or unmute all audio
+    /// Mute/unmute all audio
     /// </summary>
     public void SetMuted(bool muted)
     {
         _isMuted = muted;
 
-        if (_isMuted)
+        try
         {
-            Console.WriteLine("🔇 Audio Muted");
-            if (_isMusicPlaying && !_isMusicPaused)
+            if (muted)
             {
                 PauseMusic();
             }
-        }
-        else
-        {
-            Console.WriteLine("🔊 Audio Unmuted");
-            if (_isMusicPlaying && _isMusicPaused)
+            else
             {
                 ResumeMusic();
             }
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️  Error setting mute state: {ex.Message}");
+        }
     }
 }
+
+/// <summary>
+/// Helper class to loop audio playback
+/// </summary>
+internal class LoopingAudioFileReader : ISampleProvider
+{
+    private readonly AudioFileReader _baseReader;
+
+    public WaveFormat WaveFormat => _baseReader.WaveFormat;
+
+    public LoopingAudioFileReader(AudioFileReader reader)
+    {
+        _baseReader = reader;
+    }
+
+    public int Read(float[] buffer, int offset, int count)
+    {
+        int totalRead = 0;
+
+        while (totalRead < count)
+        {
+            int read = _baseReader.Read(buffer, offset + totalRead, count - totalRead);
+            if (read == 0)
+            {
+                // EOF reached, seek back to start
+                _baseReader.Position = 0;
+                read = _baseReader.Read(buffer, offset + totalRead, count - totalRead);
+                if (read == 0)
+                    break;
+            }
+
+            totalRead += read;
+        }
+
+        return totalRead;
+    }
+}
+

@@ -1,6 +1,5 @@
 using Avalonia.Controls;
-using Avalonia.Controls.Shapes;
-using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using PacmanGame.Helpers;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
@@ -182,6 +181,12 @@ public class GameEngine : IGameEngine
         UpdateGhosts(deltaTime);
         UpdateCollisions();
         UpdateTimers(deltaTime);
+
+        _updateFrameCounter++;
+        if (_updateFrameCounter % 60 == 0)
+        {
+            Console.WriteLine($"🎮 Update loop running - {_updateFrameCounter} frames processed");
+        }
     }
 
     /// <summary>
@@ -391,7 +396,7 @@ public class GameEngine : IGameEngine
     }
 
     /// <summary>
-    /// Render the game to the canvas
+    /// Render the game to the canvas using sprites
     /// </summary>
     public void Render(Canvas canvas)
     {
@@ -399,15 +404,13 @@ public class GameEngine : IGameEngine
         {
             if (_map.Length == 0)
             {
-                Console.WriteLine("⚠️  Map is empty, skipping render");
                 return;
             }
 
             canvas.Children.Clear();
 
-            int wallCount = 0;
-            int dotCount = 0;
-            int ghostCount = 0;
+            // Debug: Count rendered sprites
+            int spriteCount = 0;
 
             // 1. Draw tiles
             for (int row = 0; row < Constants.MapHeight; row++)
@@ -416,17 +419,12 @@ public class GameEngine : IGameEngine
                 {
                     if (_map[row, col] == TileType.Wall)
                     {
-                        wallCount++;
-                        // Draw a blue rectangle for walls for debugging
-                        var rect = new Rectangle
+                        var sprite = _spriteManager.GetTileSprite("walls_horizontal");
+                        if (sprite != null)
                         {
-                            Width = Constants.TileSize,
-                            Height = Constants.TileSize,
-                            Fill = new SolidColorBrush(Colors.Blue)
-                        };
-                        Canvas.SetLeft(rect, col * Constants.TileSize);
-                        Canvas.SetTop(rect, row * Constants.TileSize);
-                        canvas.Children.Add(rect);
+                            DrawImage(canvas, sprite, col * Constants.TileSize, row * Constants.TileSize);
+                            spriteCount++;
+                        }
                     }
                 }
             }
@@ -434,78 +432,119 @@ public class GameEngine : IGameEngine
             // 2. Draw collectibles
             foreach (var collectible in _collectibles.Where(c => c.IsActive))
             {
-                dotCount++;
-                Color collectibleColor = collectible.Type == CollectibleType.PowerPellet ? Colors.Pink : Colors.Yellow;
-                var ellipse = new Ellipse
+                string itemType = collectible.Type == CollectibleType.SmallDot ? "dot" : "power_pellet";
+                var sprite = _spriteManager.GetItemSprite(itemType, _pacman.AnimationFrame);
+                if (sprite != null)
                 {
-                    Width = collectible.Type == CollectibleType.PowerPellet ? 12 : 4,
-                    Height = collectible.Type == CollectibleType.PowerPellet ? 12 : 4,
-                    Fill = new SolidColorBrush(collectibleColor)
-                };
-                double offset = collectible.Type == CollectibleType.PowerPellet ? 6 : 2;
-                Canvas.SetLeft(ellipse, collectible.X * Constants.TileSize + Constants.TileSize / 2.0 - offset);
-                Canvas.SetTop(ellipse, collectible.Y * Constants.TileSize + Constants.TileSize / 2.0 - offset);
-                canvas.Children.Add(ellipse);
+                    DrawImage(canvas, sprite, collectible.X * Constants.TileSize, collectible.Y * Constants.TileSize);
+                    spriteCount++;
+                }
             }
 
             // 3. Draw Pac-Man
             if (!_pacman.IsDying)
             {
-                var pacmanRect = new Rectangle
+                string direction = _pacman.CurrentDirection switch
                 {
-                    Width = Constants.TileSize,
-                    Height = Constants.TileSize,
-                    Fill = new SolidColorBrush(Colors.Yellow)
+                    Direction.Up => "up",
+                    Direction.Down => "down",
+                    Direction.Left => "left",
+                    _ => "right"
                 };
-                Canvas.SetLeft(pacmanRect, _pacman.X * Constants.TileSize);
-                Canvas.SetTop(pacmanRect, _pacman.Y * Constants.TileSize);
-                canvas.Children.Add(pacmanRect);
+                var sprite = _spriteManager.GetPacmanSprite(direction, _pacman.AnimationFrame);
+                if (sprite != null)
+                {
+                    DrawImage(canvas, sprite, _pacman.X * Constants.TileSize, _pacman.Y * Constants.TileSize);
+                    spriteCount++;
+                }
             }
 
             // 4. Draw ghosts
             foreach (var ghost in _ghosts)
             {
-                ghostCount++;
-                Color ghostColor = ghost.Type switch
-                {
-                    GhostType.Blinky => Colors.Red,
-                    GhostType.Pinky => Colors.HotPink,
-                    GhostType.Inky => Colors.Cyan,
-                    GhostType.Clyde => Colors.Orange,
-                    _ => Colors.White
-                };
+                CroppedBitmap? sprite = null;
 
-                if (ghost.State == GhostState.Vulnerable)
-                    ghostColor = Colors.Blue;
-                else if (ghost.State == GhostState.Warning)
-                    ghostColor = ghost.AnimationFrame == 0 ? Colors.Blue : Colors.White;
-                else if (ghost.State == GhostState.Eaten)
-                    ghostColor = Colors.Purple;
-
-                var ghostRect = new Rectangle
+                if (ghost.State == GhostState.Eaten)
                 {
-                    Width = Constants.TileSize,
-                    Height = Constants.TileSize,
-                    Fill = new SolidColorBrush(ghostColor)
-                };
-                Canvas.SetLeft(ghostRect, ghost.X * Constants.TileSize);
-                Canvas.SetTop(ghostRect, ghost.Y * Constants.TileSize);
-                canvas.Children.Add(ghostRect);
+                    string eyeDirection = ghost.CurrentDirection switch
+                    {
+                        Direction.Up => "up",
+                        Direction.Down => "down",
+                        Direction.Left => "left",
+                        _ => "right"
+                    };
+                    sprite = _spriteManager.GetGhostEyesSprite(eyeDirection);
+                }
+                else
+                {
+                    string ghostTypeName = ghost.Type.ToString().ToLower();
+                    string ghostDirection = ghost.CurrentDirection switch
+                    {
+                        Direction.Up => "up",
+                        Direction.Down => "down",
+                        Direction.Left => "left",
+                        _ => "right"
+                    };
+
+                    if (ghost.State == GhostState.Normal)
+                    {
+                        sprite = _spriteManager.GetGhostSprite(ghostTypeName, ghostDirection, ghost.AnimationFrame);
+                    }
+                    else if (ghost.State == GhostState.Vulnerable)
+                    {
+                        sprite = _spriteManager.GetVulnerableGhostSprite(ghost.AnimationFrame);
+                    }
+                    else if (ghost.State == GhostState.Warning)
+                    {
+                        sprite = _spriteManager.GetWarningGhostSprite(ghost.AnimationFrame);
+                    }
+                }
+
+                if (sprite != null)
+                {
+                    DrawImage(canvas, sprite, ghost.X * Constants.TileSize, ghost.Y * Constants.TileSize);
+                    spriteCount++;
+                }
             }
 
-            if (wallCount == 0)
+            // Output frame stats every 60 frames (every second at 60 FPS)
+            _frameCounter++;
+            if (_frameCounter >= 60)
             {
-                Console.WriteLine($"⚠️  First render: No walls drawn (map may not be loaded)");
-            }
-            else if (wallCount == 1)
-            {
-                // Only log once on first successful render
-                Console.WriteLine($"✅ Render frame: {wallCount} walls, {dotCount} dots, {ghostCount} ghosts, {canvas.Children.Count} total objects");
+                Console.WriteLine($"✅ Render frame: {spriteCount} sprites, Pacman at ({_pacman.X}, {_pacman.Y})");
+                _frameCounter = 0;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error in Render: {ex}");
+            Console.WriteLine($"❌ Error in Render: {ex.Message}");
+        }
+    }
+
+    private int _frameCounter = 0;
+    private int _updateFrameCounter = 0;
+
+    /// <summary>
+    /// Draw a sprite image on the canvas at the specified position
+    /// </summary>
+    private static void DrawImage(Canvas canvas, CroppedBitmap sprite, int x, int y)
+    {
+        try
+        {
+            var image = new Image
+            {
+                Source = sprite,
+                Width = Constants.TileSize,
+                Height = Constants.TileSize
+            };
+
+            Canvas.SetLeft(image, x);
+            Canvas.SetTop(image, y);
+            canvas.Children.Add(image);
+        }
+        catch (Exception)
+        {
+            // Silently fail individual sprite draws
         }
     }
 
