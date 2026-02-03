@@ -39,7 +39,7 @@ This Pac-Man recreation follows the **MVVM (Model-View-ViewModel)** architectura
                  ↓
 ┌─────────────────────────────────────────────────────────┐
 │                      Services                           │
-│   MapLoader, SpriteManager, AudioManager, AI, etc.      │
+│   GameEngine, MapLoader, SpriteManager, AudioManager    │
 └────────────────┬────────────────────────────────────────┘
                  │ Data Access
                  ↓
@@ -125,9 +125,7 @@ public class Ghost
 // ViewModels/GameViewModel.cs
 public class GameViewModel : ViewModelBase
 {
-    private readonly MapLoader _mapLoader;
-    private readonly AudioManager _audioManager;
-    private readonly CollisionDetector _collisionDetector;
+    private readonly IGameEngine _gameEngine;
     
     private int _score;
     public int Score
@@ -144,16 +142,17 @@ public class GameViewModel : ViewModelBase
     }
     
     public ReactiveCommand<Unit, Unit> StartGameCommand { get; }
-    public ReactiveCommand<Direction, Unit> MovePacmanCommand { get; }
+    public ReactiveCommand<Unit, Unit> PauseGameCommand { get; }
     
-    public GameViewModel(/* dependencies */)
+    public GameViewModel(IGameEngine gameEngine)
     {
+        _gameEngine = gameEngine;
         StartGameCommand = ReactiveCommand.Create(StartGame);
-        MovePacmanCommand = ReactiveCommand.Create<Direction>(MovePacman);
+        PauseGameCommand = ReactiveCommand.Create(PauseGame);
     }
     
-    private void StartGame() { /* ... */ }
-    private void MovePacman(Direction direction) { /* ... */ }
+    private void StartGame() { _gameEngine.Start(); }
+    private void PauseGame() { _gameEngine.Pause(); }
 }
 ```
 
@@ -195,9 +194,15 @@ src/PacmanGame/
 │   └── SettingsView.axaml
 │
 ├── Services/               # Business logic services
+│   ├── Interfaces/         # Service contracts
+│   │   ├── IGameEngine.cs
+│   │   ├── IMapLoader.cs
+│   │   ├── ISpriteManager.cs
+│   │   ├── IAudioManager.cs
+│   │   └── ICollisionDetector.cs
 │   ├── MapLoader.cs        # Loads maps from .txt files
 │   ├── SpriteManager.cs    # Manages sprite loading
-│   ├── AudioManager.cs     # Handles audio playback
+│   ├── AudioManager.cs     # Handles audio playback (SFML.Audio)
 │   ├── CollisionDetector.cs # Collision detection
 │   ├── ScoreManager.cs     # Score persistence
 │   ├── GameEngine.cs       # Main game loop
@@ -334,30 +339,34 @@ App Start → ViewModel.LoadScores() → ScoreManager.LoadScores()
 **Responsibility:** Main game loop and state management
 
 ```csharp
-public class GameEngine
+public class GameEngine : IGameEngine
 {
     private readonly ICollisionDetector _collisionDetector;
     private readonly IAudioManager _audioManager;
-    private readonly List<IGhostAI> _ghostAIs;
+    private readonly IMapLoader _mapLoader;
+    private readonly ISpriteManager _spriteManager;
     
-    private GameState _gameState;
-    private Timer _gameTimer;
+    private TileType[,] _map;
+    private Pacman _pacman;
+    private List<Ghost> _ghosts;
     
-    public void StartGame(Level level)
+    public void Start()
     {
-        _gameState = new GameState(level);
-        _gameTimer = new Timer(UpdateGame, null, 0, 16); // ~60 FPS
+        _isRunning = true;
+        // Game loop logic
     }
     
-    private void UpdateGame(object state)
+    public void Update(float deltaTime)
     {
-        MovePacman();
-        MoveGhosts();
-        CheckCollisions();
-        UpdatePowerPelletTimer();
-        
-        if (_gameState.IsGameOver)
-            StopGame();
+        UpdatePacman(deltaTime);
+        UpdateGhosts(deltaTime);
+        UpdateCollisions();
+        UpdateTimers(deltaTime);
+    }
+    
+    public void Render(Canvas canvas)
+    {
+        // Draw tiles, collectibles, Pac-Man, and ghosts
     }
 }
 ```
@@ -366,7 +375,7 @@ public class GameEngine
 **Responsibility:** Load and manage sprite sheets
 
 ```csharp
-public class SpriteManager
+public class SpriteManager : ISpriteManager
 {
     private Dictionary<string, Bitmap> _spriteSheets;
     private Dictionary<string, SpriteInfo> _spriteMap;
@@ -380,7 +389,7 @@ public class SpriteManager
         _spriteMap = LoadSpriteMap("Assets/Sprites/pacman_sprite_map.json");
     }
     
-    public Bitmap GetSprite(string name, int frame)
+    public CroppedBitmap GetSprite(string name, int frame)
     {
         var info = _spriteMap[name];
         return CropSprite(_spriteSheets[info.SheetName], info.X, info.Y, info.Width, info.Height);
@@ -389,25 +398,28 @@ public class SpriteManager
 ```
 
 ### AudioManager
-**Responsibility:** Manage all audio playback
+**Responsibility:** Manage all audio playback using SFML.Audio
 
 ```csharp
-public class AudioManager
+public class AudioManager : IAudioManager
 {
-    private Dictionary<string, SoundEffect> _soundEffects;
-    private MediaPlayer _musicPlayer;
+    private Dictionary<string, SoundBuffer> _soundBuffers;
+    private Music _currentMusic;
     
     public void PlaySoundEffect(string name)
     {
-        if (_soundEffects.TryGetValue(name, out var effect))
-            effect.Play();
+        if (_soundBuffers.TryGetValue(name, out var buffer))
+        {
+            var sound = new Sound(buffer);
+            sound.Play();
+        }
     }
     
     public void PlayMusic(string name, bool loop = true)
     {
-        _musicPlayer.Open($"Assets/Audio/Music/{name}.wav");
-        _musicPlayer.IsRepeating = loop;
-        _musicPlayer.Play();
+        _currentMusic = new Music($"Assets/Audio/Music/{name}.wav");
+        _currentMusic.Loop = loop;
+        _currentMusic.Play();
     }
 }
 ```
@@ -427,6 +439,7 @@ public class AudioManager
 services.AddSingleton<IMapLoader, MapLoader>();
 services.AddSingleton<ISpriteManager, SpriteManager>();
 services.AddSingleton<IAudioManager, AudioManager>();
+services.AddSingleton<IGameEngine, GameEngine>();
 services.AddTransient<GameViewModel>();
 ```
 
@@ -451,6 +464,7 @@ public class ClydeAI : IGhostAI { /* Random/scatter */ }
 ### 5. Observer Pattern
 - Via `INotifyPropertyChanged`
 - ReactiveUI observables
+- GameEngine events (ScoreChanged, LifeLost, etc.)
 
 ### 6. Singleton Pattern
 - Services (AudioManager, SpriteManager)
@@ -468,7 +482,7 @@ public class ClydeAI : IGhostAI { /* Random/scatter */ }
 - **ReactiveUI:** MVVM framework with reactive extensions
 
 ### Audio
-- **Avalonia.Audio** or **NAudio:** Audio playback
+- **SFML.Audio:** Cross-platform audio playback (Windows/Linux)
 
 ### Testing
 - **xUnit:** Unit testing framework

@@ -7,16 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for Midterm (v0.1.0)
-- Main menu implementation
-- Basic game loop
-- Pac-Man movement system
-- Simple ghost AI (2-3 ghosts)
-- Collision detection
-- Score system
-- Sound effects
-- Game over screen
-
 ### Planned for Final (v1.0.0)
 - Advanced ghost AI (4 unique behaviors)
 - Power pellet mechanic
@@ -26,6 +16,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Background music
 - Settings menu
 - UI polish and animations
+
+## [0.1.0] - 2026-01-30
+
+### Added
+- **Game Engine**: Implemented `GameEngine` service to manage the game loop, entity updates, and state management.
+- **Rendering System**: Added canvas-based rendering in `GameView` via `GameEngine.Render()`.
+- **Audio System**: Integrated `SFML.Audio` for cross-platform sound playback (Windows/Linux).
+- **Pac-Man Movement**: Implemented smooth movement, wall collision, and tunnel wrapping.
+- **Ghost AI**: Added basic random movement AI for ghosts.
+- **Collision Detection**: Implemented Pac-Man vs. Walls, Dots, and Ghosts collisions.
+- **Score System**: Added scoring for dots (10 pts) and ghosts (200+ pts).
+- **Life System**: Implemented life loss on ghost collision and game over state.
+- **UI Updates**: Removed emojis from all views for consistent cross-platform rendering.
+- **Responsive Layout**: Fixed `GameView` layout to adapt to different window sizes.
+
+### Changed
+- **Audio Library**: Switched from stub implementation to `SFML.Audio` (v2.6.0).
+- **Game Loop**: Now runs at fixed 60 FPS using `DispatcherTimer`.
+- **Project Structure**: Added `IGameEngine` interface and implementation.
+- **Documentation**: Updated README, ARCHITECTURE, and PROJECT_STRUCTURE to reflect current state.
 
 ## [0.0.1] - 2026-01-27
 
@@ -85,5 +95,6 @@ In case of vulnerabilities.
 
 ---
 
-[Unreleased]: https://github.com/JalaU-Capstones/pacman-recreation/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/JalaU-Capstones/pacman-recreation/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/JalaU-Capstones/pacman-recreation/releases/tag/v0.1.0
 [0.0.1]: https://github.com/JalaU-Capstones/pacman-recreation/releases/tag/v0.0.1

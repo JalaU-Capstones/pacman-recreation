@@ -61,11 +61,11 @@ This project is an educational recreation of the iconic **Pac-Man** arcade game,
 - ✅ Main menu with navigation
 - ✅ Classic Pac-Man movement (arrow keys)
 - ✅ Basic maze with walls and collectibles
-- ✅ 2-3 ghosts with simple AI (random/pattern movement)
+- ✅ 2-3 ghosts with simple AI (random movement)
 - ✅ Score system
 - ✅ Life system (3 lives)
 - ✅ Game over screen with restart option
-- ✅ Sound effects for actions
+- ✅ Sound effects for actions (using SFML.Audio)
 
 ### Final Version (Week 8)
 - 🎮 Complete Pac-Man gameplay
@@ -101,10 +101,11 @@ This project is an educational recreation of the iconic **Pac-Man** arcade game,
 
 ### Libraries & Dependencies
 ```xml
-<PackageReference Include="Avalonia" Version="11.2.3" />
-<PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
-<PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
-<PackageReference Include="Avalonia.ReactiveUI" Version="11.2.3" />
+<PackageReference Include="Avalonia" Version="11.3.11" />
+<PackageReference Include="Avalonia.Desktop" Version="11.3.11" />
+<PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
+<PackageReference Include="Avalonia.ReactiveUI" Version="11.3.8" />
+<PackageReference Include="SFML.Audio" Version="2.6.0" />
 ```
 
 ---
@@ -211,8 +212,9 @@ pacman-recreation/
 │       ├── Services/             # Business logic
 │       │   ├── MapLoader.cs
 │       │   ├── SpriteManager.cs
-│       │   ├── AudioManager.cs
+│       │   ├── AudioManager.cs   # SFML.Audio implementation
 │       │   ├── CollisionDetector.cs
+│       │   ├── GameEngine.cs     # Main game loop
 │       │   ├── ScoreManager.cs
 │       │   └── AI/
 │       │       ├── GhostAI.cs
@@ -273,15 +275,15 @@ pacman-recreation/
 - [x] Documentation
 - [x] Technology stack selection
 
-### 🔄 Week 3-4: Midterm Milestone
-- [ ] Main menu implementation
-- [ ] Basic game loop
-- [ ] Pac-Man movement system
-- [ ] Simple ghost AI
-- [ ] Collision detection
-- [ ] Score system
-- [ ] Sound effects integration
-- [ ] Game over screen
+### ✅ Week 3-4: Midterm Milestone
+- [x] Main menu implementation
+- [x] Basic game loop (GameEngine)
+- [x] Pac-Man movement system
+- [x] Simple ghost AI (random)
+- [x] Collision detection
+- [x] Score system
+- [x] Sound effects integration (SFML.Audio)
+- [x] Game over screen
 
 ### 📅 Week 5-6: Advanced Features
 - [ ] Advanced ghost AI (4 unique behaviors)
@@ -402,7 +404,7 @@ This software is provided "as is" without warranty of any kind. Use at your own 
 
 ## 📊 Project Status
 
-**Current Version:** 0.1.0-alpha (Midterm Development)  
+**Current Version:** 0.1.0 (Midterm Release)
 **Last Updated:** January 2026  
 **Status:** 🚧 In Active Development
 
