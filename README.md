@@ -10,6 +10,7 @@
 **⚠️ Educational Project** - Created as part of Programming 3 course at Universidad Jala.
 
 ![Pac-Man Preview](docs/images/preview.png)
+
 *Screenshot will be added during development*
 
 ---
