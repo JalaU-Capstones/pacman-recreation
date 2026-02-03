@@ -1,144 +1,144 @@
-# 🗺️ Guía de Mapas de Pac-Man
+# 🗺️ Pac-Man Map Guide
 
-## 📋 Índice
-1. [Formato del Mapa](#formato-del-mapa)
-2. [Leyenda de Caracteres](#leyenda-de-caracteres)
-3. [Especificaciones Técnicas](#especificaciones-técnicas)
-4. [Mapas Incluidos](#mapas-incluidos)
-5. [Cómo Crear Mapas Personalizados](#cómo-crear-mapas-personalizados)
-6. [Validación de Mapas](#validación-de-mapas)
-
----
-
-## 🎮 Formato del Mapa
-
-Los mapas de Pac-Man están almacenados en archivos de texto plano (.txt) donde cada carácter representa un elemento del juego.
-
-### Dimensiones Estándar:
-- **Ancho:** 28 caracteres (columnas)
-- **Alto:** 31 caracteres (filas)
-- **Total de celdas:** 868 celdas
+## 📋 Table of Contents
+1. [Map Format](#map-format)
+2. [Character Legend](#character-legend)
+3. [Technical Specifications](#technical-specifications)
+4. [Included Maps](#included-maps)
+5. [How to Create Custom Maps](#how-to-create-custom-maps)
+6. [Map Validation](#map-validation)
 
 ---
 
-## 🔤 Leyenda de Caracteres
+## 🎮 Map Format
 
-| Carácter | Elemento | Descripción | Comportamiento |
-|----------|----------|-------------|----------------|
-| `#` | **Pared** | Muro del laberinto | Bloquea el movimiento de Pac-Man y fantasmas |
-| `.` | **Punto pequeño** | Píldora energizante | +10 puntos, Pac-Man puede atravesar |
-| `o` | **Power Pellet** | Punto grande | +50 puntos, hace vulnerables a los fantasmas |
-| `P` | **Pac-Man** | Posición inicial del jugador | Se reemplaza por espacio al iniciar |
-| `G` | **Fantasma** | Posición inicial de fantasmas | Se reemplaza por espacio al iniciar |
-| `-` | **Puerta** | Puerta de la casa de fantasmas | Solo fantasmas pueden atravesar |
-| `F` | **Fruta** | Bonus opcional | +100 a +1000 puntos según tipo |
-| ` ` | **Espacio vacío** | Celda sin contenido | Libre para movimiento |
+Pac-Man maps are stored in plain text files (.txt) where each character represents a game element.
+
+### Standard Dimensions:
+- **Width:** 28 characters (columns)
+- **Height:** 31 characters (rows)
+- **Total cells:** 868 cells
 
 ---
 
-## ⚙️ Especificaciones Técnicas
+## 🔤 Character Legend
 
-### Estructura del Mapa:
+| Character | Element | Description | Behavior |
+|-----------|---------|-------------|----------|
+| `#` | **Wall** | Maze wall | Blocks Pac-Man and ghost movement |
+| `.` | **Small Dot** | Energizer pill | +10 points, Pac-Man can pass through |
+| `o` | **Power Pellet** | Large dot | +50 points, makes ghosts vulnerable |
+| `P` | **Pac-Man** | Player start position | Replaced by empty space at start |
+| `G` | **Ghost** | Ghost start position | Replaced by empty space at start |
+| `-` | **Door** | Ghost house door | Only ghosts can pass through |
+| `F` | **Fruit** | Optional bonus | +100 to +1000 points depending on type |
+| ` ` | **Empty Space** | Cell with no content | Free for movement |
+
+---
+
+## ⚙️ Technical Specifications
+
+### Map Structure:
 
 ```
-############################  ← Fila 1 (borde superior)
-#............##............#  ← Fila 2 (pasillo con puntos)
-#.####.#####.##.#####.####.#  ← Fila 3 (paredes internas)
+############################  ← Row 1 (top border)
+#............##............#  ← Row 2 (corridor with dots)
+#.####.#####.##.#####.####.#  ← Row 3 (internal walls)
 ...
-#..........................#  ← Fila 30 (pasillo inferior)
-############################  ← Fila 31 (borde inferior)
+#..........................#  ← Row 30 (bottom corridor)
+############################  ← Row 31 (bottom border)
 ```
 
-### Reglas de Diseño:
+### Design Rules:
 
-1. **Bordes Obligatorios:**
-   - Primera fila: completamente `#`
-   - Última fila: completamente `#`
-   - Primera columna: siempre `#`
-   - Última columna: siempre `#`
+1. **Mandatory Borders:**
+   - First row: completely `#`
+   - Last row: completely `#`
+   - First column: always `#`
+   - Last column: always `#`
 
-2. **Casa de Fantasmas:**
-   - Debe estar en el centro del mapa
-   - Rodeada por paredes `#`
-   - Una puerta `-` para entrada/salida
-   - 6 posiciones `G` para los fantasmas
+2. **Ghost House:**
+   - Must be in the center of the map
+   - Surrounded by walls `#`
+   - One door `-` for entry/exit
+   - 6 `G` positions for ghosts
 
-3. **Posición de Pac-Man:**
-   - Solo debe haber **UN** carácter `P` en todo el mapa
-   - Generalmente en la parte inferior del laberinto
-   - Rodeado de espacio libre para movimiento inicial
+3. **Pac-Man Position:**
+   - There must be only **ONE** `P` character in the entire map
+   - Generally in the lower part of the maze
+   - Surrounded by free space for initial movement
 
-4. **Distribución de Puntos:**
-   - **Puntos pequeños (`.`):** ~240-250 en el mapa
-   - **Power Pellets (`o`):** Exactamente 4 (uno en cada esquina)
+4. **Dot Distribution:**
+   - **Small Dots (`.`):** ~240-250 in the map
+   - **Power Pellets (`o`):** Exactly 4 (one in each corner)
 
-5. **Conectividad:**
-   - Todos los pasillos deben estar conectados
-   - No debe haber áreas aisladas
-   - Debe ser posible llegar a todos los puntos
+5. **Connectivity:**
+   - All corridors must be connected
+   - There should be no isolated areas
+   - It must be possible to reach all dots
 
 ---
 
-## 🎯 Mapas Incluidos
+## 🎯 Included Maps
 
-### Level 1 - Clásico (level1.txt)
+### Level 1 - Classic (level1.txt)
 ```
-Dificultad: ⭐⭐☆☆☆ (Fácil)
-Características:
-- Diseño clásico de Pac-Man original
-- Pasillos amplios
-- 4 power pellets en las esquinas
-- Casa de fantasmas central
-- Ideal para comenzar
+Difficulty: ⭐⭐☆☆☆ (Easy)
+Features:
+- Classic original Pac-Man design
+- Wide corridors
+- 4 power pellets in corners
+- Central ghost house
+- Ideal for starting
 
-Estadísticas:
-- Puntos pequeños: ~244
+Statistics:
+- Small dots: ~244
 - Power pellets: 4
-- Total puntos posibles: ~2,640
+- Total possible points: ~2,640
 ```
 
-### Level 2 - Intermedio (level2.txt)
+### Level 2 - Intermediate (level2.txt)
 ```
-Dificultad: ⭐⭐⭐☆☆ (Medio)
-Características:
-- Más paredes internas
-- Pasillos más estrechos
-- Mayor dificultad para escapar
-- Power pellets en posiciones estratégicas
+Difficulty: ⭐⭐⭐☆☆ (Medium)
+Features:
+- More internal walls
+- Narrower corridors
+- Higher difficulty to escape
+- Power pellets in strategic positions
 
-Estadísticas:
-- Puntos pequeños: ~228
+Statistics:
+- Small dots: ~228
 - Power pellets: 4
-- Total puntos posibles: ~2,480
+- Total possible points: ~2,480
 ```
 
-### Level 3 - Avanzado (level3.txt)
+### Level 3 - Advanced (level3.txt)
 ```
-Dificultad: ⭐⭐⭐⭐☆ (Difícil)
-Características:
-- Laberinto complejo
-- Callejones sin salida
-- Menos espacio de maniobra
-- Requiere estrategia avanzada
+Difficulty: ⭐⭐⭐⭐☆ (Hard)
+Features:
+- Complex maze
+- Dead ends
+- Less maneuvering space
+- Requires advanced strategy
 
-Estadísticas:
-- Puntos pequeños: ~220
+Statistics:
+- Small dots: ~220
 - Power pellets: 4
-- Total puntos posibles: ~2,400
+- Total possible points: ~2,400
 ```
 
 ---
 
-## 🛠️ Cómo Crear Mapas Personalizados
+## 🛠️ How to Create Custom Maps
 
-### Paso 1: Crear el archivo
+### Step 1: Create the file
 ```
-Archivo: levelX.txt (donde X es el número del nivel)
-Codificación: UTF-8 sin BOM
-Fin de línea: LF o CRLF (ambos funcionan)
+File: levelX.txt (where X is the level number)
+Encoding: UTF-8 without BOM
+Line ending: LF or CRLF (both work)
 ```
 
-### Paso 2: Diseñar el contorno
+### Step 2: Design the outline
 ```
 ############################
 #                          #
@@ -148,7 +148,7 @@ Fin de línea: LF o CRLF (ambos funcionan)
 ############################
 ```
 
-### Paso 3: Agregar la casa de fantasmas
+### Step 3: Add the ghost house
 ```
 ######## ##########
 ######## ##########
@@ -160,85 +160,85 @@ Fin de línea: LF o CRLF (ambos funcionan)
 ######## ######## ##########
 ```
 
-**Importante:** 
-- 6 posiciones `G` (para 4 fantasmas + espacio)
-- Puerta `-` horizontal en la parte superior
-- Simetría recomendada
+**Important:** 
+- 6 `G` positions (for 4 ghosts + space)
+- Horizontal door `-` at the top
+- Symmetry recommended
 
-### Paso 4: Diseñar pasillos y paredes
+### Step 4: Design corridors and walls
 ```
 Tips:
-- Mantén simetría (no obligatorio pero visualmente agradable)
-- Crea rutas de escape
-- Evita callejones sin salida largos
-- Deja espacio para estrategia
+- Maintain symmetry (not mandatory but visually pleasing)
+- Create escape routes
+- Avoid long dead ends
+- Leave space for strategy
 ```
 
-### Paso 5: Colocar puntos
+### Step 5: Place dots
 ```
-- Puntos pequeños (.) en todos los pasillos
-- 4 Power Pellets (o) en esquinas estratégicas
-- Dejar espacios vacíos en:
-  * Casa de fantasmas
-  * Alrededor de posición inicial de Pac-Man
-  * Túneles laterales (opcional)
-```
-
-### Paso 6: Colocar a Pac-Man
-```
-- Un solo carácter P
-- En zona segura (lejos de fantasmas)
-- Generalmente en parte inferior
-- Con espacio de maniobra
+- Small dots (.) in all corridors
+- 4 Power Pellets (o) in strategic corners
+- Leave empty spaces in:
+  * Ghost house
+  * Around Pac-Man's starting position
+  * Side tunnels (optional)
 ```
 
-### Ejemplo de Área Inicial de Pac-Man:
+### Step 6: Place Pac-Man
+```
+- A single P character
+- In a safe zone (far from ghosts)
+- Generally in the lower part
+- With maneuvering space
+```
+
+### Example of Pac-Man Start Area:
 ```
 #......##....##....##......#
 #.##########.##.##########.#
-#..........P.##............#  ← Pac-Man aquí
+#..........P.##............#  ← Pac-Man here
 ############################
 ```
 
 ---
 
-## ✅ Validación de Mapas
+## ✅ Map Validation
 
-### Checklist Antes de Usar un Mapa:
+### Checklist Before Using a Map:
 
-**Dimensiones:**
-- [ ] Exactamente 28 columnas
-- [ ] Exactamente 31 filas
-- [ ] Todas las filas tienen la misma longitud
+**Dimensions:**
+- [ ] Exactly 28 columns
+- [ ] Exactly 31 rows
+- [ ] All rows have the same length
 
-**Elementos Obligatorios:**
+**Mandatory Elements:**
 - [ ] 1 Pac-Man (`P`)
-- [ ] 4-6 Fantasmas (`G`)
-- [ ] 1 Puerta (`-`)
-- [ ] 4 Power Pellets (`o`) mínimo
-- [ ] ~200+ Puntos pequeños (`.`)
+- [ ] 4-6 Ghosts (`G`)
+- [ ] 1 Door (`-`)
+- [ ] 4 Power Pellets (`o`) minimum
+- [ ] ~200+ Small Dots (`.`)
 
-**Bordes:**
-- [ ] Fila superior completamente con `#`
-- [ ] Fila inferior completamente con `#`
-- [ ] Columna izquierda completamente con `#`
-- [ ] Columna derecha completamente con `#`
+**Borders:**
+- [ ] Top row completely with `#`
+- [ ] Bottom row completely with `#`
+- [ ] Left column completely with `#`
+- [ ] Right column completely with `#`
 
-**Jugabilidad:**
-- [ ] Todos los pasillos están conectados
-- [ ] No hay áreas aisladas sin acceso
-- [ ] Casa de fantasmas accesible solo por puerta
-- [ ] Pac-Man puede llegar a todos los puntos
+**Gameplay:**
+- [ ] All corridors are connected
+- [ ] No isolated areas without access
+- [ ] Ghost house accessible only by door
+- [ ] Pac-Man can reach all dots
 
-**Casa de Fantasmas:**
-- [ ] Centro del mapa (aproximadamente)
-- [ ] Encerrada por paredes
-- [ ] Una puerta de entrada/salida
-- [ ] 6 posiciones G dentro
+**Ghost House:**
+- [ ] Center of the map (approximately)
+- [ ] Enclosed by walls
+- [ ] One entry/exit door
+- [ ] 6 G positions inside
 
 ---
 
-## 🎨 Plantilla Vacía para Nuevos Mapas
+## 🎨 Empty Template for New Maps
 
 ```
 ############################
@@ -277,53 +277,53 @@ Tips:
 
 ---
 
-## 💡 Tips de Diseño Avanzado
+## 💡 Advanced Design Tips
 
-### Dificultad Progresiva:
+### Progressive Difficulty:
 
-**Nivel Fácil:**
-- Pasillos anchos (3-4 celdas)
-- Pocas paredes internas
-- Muchas rutas de escape
-- Power pellets accesibles
+**Easy Level:**
+- Wide corridors (3-4 cells)
+- Few internal walls
+- Many escape routes
+- Accessible power pellets
 
-**Nivel Medio:**
-- Pasillos medianos (2-3 celdas)
-- Más paredes internas
-- Algunas zonas estrechas
-- Power pellets estratégicos
+**Medium Level:**
+- Medium corridors (2-3 cells)
+- More internal walls
+- Some narrow zones
+- Strategic power pellets
 
-**Nivel Difícil:**
-- Pasillos estrechos (1-2 celdas)
-- Laberinto complejo
-- Callejones sin salida
-- Power pellets en zonas peligrosas
+**Hard Level:**
+- Narrow corridors (1-2 cells)
+- Complex maze
+- Dead ends
+- Power pellets in dangerous zones
 
-### Patrones Clásicos:
+### Classic Patterns:
 
-**Túnel Lateral (opcional):**
+**Side Tunnel (optional):**
 ```
 #                          #
-                             ← Túnel que conecta lados
+                             ← Tunnel connecting sides
 #                          #
 ```
 
-**Zona Central:**
+**Central Zone:**
 ```
-#............##............#  ← Amplia zona de combate
+#............##............#  ← Wide combat zone
 #.####.#####.##.#####.####.#
 ```
 
-**Esquinas Estratégicas:**
+**Strategic Corners:**
 ```
-#o####.#####.##.#####.####o#  ← Power pellets en esquinas
+#o####.#####.##.#####.####o#  ← Power pellets in corners
 ```
 
 ---
 
-## 🚀 Carga del Mapa en C#
+## 🚀 Map Loading in C#
 
-### Ejemplo de Código:
+### Code Example:
 
 ```csharp
 public class MapLoader
@@ -351,54 +351,54 @@ public class MapLoader
 
 ---
 
-## 📊 Cálculo de Puntaje Máximo
+## 📊 Maximum Score Calculation
 
 ```
-Fórmula:
-Puntaje Máximo = (Puntos Pequeños × 10) + (Power Pellets × 50) + (Frutas × Bonus)
+Formula:
+Maximum Score = (Small Dots × 10) + (Power Pellets × 50) + (Fruits × Bonus)
 
-Ejemplo Level 1:
-- 244 puntos pequeños × 10 = 2,440
+Level 1 Example:
+- 244 small dots × 10 = 2,440
 - 4 power pellets × 50 = 200
-- Total base: 2,640 puntos
+- Base total: 2,640 points
 
-+ Fantasmas comidos durante power-up
-+ Frutas bonus
-= Puntaje Total Posible
++ Ghosts eaten during power-up
++ Bonus fruits
+= Total Possible Score
 ```
 
 ---
 
-## 🎯 Buenas Prácticas
+## 🎯 Best Practices
 
-1. **Testea tu mapa:** Juega varios niveles para verificar balance
-2. **Simetría:** Ayuda visualmente pero no es obligatoria
-3. **Variedad:** Cada nivel debe sentirse diferente
-4. **Progresión:** Aumenta dificultad gradualmente
-5. **Documenta:** Añade comentarios sobre características especiales
-
----
-
-## 📝 Notas Finales
-
-- Los mapas se cargan desde `/Assets/Maps/`
-- Formato de nombre: `level{número}.txt`
-- Puedes crear infinitos niveles
-- El juego puede rotar entre mapas disponibles
-- Considera crear un mapa "tutorial" simple
+1. **Test your map:** Play several levels to verify balance
+2. **Symmetry:** Helps visually but is not mandatory
+3. **Variety:** Each level should feel different
+4. **Progression:** Increase difficulty gradually
+5. **Document:** Add comments about special features
 
 ---
 
-## 🔗 Referencias
+## 📝 Final Notes
 
-- Pac-Man Original: 28×31 celdas
-- Casa de Fantasmas: Siempre central
-- Power Pellets: Tradicionalmente 4 en esquinas
-- Diseño Clásico: Simétrico verticalmente
+- Maps are loaded from `/Assets/Maps/`
+- Name format: `level{number}.txt`
+- You can create infinite levels
+- The game can rotate between available maps
+- Consider creating a simple "tutorial" map
 
 ---
 
-**Autor:** Diego Alejandro  
-**Proyecto:** Pac-Man Educational Recreation  
-**Fecha:** 2026  
-**Licencia:** MIT
+## 🔗 References
+
+- Original Pac-Man: 28×31 cells
+- Ghost House: Always central
+- Power Pellets: Traditionally 4 in corners
+- Classic Design: Vertically symmetric
+
+---
+
+**Author:** Diego Alejandro  
+**Project:** Pac-Man Educational Recreation  
+**Date:** 2026  
+**License:** MIT
