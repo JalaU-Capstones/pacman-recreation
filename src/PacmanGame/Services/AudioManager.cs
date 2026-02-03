@@ -2,33 +2,30 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Media;
 using System.Threading;
 using System.Threading.Tasks;
 using PacmanGame.Helpers;
 using PacmanGame.Services.Interfaces;
+using SFML.Audio;
 
 namespace PacmanGame.Services;
 
 /// <summary>
-/// Service for managing audio playback using platform-specific backends.
-/// Windows: System.Media.SoundPlayer (built-in, no dependencies)
-/// Linux: Graceful silent fallback
+/// Service for managing audio playback using SFML.Audio.
+/// Works on both Windows and Linux.
 /// </summary>
-public class AudioManager : IAudioManager
+public class AudioManager : IAudioManager, IDisposable
 {
     private readonly string _musicPath;
     private readonly string _sfxPath;
     private bool _isMuted;
-    private float _musicVolume = 0.5f;
-    private float _sfxVolume = 0.7f;
+    private float _musicVolume = 50f; // SFML uses 0-100
+    private float _sfxVolume = 70f;   // SFML uses 0-100
     private bool _isInitialized;
-    private readonly bool _isWindows;
-    private SoundPlayer? _currentMusicPlayer;
-    private CancellationTokenSource? _musicCancellation;
-    private Task? _musicLoopTask;
-    private readonly Queue<SoundPlayer> _activeSfxPlayers = new();
-    private const int MaxConcurrentSfx = 8;
+
+    private Music? _currentMusic;
+    private readonly List<Sound> _activeSounds = new();
+    private readonly Dictionary<string, SoundBuffer> _soundBuffers = new();
 
     public bool IsMuted => _isMuted;
 
@@ -37,7 +34,6 @@ public class AudioManager : IAudioManager
         _musicPath = Path.Combine(AppContext.BaseDirectory, Constants.MusicPath);
         _sfxPath = Path.Combine(AppContext.BaseDirectory, Constants.SfxPath);
         _isMuted = false;
-        _isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
     }
 
     /// <summary>
@@ -60,20 +56,39 @@ public class AudioManager : IAudioManager
                 Console.WriteLine($"⚠️  SFX directory not found: {_sfxPath}");
             }
 
+            // Preload common sound effects
+            PreloadSound("chomp");
+            PreloadSound("death");
+            PreloadSound("eat-ghost");
+            PreloadSound("eat-fruit");
+            PreloadSound("game-start");
+            PreloadSound("game-over");
+            PreloadSound("menu-select");
+            PreloadSound("menu-navigate");
+
             _isInitialized = true;
-            if (_isWindows)
-            {
-                Console.WriteLine("✅ AudioManager initialized (Windows - System.Media.SoundPlayer)");
-            }
-            else
-            {
-                Console.WriteLine("✅ AudioManager initialized (Linux - Silent mode)");
-            }
+            Console.WriteLine("✅ AudioManager initialized (SFML.Audio)");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ AudioManager initialization error: {ex.Message}");
-            _isInitialized = true;
+            // Don't set initialized to true if SFML fails to load
+        }
+    }
+
+    private void PreloadSound(string soundName)
+    {
+        try
+        {
+            string filePath = Path.Combine(_sfxPath, $"{soundName}.wav");
+            if (File.Exists(filePath))
+            {
+                _soundBuffers[soundName] = new SoundBuffer(filePath);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Failed to preload sound {soundName}: {ex.Message}");
         }
     }
 
@@ -82,38 +97,36 @@ public class AudioManager : IAudioManager
     /// </summary>
     public void PlaySoundEffect(string soundName)
     {
-        if (_isMuted || !_isInitialized || !_isWindows)
+        if (_isMuted || !_isInitialized)
             return;
 
         try
         {
-            string filePath = Path.Combine(_sfxPath, $"{soundName}.wav");
+            SoundBuffer? buffer;
 
-            if (!File.Exists(filePath))
+            // Try to get from cache, or load if not cached
+            if (!_soundBuffers.TryGetValue(soundName, out buffer))
             {
-                return;
+                string filePath = Path.Combine(_sfxPath, $"{soundName}.wav");
+                if (!File.Exists(filePath))
+                    return;
+
+                buffer = new SoundBuffer(filePath);
+                _soundBuffers[soundName] = buffer;
             }
 
-            // Run on background thread to avoid blocking
-            #pragma warning disable CA1416
-            Task.Run(() =>
-            {
-                try
-                {
-                    var player = new SoundPlayer(filePath);
-                    player.PlaySync();
-                    player.Dispose();
-                }
-                catch (Exception)
-                {
-                    // Silently fail
-                }
-            });
-            #pragma warning restore CA1416
+            // Clean up stopped sounds
+            _activeSounds.RemoveAll(s => s.Status == SoundStatus.Stopped);
+
+            // Create and play new sound
+            var sound = new Sound(buffer);
+            sound.Volume = _sfxVolume;
+            sound.Play();
+            _activeSounds.Add(sound);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Silently fail - game continues
+            Console.WriteLine($"⚠️ Failed to play sound {soundName}: {ex.Message}");
         }
     }
 
@@ -122,68 +135,32 @@ public class AudioManager : IAudioManager
     /// </summary>
     public void PlayMusic(string musicName, bool loop = true)
     {
-        if (_isMuted || !_isInitialized || !_isWindows)
+        if (!_isInitialized)
             return;
 
         try
         {
             StopMusic();
 
-            string filePath = Path.Combine(_musicPath, $"{musicName}.wav");
+            if (_isMuted)
+                return;
+
+            string filePath = Path.Combine(_musicPath, $"{musicName}");
 
             if (!File.Exists(filePath))
             {
+                Console.WriteLine($"⚠️ Music file not found: {filePath}");
                 return;
             }
 
-            if (loop)
-            {
-                // For looping, use a background task that replays when finished
-                _musicCancellation = new CancellationTokenSource();
-                _musicLoopTask = PlayMusicLoopAsync(filePath, _musicCancellation.Token);
-            }
-            else
-            {
-                #pragma warning disable CA1416
-                _currentMusicPlayer = new SoundPlayer(filePath);
-                _currentMusicPlayer.PlaySync();
-                #pragma warning restore CA1416
-            }
+            _currentMusic = new Music(filePath);
+            _currentMusic.Loop = loop;
+            _currentMusic.Volume = _musicVolume;
+            _currentMusic.Play();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Silently fail
-        }
-    }
-
-    /// <summary>
-    /// Play music with looping in background task
-    /// </summary>
-    private async Task PlayMusicLoopAsync(string filePath, CancellationToken cancellationToken)
-    {
-        try
-        {
-            #pragma warning disable CA1416
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                var player = new SoundPlayer(filePath);
-                player.PlaySync();
-
-                // Wait for the sound to finish (approximately 3 seconds for typical background tracks)
-                await Task.Delay(3000, cancellationToken);
-
-                if (cancellationToken.IsCancellationRequested)
-                    break;
-            }
-            #pragma warning restore CA1416
-        }
-        catch (OperationCanceledException)
-        {
-            // Cancellation requested
-        }
-        catch (Exception)
-        {
-            // Ignore errors in loop task
+            Console.WriteLine($"⚠️ Failed to play music {musicName}: {ex.Message}");
         }
     }
 
@@ -194,27 +171,12 @@ public class AudioManager : IAudioManager
     {
         try
         {
-            if (_musicCancellation != null)
+            if (_currentMusic != null)
             {
-                _musicCancellation.Cancel();
-                _musicCancellation.Dispose();
-                _musicCancellation = null;
+                _currentMusic.Stop();
+                _currentMusic.Dispose();
+                _currentMusic = null;
             }
-
-            if (_musicLoopTask != null)
-            {
-                _musicLoopTask.Wait(1000);
-                _musicLoopTask = null;
-            }
-
-            #pragma warning disable CA1416
-            if (_currentMusicPlayer != null)
-            {
-                _currentMusicPlayer.Stop();
-                _currentMusicPlayer.Dispose();
-                _currentMusicPlayer = null;
-            }
-            #pragma warning restore CA1416
         }
         catch (Exception)
         {
@@ -229,16 +191,9 @@ public class AudioManager : IAudioManager
     {
         try
         {
-            if (_currentMusicPlayer != null && _isWindows)
+            if (_currentMusic != null && _currentMusic.Status == SoundStatus.Playing)
             {
-                #pragma warning disable CA1416
-                // SoundPlayer doesn't have pause, so we stop it
-                _currentMusicPlayer.Stop();
-                #pragma warning restore CA1416
-                if (_musicCancellation != null)
-                {
-                    _musicCancellation.Cancel();
-                }
+                _currentMusic.Pause();
             }
         }
         catch (Exception)
@@ -248,11 +203,21 @@ public class AudioManager : IAudioManager
     }
 
     /// <summary>
-    /// Resume paused music (restart from beginning)
+    /// Resume paused music
     /// </summary>
     public void ResumeMusic()
     {
-        // SoundPlayer doesn't support resume, so music restart is acceptable for simple game audio
+        try
+        {
+            if (_currentMusic != null && _currentMusic.Status == SoundStatus.Paused && !_isMuted)
+            {
+                _currentMusic.Play();
+            }
+        }
+        catch (Exception)
+        {
+            // Ignore errors
+        }
     }
 
     /// <summary>
@@ -260,8 +225,11 @@ public class AudioManager : IAudioManager
     /// </summary>
     public void SetMusicVolume(float volume)
     {
-        _musicVolume = Math.Clamp(volume, 0f, 1f);
-        // SoundPlayer doesn't support volume control, so we store it for potential future use
+        _musicVolume = Math.Clamp(volume, 0f, 1f) * 100f; // Convert to 0-100
+        if (_currentMusic != null)
+        {
+            _currentMusic.Volume = _musicVolume;
+        }
     }
 
     /// <summary>
@@ -269,8 +237,8 @@ public class AudioManager : IAudioManager
     /// </summary>
     public void SetSfxVolume(float volume)
     {
-        _sfxVolume = Math.Clamp(volume, 0f, 1f);
-        // SoundPlayer doesn't support volume control, so we store it for potential future use
+        _sfxVolume = Math.Clamp(volume, 0f, 1f) * 100f; // Convert to 0-100
+        // Note: This only affects future sounds, not currently playing ones
     }
 
     /// <summary>
@@ -281,7 +249,41 @@ public class AudioManager : IAudioManager
         _isMuted = muted;
         if (muted)
         {
-            StopMusic();
+            if (_currentMusic != null)
+            {
+                _currentMusic.Volume = 0;
+            }
+
+            foreach (var sound in _activeSounds)
+            {
+                sound.Volume = 0;
+            }
         }
+        else
+        {
+            if (_currentMusic != null)
+            {
+                _currentMusic.Volume = _musicVolume;
+            }
+
+            // We don't restore volume for active sounds as they are short-lived
+        }
+    }
+
+    public void Dispose()
+    {
+        StopMusic();
+
+        foreach (var sound in _activeSounds)
+        {
+            sound.Dispose();
+        }
+        _activeSounds.Clear();
+
+        foreach (var buffer in _soundBuffers.Values)
+        {
+            buffer.Dispose();
+        }
+        _soundBuffers.Clear();
     }
 }
