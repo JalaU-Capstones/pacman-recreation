@@ -13,7 +13,7 @@
         <!-- Title -->
         <StackPanel Grid.Row="0"
                     Margin="0,40,0,30">
-            <TextBlock Text="🏆 HIGH SCORES 🏆"
+            <TextBlock Text="HIGH SCORES"
                       FontSize="60"
                       FontWeight="Bold"
                       Foreground="#FFFF00"
@@ -105,7 +105,7 @@
                     Command="{Binding ReturnToMenuCommand}"
                     MinWidth="300"
                     HorizontalAlignment="Stretch">
-                <TextBlock Text="🏠 RETURN TO MENU"
+                <TextBlock Text="RETURN TO MENU"
                            FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
                            FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
                            FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"

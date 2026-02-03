@@ -41,7 +41,7 @@
                       FontFamily="Consolas, Courier New"/>
 
             <!-- Press Start animation -->
-            <TextBlock Text="▲ PRESS START ▲"
+            <TextBlock Text="PRESS START"
                       FontSize="18"
                       Foreground="White"
                       HorizontalAlignment="Center"
@@ -54,7 +54,7 @@
             <Button Classes="arcade"
                     Command="{Binding StartGameCommand}"
                     HorizontalAlignment="Stretch">
-                <TextBlock Text="🎮 START GAME"
+                <TextBlock Text="START GAME"
                            FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
                            FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
                            FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -66,7 +66,7 @@
             <Button Classes="arcade"
                     Command="{Binding ShowScoreBoardCommand}"
                     HorizontalAlignment="Stretch">
-                <TextBlock Text="🏆 SCORE BOARD"
+                <TextBlock Text="SCORE BOARD"
                            FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
                            FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
                            FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -78,7 +78,7 @@
             <Button Classes="arcade"
                     Command="{Binding ShowSettingsCommand}"
                     HorizontalAlignment="Stretch">
-                <TextBlock Text="⚙️ SETTINGS"
+                <TextBlock Text="SETTINGS"
                            FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
                            FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
                            FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -90,7 +90,7 @@
             <Button Classes="arcade"
                     Command="{Binding ExitCommand}"
                     HorizontalAlignment="Stretch">
-                <TextBlock Text="🚪 EXIT"
+                <TextBlock Text="EXIT"
                            FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
                            FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
                            FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
