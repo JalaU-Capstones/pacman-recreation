@@ -3,6 +3,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Reactive;
 using PacmanGame.Models.Game;
+using PacmanGame.Services.Interfaces;
 
 namespace PacmanGame.ViewModels;
 
@@ -13,6 +14,8 @@ namespace PacmanGame.ViewModels;
 public class ScoreBoardViewModel : ViewModelBase
 {
     private readonly MainWindowViewModel _mainWindowViewModel;
+    private readonly IProfileManager _profileManager;
+    private readonly IAudioManager _audioManager;
 
     private ObservableCollection<ScoreEntry> _scores;
 
@@ -27,9 +30,16 @@ public class ScoreBoardViewModel : ViewModelBase
 
     public ReactiveCommand<Unit, Unit> ReturnToMenuCommand { get; }
 
-    public ScoreBoardViewModel(MainWindowViewModel mainWindowViewModel)
+    public ScoreBoardViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager? audioManager = null)
     {
         _mainWindowViewModel = mainWindowViewModel;
+        _profileManager = profileManager;
+        _audioManager = audioManager ?? new PacmanGame.Services.AudioManager();
+        if (audioManager == null)
+        {
+            _audioManager.Initialize();
+        }
+
         _scores = new ObservableCollection<ScoreEntry>();
 
         // Initialize commands
@@ -44,13 +54,15 @@ public class ScoreBoardViewModel : ViewModelBase
     /// </summary>
     private void LoadScores()
     {
-        // TODO: Load from ScoreManager service
-        // For now, add some dummy data
-        Scores.Add(new ScoreEntry { Rank = 1, PlayerName = "AAA", Score = 10000, Date = DateTime.Now.AddDays(-7) });
-        Scores.Add(new ScoreEntry { Rank = 2, PlayerName = "BBB", Score = 8500, Date = DateTime.Now.AddDays(-5) });
-        Scores.Add(new ScoreEntry { Rank = 3, PlayerName = "CCC", Score = 7200, Date = DateTime.Now.AddDays(-3) });
-        Scores.Add(new ScoreEntry { Rank = 4, PlayerName = "DDD", Score = 6800, Date = DateTime.Now.AddDays(-2) });
-        Scores.Add(new ScoreEntry { Rank = 5, PlayerName = "EEE", Score = 5500, Date = DateTime.Now.AddDays(-1) });
+        var topScores = _profileManager.GetTopScores(10);
+        Scores.Clear();
+
+        int rank = 1;
+        foreach (var score in topScores)
+        {
+            score.Rank = rank++;
+            Scores.Add(score);
+        }
 
         Console.WriteLine($"Loaded {Scores.Count} high scores");
     }
@@ -60,7 +72,7 @@ public class ScoreBoardViewModel : ViewModelBase
     /// </summary>
     private void ReturnToMenu()
     {
-        // TODO: Play menu select sound
-        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel));
+        _audioManager.PlaySoundEffect("menu-select");
+        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager));
     }
 }

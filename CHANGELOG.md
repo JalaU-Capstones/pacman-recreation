@@ -12,10 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Power pellet mechanic
 - Bonus fruits system
 - Multiple levels
-- Score persistence
-- Background music
-- Settings menu
 - UI polish and animations
+
+## [0.2.0] - 2026-02-02
+
+### Added
+- **User Profiles**: Complete profile system with creation, selection, and deletion.
+- **Persistent Scores**: SQLite database integration for saving high scores per profile.
+- **Settings Menu**: New settings screen for profile management and audio controls.
+- **Database Documentation**: Added `docs/DATABASE.md` detailing the SQLite schema.
+
+### Fixed
+- **Main Menu Music**: Fixed issue where music wasn't playing on the main menu.
+- **Button Styles**: Fixed button hover states in new profile views to match arcade aesthetic.
+- **UI Consistency**: Standardized button styling across all views.
 
 ## [0.1.0] - 2026-01-30
 

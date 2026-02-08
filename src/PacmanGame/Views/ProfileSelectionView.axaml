@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:PacmanGame.ViewModels"
+             xmlns:models="using:PacmanGame.Models.Game"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="PacmanGame.Views.ProfileSelectionView"
+             x:DataType="vm:ProfileSelectionViewModel">
+
+  <UserControl.Styles>
+    <StyleInclude Source="/Styles/ButtonStyles.axaml" />
+
+    <!-- Custom style for profile card buttons to avoid conflict with arcade style -->
+    <Style Selector="Button.profile-card">
+        <Setter Property="Background" Value="#222222"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="CornerRadius" Value="5"/>
+        <Setter Property="Padding" Value="0"/>
+    </Style>
+
+    <Style Selector="Button.profile-card:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#333333"/>
+    </Style>
+
+    <!-- Custom style for delete button inside card -->
+    <Style Selector="Button.delete-btn">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="Red"/>
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="Padding" Value="5,2"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <Style Selector="Button.delete-btn:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#330000"/>
+        <Setter Property="Foreground" Value="Red"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*,Auto" Background="Black">
+    <TextBlock Grid.Row="0"
+               Text="SELECT PROFILE"
+               Classes="h1"
+               HorizontalAlignment="Center"
+               Foreground="#FFFF00"
+               FontFamily="{StaticResource ArcadeFont}"
+               FontSize="36"
+               Margin="0,40,0,20"/>
+
+    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding Profiles}" HorizontalAlignment="Center">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center" MaxWidth="800" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="models:Profile">
+            <Button Classes="profile-card"
+                    Command="{Binding $parent[UserControl].((vm:ProfileSelectionViewModel)DataContext).SelectProfileCommand}"
+                    CommandParameter="{Binding}"
+                    Margin="10"
+                    Width="200" Height="120"
+                    BorderBrush="{Binding AvatarColor}">
+              <Grid RowDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Row="0"
+                           Text="{Binding Name}"
+                           Foreground="{Binding AvatarColor}"
+                           FontFamily="Consolas"
+                           FontSize="20"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center"
+                           Margin="0,10,0,0"/>
+
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                   <TextBlock Text="HIGH SCORE"
+                              Foreground="Gray"
+                              FontSize="10"
+                              HorizontalAlignment="Center"/>
+                   <TextBlock Text="{Binding HighScore}"
+                              Foreground="White"
+                              FontSize="16"
+                              HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <Button Grid.Row="2"
+                        Classes="delete-btn"
+                        Command="{Binding $parent[UserControl].((vm:ProfileSelectionViewModel)DataContext).DeleteProfileCommand}"
+                        CommandParameter="{Binding}"
+                        Content="DELETE"
+                        HorizontalAlignment="Right"
+                        Margin="0,0,5,5"/>
+              </Grid>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+    <Button Grid.Row="2"
+            Classes="arcade"
+            Command="{Binding CreateNewProfileCommand}"
+            Content="NEW PROFILE"
+            HorizontalAlignment="Center"
+            Margin="0,20,0,40"/>
+  </Grid>
+</UserControl>

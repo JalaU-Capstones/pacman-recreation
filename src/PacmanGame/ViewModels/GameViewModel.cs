@@ -14,6 +14,7 @@ namespace PacmanGame.ViewModels;
 public class GameViewModel : ViewModelBase
 {
     private readonly MainWindowViewModel _mainWindowViewModel;
+    private readonly IProfileManager _profileManager;
     private readonly IGameEngine _engine;
     private readonly IAudioManager _audioManager;
     private int _extraLifeThreshold;
@@ -80,9 +81,10 @@ public class GameViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> ResumeGameCommand { get; }
     public ReactiveCommand<Unit, Unit> ReturnToMenuCommand { get; }
 
-    public GameViewModel(MainWindowViewModel mainWindowViewModel)
+    public GameViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager? audioManager = null)
     {
         _mainWindowViewModel = mainWindowViewModel;
+        _profileManager = profileManager;
 
         // Initialize game state
         _score = 0;
@@ -93,7 +95,11 @@ public class GameViewModel : ViewModelBase
         _extraLifeThreshold = Constants.ExtraLifeScore;
 
         // Create audio manager first (used in event handlers)
-        _audioManager = new AudioManager();
+        _audioManager = audioManager ?? new AudioManager();
+        if (audioManager == null)
+        {
+            _audioManager.Initialize();
+        }
 
         // Create engine with required services
         // TODO: Inject these properly via DI container in production
@@ -176,7 +182,7 @@ public class GameViewModel : ViewModelBase
         _engine.Stop();
         _audioManager.StopMusic();
         IsGameRunning = false;
-        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel));
+        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager));
     }
 
     /// <summary>
@@ -189,6 +195,13 @@ public class GameViewModel : ViewModelBase
         _audioManager.StopMusic();
         _audioManager.PlayMusic(Constants.GameOverMusic, loop: false);
         Console.WriteLine($"Game Over! Final Score: {Score}");
+
+        // Save score to profile
+        var activeProfile = _profileManager.GetActiveProfile();
+        if (activeProfile != null)
+        {
+            _profileManager.SaveScore(activeProfile.Id, Score, Level);
+        }
     }
 
     /// <summary>

@@ -8,6 +8,10 @@
              x:DataType="vm:ScoreBoardViewModel"
              Background="Black">
 
+    <UserControl.Styles>
+        <StyleInclude Source="/Styles/ButtonStyles.axaml" />
+    </UserControl.Styles>
+
     <Grid RowDefinitions="Auto,*,Auto">
 
         <!-- Title -->

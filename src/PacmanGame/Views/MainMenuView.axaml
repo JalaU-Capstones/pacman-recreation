@@ -8,6 +8,10 @@
              x:DataType="vm:MainMenuViewModel"
              Background="Black">
 
+    <UserControl.Styles>
+        <StyleInclude Source="/Styles/ButtonStyles.axaml" />
+    </UserControl.Styles>
+
     <Grid>
         <!-- Main menu container -->
         <!-- Limit the width so content scales well on large screens and fits on small screens -->

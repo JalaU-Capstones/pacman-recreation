@@ -1,5 +1,7 @@
 using ReactiveUI;
 using System.Reactive;
+using PacmanGame.Services;
+using PacmanGame.Services.Interfaces;
 
 namespace PacmanGame.ViewModels;
 
@@ -10,6 +12,7 @@ namespace PacmanGame.ViewModels;
 public class MainWindowViewModel : ViewModelBase
 {
     private ViewModelBase _currentViewModel;
+    private readonly IProfileManager _profileManager;
 
     /// <summary>
     /// The currently displayed ViewModel (for view navigation)
@@ -22,8 +25,19 @@ public class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        // Start with the main menu
-        _currentViewModel = new MainMenuViewModel(this);
+        // Initialize services
+        _profileManager = new ProfileManager();
+
+        // Check if any profiles exist
+        var profiles = _profileManager.GetAllProfiles();
+        if (profiles.Count == 0)
+        {
+            _currentViewModel = new ProfileCreationViewModel(this, _profileManager);
+        }
+        else
+        {
+            _currentViewModel = new ProfileSelectionViewModel(this, _profileManager);
+        }
     }
 
     /// <summary>

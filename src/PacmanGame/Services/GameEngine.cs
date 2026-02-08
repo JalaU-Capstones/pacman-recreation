@@ -346,6 +346,14 @@ public class GameEngine : IGameEngine
             {
                 _audioManager.PlaySoundEffect("death");
                 LifeLost?.Invoke();
+
+                // Check if lives are 0, if so, trigger game over
+                // Note: The GameViewModel handles the actual life count, but we can signal here if needed
+                // For now, we just reset positions, and let the ViewModel handle the game over logic via LifeLost event
+                // However, if we want to trigger GameOver event from here, we need to know the lives count or let VM handle it.
+                // The VM subscribes to LifeLost and checks lives count. If <= 0, it calls GameOver().
+                // So we don't need to call GameOver?.Invoke() here for life loss, unless we track lives in Engine too.
+
                 ResetPositions();
             }
         }
@@ -576,5 +584,11 @@ public class GameEngine : IGameEngine
             Direction.Right => Direction.Left,
             _ => Direction.None
         };
+    }
+
+    // Helper method to trigger game over manually if needed
+    public void TriggerGameOver()
+    {
+        GameOver?.Invoke();
     }
 }

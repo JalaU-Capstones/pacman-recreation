@@ -30,7 +30,7 @@
 
     <!-- Ensure any TextBlock inside Button.arcade inherits the Button's visual properties -->
     <Style Selector="Button.arcade TextBlock">
-        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
         <Setter Property="FontFamily" Value="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"/>
         <Setter Property="FontSize" Value="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"/>
         <Setter Property="FontWeight" Value="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"/>
@@ -40,60 +40,69 @@
         <Setter Property="TextWrapping" Value="NoWrap"/>
     </Style>
 
-    <!-- TextBlock state for hover - letters blend into background -->
-    <Style Selector="Button.arcade:pointerover TextBlock">
-        <Setter Property="Foreground" Value="#FFFF00"/>
+    <!-- Estado Hover / Pointer Over -->
+    <Style Selector="Button.arcade:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#FFFF00"/>
+        <Setter Property="Foreground" Value="#2121FF"/>
+        <Setter Property="BorderBrush" Value="#2121FF"/>
     </Style>
 
-    <!-- TextBlock state for pressed - white text on red background -->
+    <Style Selector="Button.arcade:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1.04)"/>
+    </Style>
+
+    <Style Selector="Button.arcade:pointerover TextBlock">
+        <Setter Property="Foreground" Value="#2121FF"/>
+    </Style>
+
+    <!-- Estado Pressed -->
+    <Style Selector="Button.arcade:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="#FF0000"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.arcade:pressed">
+        <Setter Property="RenderTransform" Value="scale(0.98)"/>
+    </Style>
+
     <Style Selector="Button.arcade:pressed TextBlock">
         <Setter Property="Foreground" Value="#FFFFFF"/>
     </Style>
 
-    <!-- TextBlock state for focus - white text on blue background -->
-    <Style Selector="Button.arcade:focus TextBlock">
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-    </Style>
-
-    <!-- TextBlock state for disabled - light gray text on gray background -->
-    <Style Selector="Button.arcade:disabled TextBlock">
-        <Setter Property="Foreground" Value="#BBBBBB"/>
-    </Style>
-
-    <!-- Estado Hover / Pointer Over -->
-    <Style Selector="Button.arcade:pointerover">
-        <!-- Bright background for clear affordance -->
-        <Setter Property="Background" Value="#FFFF00"/>
-        <!-- Text blends into background -->
-        <Setter Property="Foreground" Value="#FFFF00"/>
-        <!-- Border blends into background -->
+    <!-- Focus visual -->
+    <Style Selector="Button.arcade:focus /template/ ContentPresenter">
         <Setter Property="BorderBrush" Value="#FFFF00"/>
-        <Setter Property="RenderTransform" Value="scale(1.04)"/>
-        <Setter Property="Opacity" Value="1"/>
-    </Style>
-
-    <!-- Estado Pressed -->
-    <Style Selector="Button.arcade:pressed">
-        <Setter Property="Background" Value="#FF0000"/>
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-        <Setter Property="BorderBrush" Value="#FFFFFF"/>
-        <Setter Property="RenderTransform" Value="scale(0.98)"/>
-    </Style>
-
-    <!-- Focus visual - keyboard users should see a clear outline (use border changes supported by Button) -->
-    <Style Selector="Button.arcade:focus">
-        <Setter Property="BorderBrush" Value="#FFFF00"/>
-        <Setter Property="BorderThickness" Value="4"/>
         <Setter Property="Background" Value="#2A2AFF"/>
     </Style>
 
     <!-- Estado Disabled -->
-    <Style Selector="Button.arcade:disabled">
+    <Style Selector="Button.arcade:disabled /template/ ContentPresenter">
         <Setter Property="Background" Value="#555555"/>
         <Setter Property="Foreground" Value="#BBBBBB"/>
         <Setter Property="BorderBrush" Value="#666666"/>
+    </Style>
+
+    <Style Selector="Button.arcade:disabled">
         <Setter Property="Opacity" Value="0.6"/>
         <Setter Property="Cursor" Value="Arrow"/>
+    </Style>
+
+    <!-- Custom variants -->
+    <Style Selector="Button.arcade.danger">
+        <Setter Property="Background" Value="#330000"/>
+        <Setter Property="Foreground" Value="#FF0000"/>
+        <Setter Property="BorderBrush" Value="#FF0000"/>
+    </Style>
+
+    <Style Selector="Button.arcade.danger:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#FF0000"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="BorderBrush" Value="#FFFFFF"/>
+    </Style>
+
+    <Style Selector="Button.arcade.danger:pointerover TextBlock">
+        <Setter Property="Foreground" Value="#FFFFFF"/>
     </Style>
 
 </Styles>

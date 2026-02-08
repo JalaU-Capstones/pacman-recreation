@@ -1,6 +1,7 @@
 using ReactiveUI;
 using System;
 using System.Reactive;
+using PacmanGame.Services.Interfaces;
 
 namespace PacmanGame.ViewModels;
 
@@ -11,15 +12,26 @@ namespace PacmanGame.ViewModels;
 public class MainMenuViewModel : ViewModelBase
 {
     private readonly MainWindowViewModel _mainWindowViewModel;
+    private readonly IProfileManager _profileManager;
+    private readonly IAudioManager _audioManager;
 
     public ReactiveCommand<Unit, Unit> StartGameCommand { get; }
     public ReactiveCommand<Unit, Unit> ShowScoreBoardCommand { get; }
     public ReactiveCommand<Unit, Unit> ShowSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
 
-    public MainMenuViewModel(MainWindowViewModel mainWindowViewModel)
+    public MainMenuViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager? audioManager = null)
     {
         _mainWindowViewModel = mainWindowViewModel;
+        _profileManager = profileManager;
+
+        // If audioManager is not provided, try to get it from a service locator or create a new one
+        // For now, we'll assume it's passed in or we can't play music
+        _audioManager = audioManager ?? new PacmanGame.Services.AudioManager();
+        _audioManager.Initialize();
+
+        // Play menu music
+        _audioManager.PlayMusic("menu-theme.wav", loop: true);
 
         // Initialize commands
         StartGameCommand = ReactiveCommand.Create(StartGame);
@@ -30,26 +42,27 @@ public class MainMenuViewModel : ViewModelBase
 
     private void StartGame()
     {
-        // TODO: Play menu select sound
-        _mainWindowViewModel.NavigateTo(new GameViewModel(_mainWindowViewModel));
+        _audioManager.PlaySoundEffect("menu-select");
+        _audioManager.StopMusic();
+        _mainWindowViewModel.NavigateTo(new GameViewModel(_mainWindowViewModel, _profileManager, _audioManager));
     }
 
     private void ShowScoreBoard()
     {
-        // TODO: Play menu select sound
-        _mainWindowViewModel.NavigateTo(new ScoreBoardViewModel(_mainWindowViewModel));
+        _audioManager.PlaySoundEffect("menu-select");
+        _audioManager.StopMusic();
+        _mainWindowViewModel.NavigateTo(new ScoreBoardViewModel(_mainWindowViewModel, _profileManager, _audioManager));
     }
 
     private void ShowSettings()
     {
-        // TODO: Play menu select sound
-        // TODO: Implement settings view
-        Console.WriteLine("Settings - Not implemented yet");
+        _audioManager.PlaySoundEffect("menu-select");
+        _mainWindowViewModel.NavigateTo(new SettingsViewModel(_mainWindowViewModel, _profileManager, _audioManager));
     }
 
     private void Exit()
     {
-        // TODO: Play menu select sound
+        _audioManager.PlaySoundEffect("menu-select");
         Environment.Exit(0);
     }
 }
