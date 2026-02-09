@@ -10,6 +10,17 @@
 
   <UserControl.Styles>
     <StyleInclude Source="/Styles/ButtonStyles.axaml" />
+
+    <Style Selector="CheckBox.arcade">
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="FontFamily" Value="Consolas"/>
+    </Style>
+    <Style Selector="CheckBox.arcade:pointerover /template/ ContentPresenter">
+        <Setter Property="Foreground" Value="#FFFF00"/>
+    </Style>
+    <Style Selector="Slider.arcade">
+        <Setter Property="Foreground" Value="#FFFF00"/>
+    </Style>
   </UserControl.Styles>
 
   <Grid RowDefinitions="Auto,*,Auto">
@@ -66,11 +77,24 @@
                      FontWeight="Bold"
                      HorizontalAlignment="Center"/>
 
-          <CheckBox IsChecked="{Binding IsMusicEnabled}"
+          <CheckBox Classes="arcade" IsChecked="{Binding IsMusicEnabled}"
                     Content="Enable Audio"
-                    Foreground="White"
-                    FontFamily="Consolas"
                     HorizontalAlignment="Center"/>
+
+          <!-- Volume Sliders -->
+          <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" Margin="0,10,0,0">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Menu Music" Foreground="White" VerticalAlignment="Center"/>
+            <Slider Grid.Row="0" Grid.Column="1" Classes="arcade" Minimum="0" Maximum="100" Value="{Binding MenuMusicVolume}" Margin="10,0"/>
+            <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding MenuMusicVolume}" Foreground="White" VerticalAlignment="Center"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Game Music" Foreground="White" VerticalAlignment="Center"/>
+            <Slider Grid.Row="1" Grid.Column="1" Classes="arcade" Minimum="0" Maximum="100" Value="{Binding GameMusicVolume}" Margin="10,0"/>
+            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding GameMusicVolume}" Foreground="White" VerticalAlignment="Center"/>
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Sound Effects" Foreground="White" VerticalAlignment="Center"/>
+            <Slider Grid.Row="2" Grid.Column="1" Classes="arcade" Minimum="0" Maximum="100" Value="{Binding SfxVolume}" Margin="10,0"/>
+            <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding SfxVolume}" Foreground="White" VerticalAlignment="Center"/>
+          </Grid>
         </StackPanel>
       </Border>
 

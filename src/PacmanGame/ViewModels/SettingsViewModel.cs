@@ -14,7 +14,9 @@ public class SettingsViewModel : ViewModelBase
     private Profile? _activeProfile;
     private bool _isDeleteConfirmationVisible;
     private bool _isMusicEnabled;
-    // Removed unused field _isSfxEnabled
+    private int _menuMusicVolume;
+    private int _gameMusicVolume;
+    private int _sfxVolume;
 
     public Profile? ActiveProfile
     {
@@ -38,6 +40,36 @@ public class SettingsViewModel : ViewModelBase
         }
     }
 
+    public int MenuMusicVolume
+    {
+        get => _menuMusicVolume;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _menuMusicVolume, value);
+            _audioManager.SetMenuMusicVolume(value / 100f);
+        }
+    }
+
+    public int GameMusicVolume
+    {
+        get => _gameMusicVolume;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _gameMusicVolume, value);
+            _audioManager.SetGameMusicVolume(value / 100f);
+        }
+    }
+
+    public int SfxVolume
+    {
+        get => _sfxVolume;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _sfxVolume, value);
+            _audioManager.SetSfxVolume(value / 100f);
+        }
+    }
+
     public ReactiveCommand<Unit, Unit> SwitchProfileCommand { get; }
     public ReactiveCommand<Unit, Unit> ShowDeleteConfirmationCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelDeleteCommand { get; }
@@ -53,9 +85,13 @@ public class SettingsViewModel : ViewModelBase
         ActiveProfile = _profileManager.GetActiveProfile();
         IsMusicEnabled = !_audioManager.IsMuted;
 
+        // Initialize volumes from AudioManager
+        _menuMusicVolume = (int)(_audioManager.MenuMusicVolume * 100);
+        _gameMusicVolume = (int)(_audioManager.GameMusicVolume * 100);
+        _sfxVolume = (int)(_audioManager.SfxVolume * 100);
+
         SwitchProfileCommand = ReactiveCommand.Create(SwitchProfile);
 
-        // Fix: Explicitly return Unit.Default for commands that just set a property
         ShowDeleteConfirmationCommand = ReactiveCommand.Create(() => {
             IsDeleteConfirmationVisible = true;
         });

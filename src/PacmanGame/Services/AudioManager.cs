@@ -19,15 +19,20 @@ public class AudioManager : IAudioManager, IDisposable
     private readonly string _musicPath;
     private readonly string _sfxPath;
     private bool _isMuted;
-    private float _musicVolume = 50f; // SFML uses 0-100
+    private float _menuMusicVolume = 50f; // SFML uses 0-100
+    private float _gameMusicVolume = 50f; // SFML uses 0-100
     private float _sfxVolume = 70f;   // SFML uses 0-100
     private bool _isInitialized;
 
     private Music? _currentMusic;
+    private string? _currentMusicName;
     private readonly List<Sound> _activeSounds = new();
     private readonly Dictionary<string, SoundBuffer> _soundBuffers = new();
 
     public bool IsMuted => _isMuted;
+    public float MenuMusicVolume => _menuMusicVolume / 100f;
+    public float GameMusicVolume => _gameMusicVolume / 100f;
+    public float SfxVolume => _sfxVolume / 100f;
 
     public AudioManager()
     {
@@ -154,13 +159,37 @@ public class AudioManager : IAudioManager, IDisposable
             }
 
             _currentMusic = new Music(filePath);
+            _currentMusicName = musicName;
             _currentMusic.Loop = loop;
-            _currentMusic.Volume = _musicVolume;
+
+            // Set volume based on music type
+            UpdateCurrentMusicVolume();
+
             _currentMusic.Play();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"⚠️ Failed to play music {musicName}: {ex.Message}");
+        }
+    }
+
+    private void UpdateCurrentMusicVolume()
+    {
+        if (_currentMusic == null) return;
+
+        if (_isMuted)
+        {
+            _currentMusic.Volume = 0;
+            return;
+        }
+
+        if (_currentMusicName != null && _currentMusicName.Contains("menu"))
+        {
+            _currentMusic.Volume = _menuMusicVolume;
+        }
+        else
+        {
+            _currentMusic.Volume = _gameMusicVolume;
         }
     }
 
@@ -176,6 +205,7 @@ public class AudioManager : IAudioManager, IDisposable
                 _currentMusic.Stop();
                 _currentMusic.Dispose();
                 _currentMusic = null;
+                _currentMusicName = null;
             }
         }
         catch (Exception)
@@ -225,10 +255,28 @@ public class AudioManager : IAudioManager, IDisposable
     /// </summary>
     public void SetMusicVolume(float volume)
     {
-        _musicVolume = Math.Clamp(volume, 0f, 1f) * 100f; // Convert to 0-100
-        if (_currentMusic != null)
+        // This sets both for backward compatibility, but prefer specific methods
+        float vol = Math.Clamp(volume, 0f, 1f) * 100f;
+        _menuMusicVolume = vol;
+        _gameMusicVolume = vol;
+        UpdateCurrentMusicVolume();
+    }
+
+    public void SetMenuMusicVolume(float volume)
+    {
+        _menuMusicVolume = Math.Clamp(volume, 0f, 1f) * 100f;
+        if (_currentMusicName != null && _currentMusicName.Contains("menu"))
         {
-            _currentMusic.Volume = _musicVolume;
+            UpdateCurrentMusicVolume();
+        }
+    }
+
+    public void SetGameMusicVolume(float volume)
+    {
+        _gameMusicVolume = Math.Clamp(volume, 0f, 1f) * 100f;
+        if (_currentMusicName != null && !_currentMusicName.Contains("menu"))
+        {
+            UpdateCurrentMusicVolume();
         }
     }
 
@@ -261,10 +309,7 @@ public class AudioManager : IAudioManager, IDisposable
         }
         else
         {
-            if (_currentMusic != null)
-            {
-                _currentMusic.Volume = _musicVolume;
-            }
+            UpdateCurrentMusicVolume();
 
             // We don't restore volume for active sounds as they are short-lived
         }

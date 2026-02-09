@@ -45,6 +45,18 @@ public interface IAudioManager
     void SetMusicVolume(float volume);
 
     /// <summary>
+    /// Set the volume for menu music (0.0 to 1.0)
+    /// </summary>
+    /// <param name="volume">Volume level</param>
+    void SetMenuMusicVolume(float volume);
+
+    /// <summary>
+    /// Set the volume for game music (0.0 to 1.0)
+    /// </summary>
+    /// <param name="volume">Volume level</param>
+    void SetGameMusicVolume(float volume);
+
+    /// <summary>
     /// Set the volume for sound effects (0.0 to 1.0)
     /// </summary>
     /// <param name="volume">Volume level</param>
@@ -60,4 +72,19 @@ public interface IAudioManager
     /// Get whether audio is currently muted
     /// </summary>
     bool IsMuted { get; }
+
+    /// <summary>
+    /// Get current menu music volume (0.0 to 1.0)
+    /// </summary>
+    float MenuMusicVolume { get; }
+
+    /// <summary>
+    /// Get current game music volume (0.0 to 1.0)
+    /// </summary>
+    float GameMusicVolume { get; }
+
+    /// <summary>
+    /// Get current SFX volume (0.0 to 1.0)
+    /// </summary>
+    float SfxVolume { get; }
 }
