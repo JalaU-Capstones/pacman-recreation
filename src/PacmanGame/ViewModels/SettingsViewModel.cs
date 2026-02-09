@@ -88,7 +88,9 @@ public class SettingsViewModel : ViewModelBase
         _audioManager = audioManager;
 
         ActiveProfile = _profileManager.GetActiveProfile();
-        IsMusicEnabled = !_audioManager.IsMuted;
+        // Avoid invoking the IsMusicEnabled property (which calls SaveSettings) during construction
+        // because the volume fields haven't been initialized yet and would be saved as zeros.
+        _isMusicEnabled = !_audioManager.IsMuted;
 
         // Initialize volumes from AudioManager
         _menuMusicVolume = (int)(_audioManager.MenuMusicVolume * 100);
