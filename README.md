@@ -68,6 +68,12 @@ This project is an educational recreation of the iconic **Pac-Man** arcade game,
 - ✅ Game over screen with restart option
 - ✅ Sound effects for actions (using SFML.Audio)
 
+### New Features (v0.2.0)
+- 👤 **User Profiles**: Create, select, and manage multiple player profiles.
+- 💾 **Persistent Scores**: High scores are saved to a local SQLite database.
+- ⚙️ **Settings Menu**: Manage profiles and audio preferences.
+- 🎨 **UI Polish**: Consistent arcade-style buttons and hover effects.
+
 ### Final Version (Week 8)
 - 🎮 Complete Pac-Man gameplay
 - 👻 4 ghosts with unique AI behaviors:
@@ -78,10 +84,7 @@ This project is an educational recreation of the iconic **Pac-Man** arcade game,
 - 💊 Power pellets that make ghosts vulnerable
 - 🍒 Bonus fruits with special effects
 - 🎵 Background music and comprehensive SFX
-- 📊 Persistent score board (saved to file)
 - 🗺️ Multiple levels with different mazes
-- ⚙️ Settings menu (controls, audio)
-- 🎨 Smooth sprite animations
 - 📈 Progressive difficulty
 
 ---
@@ -93,6 +96,7 @@ This project is an educational recreation of the iconic **Pac-Man** arcade game,
 - **UI Framework:** [Avalonia UI 11.x](https://avaloniaui.net/)
 - **Language:** C# 13
 - **Architecture:** MVVM (Model-View-ViewModel)
+- **Database:** SQLite (Microsoft.Data.Sqlite)
 
 ### Development Tools
 - **IDE:** Visual Studio Code / Visual Studio 2022 / JetBrains Rider
@@ -107,6 +111,7 @@ This project is an educational recreation of the iconic **Pac-Man** arcade game,
 <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
 <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.8" />
 <PackageReference Include="SFML.Audio" Version="2.6.0" />
+<PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
 ```
 
 ---
@@ -199,24 +204,32 @@ pacman-recreation/
 │       │   ├── Enums/
 │       │   │   └── Direction.cs
 │       │   └── Game/
-│       │       └── GameState.cs
+│       │       ├── GameState.cs
+│       │       ├── Profile.cs    # User profile model
+│       │       └── ScoreEntry.cs # Score model
 │       ├── ViewModels/           # MVVM ViewModels
 │       │   ├── MainWindowViewModel.cs
 │       │   ├── MainMenuViewModel.cs
 │       │   ├── GameViewModel.cs
-│       │   └── ScoreBoardViewModel.cs
+│       │   ├── ScoreBoardViewModel.cs
+│       │   ├── ProfileCreationViewModel.cs
+│       │   ├── ProfileSelectionViewModel.cs
+│       │   └── SettingsViewModel.cs
 │       ├── Views/                # MVVM Views (AXAML)
 │       │   ├── MainWindow.axaml
 │       │   ├── MainMenuView.axaml
 │       │   ├── GameView.axaml
-│       │   └── ScoreBoardView.axaml
+│       │   ├── ScoreBoardView.axaml
+│       │   ├── ProfileCreationView.axaml
+│       │   ├── ProfileSelectionView.axaml
+│       │   └── SettingsView.axaml
 │       ├── Services/             # Business logic
 │       │   ├── MapLoader.cs
 │       │   ├── SpriteManager.cs
 │       │   ├── AudioManager.cs   # SFML.Audio implementation
 │       │   ├── CollisionDetector.cs
 │       │   ├── GameEngine.cs     # Main game loop
-│       │   ├── ScoreManager.cs
+│       │   ├── ProfileManager.cs # SQLite database service
 │       │   └── AI/
 │       │       ├── GhostAI.cs
 │       │       └── PathFinding.cs
@@ -238,6 +251,7 @@ pacman-recreation/
 ├── docs/                         # Documentation
 │   ├── MAP_GUIDE.md
 │   ├── ARCHITECTURE.md
+│   ├── DATABASE.md               # Database schema docs
 │   └── images/
 ├── .gitignore                    # Git ignore rules
 ├── .gitattributes                # Git attributes
@@ -285,18 +299,17 @@ pacman-recreation/
 - [x] Score system
 - [x] Sound effects integration (SFML.Audio)
 - [x] Game over screen
+- [x] User profiles & persistent scores (v0.2.0)
 
 ### 📅 Week 5-6: Advanced Features
 - [ ] Advanced ghost AI (4 unique behaviors)
 - [ ] Power pellet mechanic
 - [ ] Bonus fruits system
 - [ ] Multiple levels
-- [ ] Score persistence
 - [ ] Background music
 
 ### 📅 Week 7-8: Polish & Final Delivery
 - [ ] UI improvements
-- [ ] Settings menu
 - [ ] Animation polish
 - [ ] Bug fixes
 - [ ] Performance optimization
@@ -405,8 +418,8 @@ This software is provided "as is" without warranty of any kind. Use at your own 
 
 ## 📊 Project Status
 
-**Current Version:** 0.1.0 (Midterm Release)
-**Last Updated:** January 2026  
+**Current Version:** 0.2.0 (Midterm Release + Profiles)
+**Last Updated:** February 2026
 **Status:** 🚧 In Active Development
 
 ### Build Status
