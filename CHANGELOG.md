@@ -19,7 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **User Profiles**: Complete profile system with creation, selection, and deletion.
 - **Persistent Scores**: SQLite database integration for saving high scores per profile.
-- **Settings Menu**: New settings screen for profile management and audio controls.
+- **Persistent Settings**: Audio preferences (volume, mute) are now saved per profile in the database.
+- **Settings Menu**: New settings screen for profile management and granular audio controls.
 - **Database Documentation**: Added `docs/DATABASE.md` detailing the SQLite schema.
 
 ### Fixed

@@ -176,7 +176,9 @@ src/PacmanGame/
 │   └── Game/               # Game state
 │       ├── GameState.cs
 │       ├── Level.cs
-│       └── ScoreEntry.cs
+│       ├── Profile.cs      # User profile
+│       ├── ScoreEntry.cs   # High score
+│       └── Settings.cs     # Audio settings
 │
 ├── ViewModels/             # MVVM ViewModels
 │   ├── ViewModelBase.cs    # Base class for all VMs
@@ -184,14 +186,18 @@ src/PacmanGame/
 │   ├── MainMenuViewModel.cs
 │   ├── GameViewModel.cs
 │   ├── ScoreBoardViewModel.cs
-│   └── SettingsViewModel.cs
+│   ├── SettingsViewModel.cs
+│   ├── ProfileCreationViewModel.cs
+│   └── ProfileSelectionViewModel.cs
 │
 ├── Views/                  # MVVM Views
 │   ├── MainWindow.axaml
 │   ├── MainMenuView.axaml
 │   ├── GameView.axaml
 │   ├── ScoreBoardView.axaml
-│   └── SettingsView.axaml
+│   ├── SettingsView.axaml
+│   ├── ProfileCreationView.axaml
+│   └── ProfileSelectionView.axaml
 │
 ├── Services/               # Business logic services
 │   ├── Interfaces/         # Service contracts
@@ -199,12 +205,13 @@ src/PacmanGame/
 │   │   ├── IMapLoader.cs
 │   │   ├── ISpriteManager.cs
 │   │   ├── IAudioManager.cs
-│   │   └── ICollisionDetector.cs
+│   │   ├── ICollisionDetector.cs
+│   │   └── IProfileManager.cs
 │   ├── MapLoader.cs        # Loads maps from .txt files
 │   ├── SpriteManager.cs    # Manages sprite loading
 │   ├── AudioManager.cs     # Handles audio playback (SFML.Audio)
 │   ├── CollisionDetector.cs # Collision detection
-│   ├── ScoreManager.cs     # Score persistence
+│   ├── ProfileManager.cs   # SQLite database management
 │   ├── GameEngine.cs       # Main game loop
 │   └── AI/
 │       ├── IGhostAI.cs     # AI interface
@@ -271,6 +278,7 @@ src/PacmanGame/
 - Audio management
 - AI algorithms
 - Collision detection
+- Database operations
 
 **What it doesn't do:**
 - UI concerns
@@ -319,16 +327,16 @@ src/PacmanGame/
 └─────────────────────────────────────────────┘
 ```
 
-### Score Persistence Flow
+### Settings Persistence Flow
 
 ```
-Game End → ViewModel.SaveScore() → ScoreManager.SaveScore()
+Profile Selection → ProfileManager.LoadSettings() → Apply to AudioManager
    ↓
-   └─> Write to scores.txt
+   └─> Read from UserSettings table
    
-App Start → ViewModel.LoadScores() → ScoreManager.LoadScores()
+Settings Change → ViewModel.SaveSettings() → ProfileManager.SaveSettings()
    ↓
-   └─> Read from scores.txt → Display in ScoreBoardView
+   └─> Upsert to UserSettings table
 ```
 
 ---
@@ -371,28 +379,20 @@ public class GameEngine : IGameEngine
 }
 ```
 
-### SpriteManager
-**Responsibility:** Load and manage sprite sheets
+### ProfileManager
+**Responsibility:** Manage user profiles, scores, and settings via SQLite
 
 ```csharp
-public class SpriteManager : ISpriteManager
+public class ProfileManager : IProfileManager
 {
-    private Dictionary<string, Bitmap> _spriteSheets;
-    private Dictionary<string, SpriteInfo> _spriteMap;
-    
-    public void LoadSprites()
+    public void SaveSettings(int profileId, Settings settings)
     {
-        _spriteSheets["pacman"] = LoadImage("Assets/Sprites/pacman_spritesheet.png");
-        _spriteSheets["ghosts"] = LoadImage("Assets/Sprites/ghosts_spritesheet.png");
-        // ...
-        
-        _spriteMap = LoadSpriteMap("Assets/Sprites/pacman_sprite_map.json");
+        // Upsert settings to database
     }
     
-    public CroppedBitmap GetSprite(string name, int frame)
+    public Settings LoadSettings(int profileId)
     {
-        var info = _spriteMap[name];
-        return CropSprite(_spriteSheets[info.SheetName], info.X, info.Y, info.Width, info.Height);
+        // Load settings or return defaults
     }
 }
 ```
@@ -403,23 +403,18 @@ public class SpriteManager : ISpriteManager
 ```csharp
 public class AudioManager : IAudioManager
 {
-    private Dictionary<string, SoundBuffer> _soundBuffers;
-    private Music _currentMusic;
+    private float _menuMusicVolume;
+    private float _gameMusicVolume;
     
-    public void PlaySoundEffect(string name)
+    public void SetMenuMusicVolume(float volume)
     {
-        if (_soundBuffers.TryGetValue(name, out var buffer))
-        {
-            var sound = new Sound(buffer);
-            sound.Play();
-        }
+        _menuMusicVolume = volume;
+        // Update if menu music is playing
     }
     
     public void PlayMusic(string name, bool loop = true)
     {
-        _currentMusic = new Music($"Assets/Audio/Music/{name}.wav");
-        _currentMusic.Loop = loop;
-        _currentMusic.Play();
+        // Play music and apply correct volume based on type
     }
 }
 ```
@@ -440,6 +435,7 @@ services.AddSingleton<IMapLoader, MapLoader>();
 services.AddSingleton<ISpriteManager, SpriteManager>();
 services.AddSingleton<IAudioManager, AudioManager>();
 services.AddSingleton<IGameEngine, GameEngine>();
+services.AddSingleton<IProfileManager, ProfileManager>();
 services.AddTransient<GameViewModel>();
 ```
 
@@ -467,7 +463,7 @@ public class ClydeAI : IGhostAI { /* Random/scatter */ }
 - GameEngine events (ScoreChanged, LifeLost, etc.)
 
 ### 6. Singleton Pattern
-- Services (AudioManager, SpriteManager)
+- Services (AudioManager, SpriteManager, ProfileManager)
 
 ---
 
@@ -483,6 +479,9 @@ public class ClydeAI : IGhostAI { /* Random/scatter */ }
 
 ### Audio
 - **SFML.Audio:** Cross-platform audio playback (Windows/Linux)
+
+### Database
+- **SQLite:** Local embedded database for persistence
 
 ### Testing
 - **xUnit:** Unit testing framework
@@ -533,6 +532,6 @@ public class ClydeAI : IGhostAI { /* Random/scatter */ }
 
 ---
 
-**Last Updated:** January 2026  
+**Last Updated:** February 2026
 **Author:** Diego Alejandro Botina
 **Project:** Pac-Man Educational Recreation

@@ -11,6 +11,7 @@ public class ProfileSelectionViewModel : ViewModelBase
 {
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly IProfileManager _profileManager;
+    private readonly IAudioManager _audioManager;
 
     public ObservableCollection<Profile> Profiles { get; } = new();
 
@@ -18,10 +19,15 @@ public class ProfileSelectionViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> CreateNewProfileCommand { get; }
     public ReactiveCommand<Profile, Unit> DeleteProfileCommand { get; }
 
-    public ProfileSelectionViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager)
+    public ProfileSelectionViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager? audioManager = null)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _profileManager = profileManager;
+        _audioManager = audioManager ?? new PacmanGame.Services.AudioManager();
+        if (audioManager == null)
+        {
+            _audioManager.Initialize();
+        }
 
         SelectProfileCommand = ReactiveCommand.Create<Profile>(SelectProfile);
         CreateNewProfileCommand = ReactiveCommand.Create(CreateNewProfile);
@@ -43,12 +49,20 @@ public class ProfileSelectionViewModel : ViewModelBase
     private void SelectProfile(Profile profile)
     {
         _profileManager.SetActiveProfile(profile.Id);
-        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager));
+
+        // Load and apply audio settings for this profile
+        var settings = _profileManager.LoadSettings(profile.Id);
+        _audioManager.SetMenuMusicVolume((float)settings.MenuMusicVolume);
+        _audioManager.SetGameMusicVolume((float)settings.GameMusicVolume);
+        _audioManager.SetSfxVolume((float)settings.SfxVolume);
+        _audioManager.SetMuted(settings.IsMuted);
+
+        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager));
     }
 
     private void CreateNewProfile()
     {
-        _mainWindowViewModel.NavigateTo(new ProfileCreationViewModel(_mainWindowViewModel, _profileManager));
+        _mainWindowViewModel.NavigateTo(new ProfileCreationViewModel(_mainWindowViewModel, _profileManager, _audioManager));
     }
 
     private void DeleteProfile(Profile profile)

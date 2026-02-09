@@ -4,7 +4,7 @@ This document describes the SQLite database schema and usage for the Pac-Man Rec
 
 ## Overview
 
-The game uses a local SQLite database to store user profiles and high scores. This ensures data persistence across game sessions.
+The game uses a local SQLite database to store user profiles, high scores, and settings. This ensures data persistence across game sessions.
 
 - **Database Engine:** SQLite (via `Microsoft.Data.Sqlite`)
 - **File Location:** `AppData/PacmanGame/profiles.db`
@@ -58,6 +58,29 @@ CREATE TABLE Scores (
 | `Level` | INTEGER | Level reached before game over. |
 | `Date` | TEXT | ISO 8601 timestamp of the game session. |
 
+### 3. UserSettings Table
+
+Stores audio preferences linked to profiles.
+
+```sql
+CREATE TABLE UserSettings (
+    ProfileId INTEGER PRIMARY KEY,
+    MenuMusicVolume REAL NOT NULL DEFAULT 0.7,
+    GameMusicVolume REAL NOT NULL DEFAULT 0.7,
+    SfxVolume REAL NOT NULL DEFAULT 0.8,
+    IsMuted INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (ProfileId) REFERENCES Profiles(Id) ON DELETE CASCADE
+);
+```
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `ProfileId` | INTEGER | Primary key, also Foreign key linking to `Profiles.Id`. |
+| `MenuMusicVolume` | REAL | Volume for menu music (0.0 to 1.0). |
+| `GameMusicVolume` | REAL | Volume for game music (0.0 to 1.0). |
+| `SfxVolume` | REAL | Volume for sound effects (0.0 to 1.0). |
+| `IsMuted` | INTEGER | 1 if audio is muted, 0 otherwise. |
+
 ## Common Operations
 
 ### Create Profile
@@ -72,6 +95,17 @@ INSERT INTO Scores (ProfileId, Score, Level, Date)
 VALUES (1, 15000, 3, '2026-01-30T12:30:00');
 ```
 
+### Save Settings (Upsert)
+```sql
+INSERT INTO UserSettings (ProfileId, MenuMusicVolume, GameMusicVolume, SfxVolume, IsMuted)
+VALUES (1, 0.5, 0.6, 0.8, 0)
+ON CONFLICT(ProfileId) DO UPDATE SET
+    MenuMusicVolume = excluded.MenuMusicVolume,
+    GameMusicVolume = excluded.GameMusicVolume,
+    SfxVolume = excluded.SfxVolume,
+    IsMuted = excluded.IsMuted;
+```
+
 ### Get Top Scores (Global)
 ```sql
 SELECT p.Name, s.Score, s.Level, s.Date
@@ -84,7 +118,7 @@ LIMIT 10;
 ### Delete Profile
 ```sql
 DELETE FROM Profiles WHERE Id = 1;
--- Note: Scores are automatically deleted due to ON DELETE CASCADE
+-- Note: Scores and Settings are automatically deleted due to ON DELETE CASCADE
 ```
 
 ## Migration & Initialization
@@ -95,7 +129,7 @@ There is currently no versioning or migration system. If the schema changes in f
 
 ## Backup & Reset
 
-To reset all data (profiles and scores):
+To reset all data (profiles, scores, and settings):
 1. Close the game.
 2. Navigate to the `AppData/PacmanGame` folder.
 3. Delete `profiles.db`.

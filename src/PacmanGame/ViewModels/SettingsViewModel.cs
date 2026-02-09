@@ -2,6 +2,7 @@ using System.Reactive;
 using PacmanGame.Models.Game;
 using PacmanGame.Services.Interfaces;
 using ReactiveUI;
+using System;
 
 namespace PacmanGame.ViewModels;
 
@@ -37,6 +38,7 @@ public class SettingsViewModel : ViewModelBase
         {
             this.RaiseAndSetIfChanged(ref _isMusicEnabled, value);
             _audioManager.SetMuted(!value);
+            SaveSettings();
         }
     }
 
@@ -47,6 +49,7 @@ public class SettingsViewModel : ViewModelBase
         {
             this.RaiseAndSetIfChanged(ref _menuMusicVolume, value);
             _audioManager.SetMenuMusicVolume(value / 100f);
+            SaveSettings();
         }
     }
 
@@ -57,6 +60,7 @@ public class SettingsViewModel : ViewModelBase
         {
             this.RaiseAndSetIfChanged(ref _gameMusicVolume, value);
             _audioManager.SetGameMusicVolume(value / 100f);
+            SaveSettings();
         }
     }
 
@@ -67,6 +71,7 @@ public class SettingsViewModel : ViewModelBase
         {
             this.RaiseAndSetIfChanged(ref _sfxVolume, value);
             _audioManager.SetSfxVolume(value / 100f);
+            SaveSettings();
         }
     }
 
@@ -104,10 +109,26 @@ public class SettingsViewModel : ViewModelBase
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
     }
 
+    private void SaveSettings()
+    {
+        if (ActiveProfile == null) return;
+
+        var settings = new Settings
+        {
+            ProfileId = ActiveProfile.Id,
+            MenuMusicVolume = MenuMusicVolume / 100.0,
+            GameMusicVolume = GameMusicVolume / 100.0,
+            SfxVolume = SfxVolume / 100.0,
+            IsMuted = !IsMusicEnabled
+        };
+        _profileManager.SaveSettings(ActiveProfile.Id, settings);
+    }
+
     private void SwitchProfile()
     {
         _audioManager.PlaySoundEffect("menu-select");
-        _mainWindowViewModel.NavigateTo(new ProfileSelectionViewModel(_mainWindowViewModel, _profileManager));
+        // Pass the existing audio manager to preserve state/resources
+        _mainWindowViewModel.NavigateTo(new ProfileSelectionViewModel(_mainWindowViewModel, _profileManager, _audioManager));
     }
 
     private void ConfirmDelete()
@@ -121,11 +142,11 @@ public class SettingsViewModel : ViewModelBase
             var profiles = _profileManager.GetAllProfiles();
             if (profiles.Count > 0)
             {
-                _mainWindowViewModel.NavigateTo(new ProfileSelectionViewModel(_mainWindowViewModel, _profileManager));
+                _mainWindowViewModel.NavigateTo(new ProfileSelectionViewModel(_mainWindowViewModel, _profileManager, _audioManager));
             }
             else
             {
-                _mainWindowViewModel.NavigateTo(new ProfileCreationViewModel(_mainWindowViewModel, _profileManager));
+                _mainWindowViewModel.NavigateTo(new ProfileCreationViewModel(_mainWindowViewModel, _profileManager, _audioManager));
             }
         }
     }

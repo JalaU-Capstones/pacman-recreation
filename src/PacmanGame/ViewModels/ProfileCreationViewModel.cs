@@ -10,6 +10,7 @@ public class ProfileCreationViewModel : ViewModelBase
 {
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly IProfileManager _profileManager;
+    private readonly IAudioManager _audioManager;
     private string _name = string.Empty;
     private string _selectedColor = "#FFFF00"; // Default Pacman Yellow
     private string _errorMessage = string.Empty;
@@ -48,10 +49,15 @@ public class ProfileCreationViewModel : ViewModelBase
     public ReactiveCommand<string, Unit> SelectColorCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelCommand { get; }
 
-    public ProfileCreationViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager)
+    public ProfileCreationViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager? audioManager = null)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _profileManager = profileManager;
+        _audioManager = audioManager ?? new PacmanGame.Services.AudioManager();
+        if (audioManager == null)
+        {
+            _audioManager.Initialize();
+        }
 
         CreateProfileCommand = ReactiveCommand.Create(CreateProfile);
         SelectColorCommand = ReactiveCommand.Create<string>(color => SelectedColor = color);
@@ -88,7 +94,15 @@ public class ProfileCreationViewModel : ViewModelBase
         {
             var profile = _profileManager.CreateProfile(Name.Trim(), SelectedColor);
             _profileManager.SetActiveProfile(profile.Id);
-            _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager));
+
+            // Load and apply default settings for the new profile
+            var settings = _profileManager.LoadSettings(profile.Id);
+            _audioManager.SetMenuMusicVolume((float)settings.MenuMusicVolume);
+            _audioManager.SetGameMusicVolume((float)settings.GameMusicVolume);
+            _audioManager.SetSfxVolume((float)settings.SfxVolume);
+            _audioManager.SetMuted(settings.IsMuted);
+
+            _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager));
         }
         catch (Exception ex)
         {
@@ -101,7 +115,7 @@ public class ProfileCreationViewModel : ViewModelBase
         var profiles = _profileManager.GetAllProfiles();
         if (profiles.Count > 0)
         {
-            _mainWindowViewModel.NavigateTo(new ProfileSelectionViewModel(_mainWindowViewModel, _profileManager));
+            _mainWindowViewModel.NavigateTo(new ProfileSelectionViewModel(_mainWindowViewModel, _profileManager, _audioManager));
         }
         else
         {

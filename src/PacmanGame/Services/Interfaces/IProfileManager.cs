@@ -47,4 +47,14 @@ public interface IProfileManager
     /// Gets the top scores across all profiles.
     /// </summary>
     List<ScoreEntry> GetTopScores(int limit = 10);
+
+    /// <summary>
+    /// Saves settings for a specific profile.
+    /// </summary>
+    void SaveSettings(int profileId, Settings settings);
+
+    /// <summary>
+    /// Loads settings for a specific profile.
+    /// </summary>
+    Settings LoadSettings(int profileId);
 }

@@ -71,8 +71,9 @@ pacman-recreation/
 │       │   └── Game/
 │       │       ├── GameState.cs
 │       │       ├── Level.cs
-│       │       ├── ScoreEntry.cs
-│       │       └── GameConfig.cs
+│       │       ├── Profile.cs           # User profile
+│       │       ├── ScoreEntry.cs        # High score
+│       │       └── Settings.cs          # Audio settings
 │       │
 │       ├── ViewModels/                   # MVVM ViewModels
 │       │   ├── ViewModelBase.cs         # Base for all ViewModels
@@ -81,7 +82,8 @@ pacman-recreation/
 │       │   ├── GameViewModel.cs
 │       │   ├── ScoreBoardViewModel.cs
 │       │   ├── SettingsViewModel.cs
-│       │   └── GameOverViewModel.cs
+│       │   ├── ProfileCreationViewModel.cs
+│       │   └── ProfileSelectionViewModel.cs
 │       │
 │       ├── Views/                        # MVVM Views (AXAML)
 │       │   ├── MainWindow.axaml
@@ -94,8 +96,10 @@ pacman-recreation/
 │       │   ├── ScoreBoardView.axaml.cs
 │       │   ├── SettingsView.axaml
 │       │   ├── SettingsView.axaml.cs
-│       │   ├── GameOverView.axaml
-│       │   └── GameOverView.axaml.cs
+│       │   ├── ProfileCreationView.axaml
+│       │   ├── ProfileCreationView.axaml.cs
+│       │   ├── ProfileSelectionView.axaml
+│       │   └── ProfileSelectionView.axaml.cs
 │       │
 │       ├── Services/                     # Business logic
 │       │   ├── Interfaces/
@@ -103,14 +107,14 @@ pacman-recreation/
 │       │   │   ├── ISpriteManager.cs
 │       │   │   ├── IAudioManager.cs
 │       │   │   ├── ICollisionDetector.cs
-│       │   │   ├── IScoreManager.cs
+│       │   │   ├── IProfileManager.cs
 │       │   │   └── IGameEngine.cs
 │       │   │
 │       │   ├── MapLoader.cs
 │       │   ├── SpriteManager.cs
 │       │   ├── AudioManager.cs
 │       │   ├── CollisionDetector.cs
-│       │   ├── ScoreManager.cs
+│       │   ├── ProfileManager.cs        # SQLite database management
 │       │   ├── GameEngine.cs
 │       │   │
 │       │   └── AI/
@@ -168,6 +172,7 @@ pacman-recreation/
 │   │
 │   ├── MAP_GUIDE.md                      # Guide for creating maps
 │   ├── ARCHITECTURE.md                   # Architecture documentation
+│   ├── DATABASE.md                       # Database schema docs
 │   ├── CONTRIBUTING.md                   # Contribution guidelines
 │   ├── CODE_OF_CONDUCT.md               # Code of conduct
 │   └── DEVELOPMENT.md                    # Development guide
@@ -238,7 +243,7 @@ pacman-recreation/
 | **Core** | MapLoader, SpriteManager, AudioManager |
 | **Game Logic** | GameEngine, CollisionDetector |
 | **AI** | BlinkyAI, PinkyAI, InkyAI, ClydeAI |
-| **Persistence** | ScoreManager |
+| **Persistence** | ProfileManager |
 
 ---
 
@@ -293,6 +298,9 @@ Manages all audio playback (music and sound effects).
 ### `CollisionDetector.cs`
 Handles all collision detection between entities.
 
+### `ProfileManager.cs`
+Manages SQLite database operations for profiles, scores, and settings.
+
 ---
 
 ## Build Output
@@ -324,8 +332,7 @@ During gameplay, the application will create:
 ~/.config/PacmanGame/          # Linux
 ~/Library/Application Support/PacmanGame/  # macOS
 
-├── scores.txt                 # Persistent scores
-├── settings.json              # User settings
+├── profiles.db                # SQLite database (profiles, scores, settings)
 └── logs/                      # Application logs
     └── app.log
 ```
@@ -370,6 +377,6 @@ These are then copied to `src/PacmanGame/Assets/`.
 
 ---
 
-**Last Updated:** January 2026  
+**Last Updated:** February 2026
 **Project:** Pac-Man Educational Recreation  
 **Framework:** .NET 9.0 + Avalonia UI

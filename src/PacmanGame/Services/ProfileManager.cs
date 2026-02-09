@@ -49,6 +49,15 @@ public class ProfileManager : IProfileManager
                 Date TEXT NOT NULL,
                 FOREIGN KEY (ProfileId) REFERENCES Profiles(Id) ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS UserSettings (
+                ProfileId INTEGER PRIMARY KEY,
+                MenuMusicVolume REAL NOT NULL DEFAULT 0.7,
+                GameMusicVolume REAL NOT NULL DEFAULT 0.7,
+                SfxVolume REAL NOT NULL DEFAULT 0.8,
+                IsMuted INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (ProfileId) REFERENCES Profiles(Id) ON DELETE CASCADE
+            );
         ";
         command.ExecuteNonQuery();
     }
@@ -113,6 +122,9 @@ public class ProfileManager : IProfileManager
             CreatedAt = now,
             LastPlayedAt = now
         };
+
+        // Create default settings for the new profile
+        SaveSettings((int)id, new Settings { ProfileId = (int)id });
 
         _activeProfile = profile;
         return profile;
@@ -237,5 +249,64 @@ public class ProfileManager : IProfileManager
         }
 
         return scores;
+    }
+
+    public void SaveSettings(int profileId, Settings settings)
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            INSERT INTO UserSettings (ProfileId, MenuMusicVolume, GameMusicVolume, SfxVolume, IsMuted)
+            VALUES ($profileId, $menuVol, $gameVol, $sfxVol, $isMuted)
+            ON CONFLICT(ProfileId) DO UPDATE SET
+                MenuMusicVolume = excluded.MenuMusicVolume,
+                GameMusicVolume = excluded.GameMusicVolume,
+                SfxVolume = excluded.SfxVolume,
+                IsMuted = excluded.IsMuted;
+        ";
+
+        command.Parameters.AddWithValue("$profileId", profileId);
+        command.Parameters.AddWithValue("$menuVol", settings.MenuMusicVolume);
+        command.Parameters.AddWithValue("$gameVol", settings.GameMusicVolume);
+        command.Parameters.AddWithValue("$sfxVol", settings.SfxVolume);
+        command.Parameters.AddWithValue("$isMuted", settings.IsMuted ? 1 : 0);
+
+        command.ExecuteNonQuery();
+    }
+
+    public Settings LoadSettings(int profileId)
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "SELECT MenuMusicVolume, GameMusicVolume, SfxVolume, IsMuted FROM UserSettings WHERE ProfileId = $profileId";
+        command.Parameters.AddWithValue("$profileId", profileId);
+
+        using var reader = command.ExecuteReader();
+        if (reader.Read())
+        {
+            return new Settings
+            {
+                ProfileId = profileId,
+                MenuMusicVolume = reader.GetDouble(0),
+                GameMusicVolume = reader.GetDouble(1),
+                SfxVolume = reader.GetDouble(2),
+                IsMuted = reader.GetInt32(3) == 1
+            };
+        }
+
+        // Return defaults if no settings found, but also SAVE them so next time they exist
+        var defaultSettings = new Settings { ProfileId = profileId };
+
+        // We need to close the reader before we can execute another command on the same connection
+        reader.Close();
+
+        // Save the defaults to the DB so we don't return 0s next time if something fails
+        SaveSettings(profileId, defaultSettings);
+
+        return defaultSettings;
     }
 }
