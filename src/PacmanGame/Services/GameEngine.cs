@@ -301,6 +301,10 @@ public class GameEngine : IGameEngine
             ghost.ExactY = ghost.Y;
 
             Direction nextMove = GetNextGhostMove(ghost);
+            if (ghost.State == GhostState.Vulnerable || ghost.State == GhostState.Warning)
+            {
+                Console.WriteLine($"[MOVE] {ghost.GetName()} vulnerable at ({ghost.X},{ghost.Y}), picked direction: {nextMove}");
+            }
             ghost.CurrentDirection = nextMove;
         }
 
@@ -330,6 +334,8 @@ public class GameEngine : IGameEngine
             if (ghost.RespawnTimer <= 0f)
             {
                 ghost.Respawn();
+                ghost.State = GhostState.ExitingHouse; // Make ghost exit the house after respawning
+                ghost.ReleaseTimer = 0f; // No delay
             }
         }
     }
@@ -350,10 +356,23 @@ public class GameEngine : IGameEngine
 
             case GhostState.Vulnerable:
             case GhostState.Warning:
-                var candidates = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
-                    .Where(d => ghost.CanMove(d, _map) && d != GetOppositeDirection(ghost.CurrentDirection))
+                var validMoves = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
+                    .Where(d => ghost.CanMove(d, _map))
                     .ToList();
-                if (candidates.Any()) nextMove = candidates[_random.Next(candidates.Count)];
+
+                if (validMoves.Any())
+                {
+                    var nonReversingMoves = validMoves.Where(d => d != GetOppositeDirection(ghost.CurrentDirection)).ToList();
+                    if (nonReversingMoves.Any())
+                    {
+                        nextMove = nonReversingMoves[_random.Next(nonReversingMoves.Count)];
+                    }
+                    else
+                    {
+                        // If the only way is to reverse, do it
+                        nextMove = validMoves.First();
+                    }
+                }
                 break;
 
             case GhostState.ExitingHouse:
