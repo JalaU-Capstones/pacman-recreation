@@ -82,7 +82,7 @@ public class GameEngine : IGameEngine
         {
             { GhostType.Blinky, new BlinkyAI() },
             { GhostType.Pinky, new PinkyAI() },
-            { GhostType.Inky, new InkyAI() },
+            { GhostType.Inky, new PinkyAI() },
             { GhostType.Clyde, new ClydeAI() }
         };
     }
@@ -291,8 +291,11 @@ public class GameEngine : IGameEngine
             return; // Don't move yet if in house
         }
 
-        // Check if ghost is centered on a tile to make a new decision
-        bool isCentered = Math.Abs(ghost.ExactX - ghost.X) < 0.05f && Math.Abs(ghost.ExactY - ghost.Y) < 0.05f;
+        // Check if ghost is centered on a tile to make a new decision.
+        // The threshold must be smaller than the smallest movement in one frame.
+        // Min speed = 2.0 tiles/sec. Min movement = 2.0/60.0 = 0.0333.
+        const float centeringThreshold = 0.03f;
+        bool isCentered = Math.Abs(ghost.ExactX - ghost.X) < centeringThreshold && Math.Abs(ghost.ExactY - ghost.Y) < centeringThreshold;
 
         if (isCentered)
         {
@@ -356,22 +359,39 @@ public class GameEngine : IGameEngine
 
             case GhostState.Vulnerable:
             case GhostState.Warning:
-                var validMoves = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
+                // When fleeing, ghosts can reverse direction. Find all valid moves.
+                var fleeMoves = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
                     .Where(d => ghost.CanMove(d, _map))
                     .ToList();
 
-                if (validMoves.Any())
+                // Prefer not to reverse, but allow it if it's the only way to escape or the best option.
+                var nonReversingFleeMoves = fleeMoves.Where(d => d != GetOppositeDirection(ghost.CurrentDirection)).ToList();
+                if (nonReversingFleeMoves.Any())
                 {
-                    var nonReversingMoves = validMoves.Where(d => d != GetOppositeDirection(ghost.CurrentDirection)).ToList();
-                    if (nonReversingMoves.Any())
+                    fleeMoves = nonReversingFleeMoves;
+                }
+
+                if (fleeMoves.Any())
+                {
+                    // Fleeing behavior: choose move that maximizes distance from Pac-Man
+                    Direction bestDirection = Direction.None;
+                    float maxDistance = -1;
+
+                    foreach (var direction in fleeMoves)
                     {
-                        nextMove = nonReversingMoves[_random.Next(nonReversingMoves.Count)];
+                        (int dx, int dy) = GetDirectionDeltas(direction);
+                        int newX = ghost.X + dx;
+                        int newY = ghost.Y + dy;
+                        // Using squared distance is fine and avoids a sqrt operation
+                        float distance = (newX - _pacman.X) * (newX - _pacman.X) + (newY - _pacman.Y) * (newY - _pacman.Y);
+
+                        if (distance > maxDistance)
+                        {
+                            maxDistance = distance;
+                            bestDirection = direction;
+                        }
                     }
-                    else
-                    {
-                        // If the only way is to reverse, do it
-                        nextMove = validMoves.First();
-                    }
+                    nextMove = bestDirection;
                 }
                 break;
 
@@ -395,7 +415,7 @@ public class GameEngine : IGameEngine
                 break;
         }
 
-        // Fallback logic
+        // Fallback logic in case no move was selected
         if (nextMove == Direction.None || !ghost.CanMove(nextMove, _map))
         {
             if (ghost.CanMove(ghost.CurrentDirection, _map))
@@ -403,12 +423,13 @@ public class GameEngine : IGameEngine
                 return ghost.CurrentDirection;
             }
 
-            var validMoves = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
+            var fallbackMoves = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
                 .Where(d => ghost.CanMove(d, _map) && d != GetOppositeDirection(ghost.CurrentDirection))
                 .ToList();
 
-            if (validMoves.Any()) return validMoves[_random.Next(validMoves.Count)];
+            if (fallbackMoves.Any()) return fallbackMoves[_random.Next(fallbackMoves.Count)];
 
+            // If all else fails, try reversing
             if (ghost.CanMove(GetOppositeDirection(ghost.CurrentDirection), _map))
             {
                 return GetOppositeDirection(ghost.CurrentDirection);
@@ -432,6 +453,7 @@ public class GameEngine : IGameEngine
             if (collected.Type == CollectibleType.PowerPellet)
             {
                 _pacman.ActivatePowerPellet();
+                _ghostsEatenThisRound = 0; // Reset combo on new power pellet
                 foreach (var ghost in _ghosts.Where(g => g.State == GhostState.Normal))
                 {
                     ghost.MakeVulnerable();
@@ -455,12 +477,12 @@ public class GameEngine : IGameEngine
         var hitGhost = _collisionDetector.CheckPacmanGhostCollision(_pacman, _ghosts);
         if (hitGhost != null)
         {
-            if (_pacman.IsInvulnerable && (hitGhost.State == GhostState.Vulnerable || hitGhost.State == GhostState.Warning))
+            if (hitGhost.State == GhostState.Vulnerable || hitGhost.State == GhostState.Warning)
             {
                 hitGhost.GetEaten();
                 _audioManager.PlaySoundEffect("eat-ghost");
                 _ghostsEatenThisRound++;
-                int points = Constants.GhostPoints * (1 << (_ghostsEatenThisRound - 1));
+                int points = Constants.GhostPoints * (1 << (_ghostsEatenThisRound - 1)); // 200, 400, 800, 1600
                 ScoreChanged?.Invoke(points);
             }
             else if (hitGhost.State == GhostState.Normal)
@@ -477,12 +499,12 @@ public class GameEngine : IGameEngine
     /// </summary>
     private void ResetPositions()
     {
-        // Reset Pac-Man (reload spawn position from map)
-        // For now, we'll just reset to a safe location
-        _pacman.X = 14;
-        _pacman.Y = 24;
-        _pacman.ExactX = 14;
-        _pacman.ExactY = 24;
+        // Reset Pac-Man
+        var pacmanSpawn = _mapLoader.GetPacmanSpawn("level1.txt"); // Assuming level 1 for now
+        _pacman.X = pacmanSpawn.Col;
+        _pacman.Y = pacmanSpawn.Row;
+        _pacman.ExactX = pacmanSpawn.Col;
+        _pacman.ExactY = pacmanSpawn.Row;
         _pacman.CurrentDirection = Direction.None;
         _pacman.NextDirection = Direction.None;
         _pacman.IsInvulnerable = false;
@@ -622,9 +644,14 @@ public class GameEngine : IGameEngine
                     };
                     sprite = _spriteManager.GetGhostEyesSprite(eyeDirection);
                 }
-                else if (ghost.State == GhostState.Vulnerable || ghost.State == GhostState.Warning)
+                else if (ghost.State == GhostState.Vulnerable)
                 {
-                    sprite = _spriteManager.GetVulnerableGhostSprite(ghost.AnimationFrame);
+                    sprite = _spriteManager.GetVulnerableGhostSprite(0); // Blue
+                }
+                else if (ghost.State == GhostState.Warning)
+                {
+                    // Flashing effect
+                    sprite = (ghost.AnimationFrame % 2 == 0) ? _spriteManager.GetVulnerableGhostSprite(1) : _spriteManager.GetVulnerableGhostSprite(0);
                 }
                 else // Normal, InHouse, ExitingHouse
                 {
@@ -667,33 +694,38 @@ public class GameEngine : IGameEngine
         bool hasLeft = col > 0 && _map[row, col - 1] == TileType.Wall;
         bool hasRight = col < Constants.MapWidth - 1 && _map[row, col + 1] == TileType.Wall;
 
-        // 4-way cross
-        if (hasUp && hasDown && hasLeft && hasRight) return "walls_cross";
+        int neighbors = (hasUp ? 1 : 0) + (hasDown ? 1 : 0) + (hasLeft ? 1 : 0) + (hasRight ? 1 : 0);
 
-        // T-junctions
-        if (hasUp && hasDown && hasLeft && !hasRight) return "walls_t_right";
-        if (hasUp && hasDown && !hasLeft && hasRight) return "walls_t_left";
-        if (hasUp && !hasDown && hasLeft && hasRight) return "walls_t_down";
-        if (!hasUp && hasDown && hasLeft && hasRight) return "walls_t_up";
+        if (neighbors == 4) return "walls_cross";
 
-        // Corners
-        if (!hasUp && hasDown && hasLeft && !hasRight) return "walls_corner_tl";
-        if (!hasUp && hasDown && !hasLeft && hasRight) return "walls_corner_tr";
-        if (hasUp && !hasDown && hasLeft && !hasRight) return "walls_corner_bl";
-        if (hasUp && !hasDown && !hasLeft && hasRight) return "walls_corner_br";
+        if (neighbors == 3)
+        {
+            if (!hasRight) return "walls_t_right";
+            if (!hasLeft) return "walls_t_left";
+            if (!hasDown) return "walls_t_down";
+            if (!hasUp) return "walls_t_up";
+        }
 
-        // Straights
-        if (hasUp && hasDown) return "walls_vertical";
-        if (hasLeft && hasRight) return "walls_horizontal";
+        if (neighbors == 2)
+        {
+            if (hasUp && hasDown) return "walls_vertical";
+            if (hasLeft && hasRight) return "walls_horizontal";
+            if (hasDown && hasRight) return "walls_corner_tl";
+            if (hasDown && hasLeft) return "walls_corner_tr";
+            if (hasUp && hasRight) return "walls_corner_bl";
+            if (hasUp && hasLeft) return "walls_corner_br";
+        }
 
-        // End caps
-        if (hasUp) return "walls_end_up";
-        if (hasDown) return "walls_end_down";
-        if (hasLeft) return "walls_end_left";
-        if (hasRight) return "walls_end_right";
+        if (neighbors == 1)
+        {
+            if (hasUp) return "walls_end_down";
+            if (hasDown) return "walls_end_up";
+            if (hasLeft) return "walls_end_right";
+            if (hasRight) return "walls_end_left";
+        }
 
-        // Default for isolated walls
-        return "walls_horizontal";
+        // Default for isolated walls or errors
+        return "special_empty"; // Use an empty sprite for unconnected walls
     }
 
 
