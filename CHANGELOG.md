@@ -8,11 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned for Final (v1.0.0)
-- Advanced ghost AI (4 unique behaviors)
 - Power pellet mechanic
 - Bonus fruits system
 - Multiple levels
 - UI polish and animations
+
+## [0.3.0] - 2026-02-05
+
+### Added
+- **Advanced Ghost AI**: Implemented unique AI for all 4 ghosts (Blinky, Pinky, Inky, Clyde).
+- **Chase/Scatter Modes**: Ghosts now alternate between chasing Pac-Man and retreating to their corners.
+- **A* Pathfinding**: Ghosts use A* algorithm to navigate the maze intelligently.
+
+### Changed
+- **Game Engine**: Updated to manage ghost AI modes and state transitions.
+- **Ghost Behavior**: Replaced simple random movement with complex, personality-driven AI.
 
 ## [0.2.0] - 2026-02-02
 

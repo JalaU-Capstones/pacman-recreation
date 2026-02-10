@@ -4,6 +4,8 @@ using PacmanGame.Helpers;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using PacmanGame.Services.Interfaces;
+using PacmanGame.Services.AI;
+using PacmanGame.Services.Pathfinding;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,6 +31,12 @@ public class GameEngine : IGameEngine
     private List<Collectible> _collectibles;
     private float _animationAccumulator;
     private int _ghostsEatenThisRound;
+
+    // AI specific fields
+    private readonly Dictionary<GhostType, IGhostAI> _ghostAIs;
+    private readonly AStarPathfinder _pathfinder;
+    private bool _isChaseMode = false;
+    private float _modeTimer = 0f;
 
     public event Action<int>? ScoreChanged;
     public event Action? LifeLost;
@@ -63,6 +71,16 @@ public class GameEngine : IGameEngine
         _collectibles = new List<Collectible>();
         _animationAccumulator = 0f;
         _ghostsEatenThisRound = 0;
+
+        // Initialize AI
+        _pathfinder = new AStarPathfinder();
+        _ghostAIs = new Dictionary<GhostType, IGhostAI>
+        {
+            { GhostType.Blinky, new BlinkyAI() },
+            { GhostType.Pinky, new PinkyAI() },
+            { GhostType.Inky, new InkyAI() },
+            { GhostType.Clyde, new ClydeAI() }
+        };
     }
 
     /// <summary>
@@ -105,6 +123,8 @@ public class GameEngine : IGameEngine
             Console.WriteLine($"✅ {_collectibles.Count} collectibles loaded");
 
             _ghostsEatenThisRound = 0;
+            _modeTimer = 0f;
+            _isChaseMode = false; // Start in Scatter mode
 
             _spriteManager.Initialize();
             Console.WriteLine("✅ Sprite manager initialized");
@@ -231,7 +251,7 @@ public class GameEngine : IGameEngine
     }
 
     /// <summary>
-    /// Update all ghosts with simple random AI
+    /// Update all ghosts with advanced AI
     /// </summary>
     private void UpdateGhosts(float deltaTime)
     {
@@ -246,53 +266,45 @@ public class GameEngine : IGameEngine
     /// </summary>
     private void UpdateGhost(Ghost ghost, float deltaTime)
     {
-        // If eaten, move back to spawn
-        if (ghost.State == GhostState.Eaten)
-        {
-            if (ghost.X == ghost.SpawnX && ghost.Y == ghost.SpawnY)
-            {
-                ghost.Respawn();
-            }
-            else
-            {
-                // Move one step closer to spawn (Manhattan distance)
-                int dx = ghost.SpawnX > ghost.X ? 1 : (ghost.SpawnX < ghost.X ? -1 : 0);
-                int dy = ghost.SpawnY > ghost.Y ? 1 : (ghost.SpawnY < ghost.Y ? -1 : 0);
+        Direction nextMove = Direction.None;
 
-                if (dx != 0 && ghost.CanMove((Direction)(dx == 1 ? 4 : 3), _map))
-                {
-                    ghost.X += dx;
-                }
-                else if (dy != 0 && ghost.CanMove((Direction)(dy == 1 ? 2 : 1), _map))
-                {
-                    ghost.Y += dy;
-                }
-            }
-        }
-        else
+        switch (ghost.State)
         {
-            // Simple random AI: pick a random valid direction
-            var candidates = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
-                .Where(d => ghost.CanMove(d, _map))
-                .Where(d => d != GetOppositeDirection(ghost.CurrentDirection))
-                .ToList();
+            case GhostState.Eaten:
+                // Target is the ghost house spawn
+                nextMove = _pathfinder.FindPath(ghost.Y, ghost.X, ghost.SpawnY, ghost.SpawnX, _map, ghost);
+                if (ghost.X == ghost.SpawnX && ghost.Y == ghost.SpawnY)
+                {
+                    ghost.Respawn();
+                }
+                break;
 
-            if (candidates.Count == 0)
-            {
-                candidates = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
-                    .Where(d => ghost.CanMove(d, _map))
+            case GhostState.Vulnerable:
+            case GhostState.Warning:
+                // Flee from Pac-Man (move randomly for now)
+                var candidates = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
+                    .Where(d => ghost.CanMove(d, _map) && d != GetOppositeDirection(ghost.CurrentDirection))
                     .ToList();
-            }
+                if (candidates.Count > 0)
+                {
+                    nextMove = candidates[_random.Next(candidates.Count)];
+                }
+                break;
 
-            if (candidates.Count > 0)
-            {
-                Direction picked = candidates[_random.Next(candidates.Count)];
-                ghost.CurrentDirection = picked;
+            case GhostState.Normal:
+                if (_ghostAIs.TryGetValue(ghost.Type, out var ai))
+                {
+                    nextMove = ai.GetNextMove(ghost, _pacman, _map, _ghosts, _isChaseMode);
+                }
+                break;
+        }
 
-                (int dx, int dy) = GetDirectionDeltas(picked);
-                ghost.X += dx;
-                ghost.Y += dy;
-            }
+        if (nextMove != Direction.None)
+        {
+            ghost.CurrentDirection = nextMove;
+            (int dx, int dy) = GetDirectionDeltas(nextMove);
+            ghost.X += dx;
+            ghost.Y += dy;
         }
 
         ghost.UpdateVulnerability(deltaTime);
@@ -346,14 +358,6 @@ public class GameEngine : IGameEngine
             {
                 _audioManager.PlaySoundEffect("death");
                 LifeLost?.Invoke();
-
-                // Check if lives are 0, if so, trigger game over
-                // Note: The GameViewModel handles the actual life count, but we can signal here if needed
-                // For now, we just reset positions, and let the ViewModel handle the game over logic via LifeLost event
-                // However, if we want to trigger GameOver event from here, we need to know the lives count or let VM handle it.
-                // The VM subscribes to LifeLost and checks lives count. If <= 0, it calls GameOver().
-                // So we don't need to call GameOver?.Invoke() here for life loss, unless we track lives in Engine too.
-
                 ResetPositions();
             }
         }
@@ -400,6 +404,15 @@ public class GameEngine : IGameEngine
                 ghost.AnimationFrame = (ghost.AnimationFrame + 1) % Constants.GhostAnimationFrames;
             }
             _animationAccumulator = 0f;
+        }
+
+        // Update mode timer
+        _modeTimer += deltaTime;
+        if (_modeTimer >= Constants.ModeToggleInterval)
+        {
+            _isChaseMode = !_isChaseMode;
+            _modeTimer = 0f;
+            Console.WriteLine($"👻 Ghost mode switched to: {(_isChaseMode ? "Chase" : "Scatter")}");
         }
     }
 

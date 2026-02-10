@@ -7,6 +7,7 @@
 - [Layer Responsibilities](#layer-responsibilities)
 - [Data Flow](#data-flow)
 - [Key Components](#key-components)
+- [Ghost AI System](#ghost-ai-system)
 - [Design Patterns](#design-patterns)
 - [Technologies](#technologies)
 
@@ -34,15 +35,15 @@ This Pac-Man recreation follows the **MVVM (Model-View-ViewModel)** architectura
 │                     ViewModels                          │
 │              (Reactive Properties)                      │
 │  MainMenuViewModel, GameViewModel, ScoreBoardViewModel  │
-└────────────────┬────────────────────────────────────────┘
-                 │ Business Logic
-                 ↓
+└───────────────────┬─────────────────────────────────────┘
+                    │ Business Logic
+                    ↓
 ┌─────────────────────────────────────────────────────────┐
 │                      Services                           │
 │   GameEngine, MapLoader, SpriteManager, AudioManager    │
-└────────────────┬────────────────────────────────────────┘
-                 │ Data Access
-                 ↓
+└───────────────────┬─────────────────────────────────────┘
+                    │ Data Access
+                    ↓
 ┌─────────────────────────────────────────────────────────┐
 │                       Models                            │
 │          Pacman, Ghost, Collectible, etc.               │
@@ -207,18 +208,20 @@ src/PacmanGame/
 │   │   ├── IAudioManager.cs
 │   │   ├── ICollisionDetector.cs
 │   │   └── IProfileManager.cs
+│   ├── AI/                 # Ghost AI implementations
+│   │   ├── IGhostAI.cs
+│   │   ├── BlinkyAI.cs
+│   │   ├── PinkyAI.cs
+│   │   ├── InkyAI.cs
+│   │   └── ClydeAI.cs
+│   ├── Pathfinding/        # Pathfinding algorithms
+│   │   └── AStarPathfinder.cs
 │   ├── MapLoader.cs        # Loads maps from .txt files
 │   ├── SpriteManager.cs    # Manages sprite loading
 │   ├── AudioManager.cs     # Handles audio playback (SFML.Audio)
 │   ├── CollisionDetector.cs # Collision detection
 │   ├── ProfileManager.cs   # SQLite database management
-│   ├── GameEngine.cs       # Main game loop
-│   └── AI/
-│       ├── IGhostAI.cs     # AI interface
-│       ├── BlinkyAI.cs     # Direct chase
-│       ├── PinkyAI.cs      # Ambush
-│       ├── InkyAI.cs       # Flanking
-│       └── ClydeAI.cs      # Random/scatter
+│   └── GameEngine.cs       # Main game loop
 │
 ├── Helpers/                # Utility classes
 │   ├── Constants.cs        # Game constants
@@ -344,7 +347,7 @@ Settings Change → ViewModel.SaveSettings() → ProfileManager.SaveSettings()
 ## Key Components
 
 ### GameEngine
-**Responsibility:** Main game loop and state management
+**Responsibility:** Main game loop and state management, orchestrates Ghost AI.
 
 ```csharp
 public class GameEngine : IGameEngine
@@ -353,10 +356,14 @@ public class GameEngine : IGameEngine
     private readonly IAudioManager _audioManager;
     private readonly IMapLoader _mapLoader;
     private readonly ISpriteManager _spriteManager;
+    private readonly Dictionary<GhostType, IGhostAI> _ghostAIs; // New: AI instances
+    private readonly AStarPathfinder _pathfinder; // New: Pathfinding service
     
     private TileType[,] _map;
     private Pacman _pacman;
     private List<Ghost> _ghosts;
+    private bool _isChaseMode; // New: Current AI mode
+    private float _modeTimer; // New: Timer for mode switching
     
     public void Start()
     {
@@ -367,9 +374,9 @@ public class GameEngine : IGameEngine
     public void Update(float deltaTime)
     {
         UpdatePacman(deltaTime);
-        UpdateGhosts(deltaTime);
+        UpdateGhosts(deltaTime); // Now uses advanced AI
         UpdateCollisions();
-        UpdateTimers(deltaTime);
+        UpdateTimers(deltaTime); // Includes mode switching timer
     }
     
     public void Render(Canvas canvas)
@@ -421,6 +428,61 @@ public class AudioManager : IAudioManager
 
 ---
 
+## Ghost AI System
+
+The ghost AI system is implemented using a **Strategy Pattern** for individual ghost behaviors and an **A* Pathfinding** algorithm for intelligent navigation.
+
+### Core Concepts
+- **Chase Mode**: Ghosts actively pursue Pac-Man based on their unique targeting logic.
+- **Scatter Mode**: Ghosts retreat to their designated corner of the maze.
+- **Mode Switching**: The `GameEngine` toggles all ghosts between Chase and Scatter modes every `Constants.ModeToggleInterval` seconds.
+- **Ghost States**: AI behavior adapts to ghost states (Normal, Vulnerable, Warning, Eaten).
+
+### Components
+
+#### `IGhostAI` Interface
+Defines the contract for all ghost AI strategies:
+```csharp
+public interface IGhostAI
+{
+    Direction GetNextMove(Ghost ghost, Pacman pacman, TileType[,] map, List<Ghost> allGhosts, bool isChaseMode);
+}
+```
+
+#### Individual Ghost AI Implementations
+Each ghost type has its own `IGhostAI` implementation:
+- **`BlinkyAI.cs` (Red - "Shadow")**:
+  - **Chase Target**: Pac-Man's current tile.
+  - **Scatter Target**: Top-right corner (`Constants.BlinkyScatterY`, `Constants.BlinkyScatterX`).
+  - **Personality**: Direct and aggressive chaser.
+- **`PinkyAI.cs` (Pink - "Speedy")**:
+  - **Chase Target**: 4 tiles ahead of Pac-Man's current direction.
+  - **Scatter Target**: Top-left corner (`Constants.PinkyScatterY`, `Constants.PinkyScatterX`).
+  - **Personality**: Ambusher, tries to cut off Pac-Man.
+- **`InkyAI.cs` (Cyan - "Bashful")**:
+  - **Chase Target**: Complex calculation based on Pac-Man's position (2 tiles ahead) and Blinky's position (vector doubling).
+  - **Scatter Target**: Bottom-right corner (`Constants.InkyScatterY`, `Constants.InkyScatterX`).
+  - **Personality**: Flanker, unpredictable. Requires Blinky's position.
+- **`ClydeAI.cs` (Orange - "Pokey")**:
+  - **Chase Target**: Pac-Man's current tile if distance > 8 tiles. Otherwise, scatters to its corner.
+  - **Scatter Target**: Bottom-left corner (`Constants.ClydeScatterY`, `Constants.ClydeScatterX`).
+  - **Personality**: Shy, chases when far, retreats when close.
+
+#### `AStarPathfinder.cs`
+Implements the A* pathfinding algorithm to find the shortest path from a ghost's current position to its target tile, navigating around walls.
+- **Heuristic**: Manhattan distance.
+- **Movement Rules**:
+  - Avoids moving through `TileType.Wall`.
+  - `TileType.GhostDoor` can be traversed by `Eaten` ghosts.
+  - Prevents immediate U-turns unless no other valid move is available.
+
+### Ghost State-Specific Behavior
+- **`Normal`**: Follows the `IGhostAI` strategy (Chase/Scatter).
+- **`Vulnerable` / `Warning`**: Ghosts temporarily move randomly (or flee from Pac-Man) and are slower.
+- **`Eaten`**: Ghosts ignore AI, target their spawn point, move faster, and respawn upon reaching it.
+
+---
+
 ## Design Patterns
 
 ### 1. MVVM (Architectural Pattern)
@@ -445,17 +507,8 @@ public ReactiveCommand<Unit, Unit> StartGameCommand { get; }
 ```
 
 ### 4. Strategy Pattern (Ghost AI)
-```csharp
-public interface IGhostAI
-{
-    Direction GetNextMove(Ghost ghost, Pacman pacman, Map map);
-}
-
-public class BlinkyAI : IGhostAI { /* Direct chase */ }
-public class PinkyAI : IGhostAI { /* Ambush */ }
-public class InkyAI : IGhostAI { /* Flanking */ }
-public class ClydeAI : IGhostAI { /* Random/scatter */ }
-```
+- Used for `IGhostAI` and its implementations (`BlinkyAI`, `PinkyAI`, etc.).
+- Allows `GameEngine` to dynamically switch ghost behaviors.
 
 ### 5. Observer Pattern
 - Via `INotifyPropertyChanged`

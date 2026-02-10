@@ -138,15 +138,12 @@ Avalonia UI 11.2.3
 <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
 <PackageReference Include="Avalonia.ReactiveUI" Version="11.2.3" />
 <PackageReference Include="Avalonia.Diagnostics" Version="11.2.3" Condition="'$(Configuration)' == 'Debug'" />
+<PackageReference Include="SFML.Audio" Version="2.6.0" />
+<PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
 ```
 
-### **Audio (To Be Integrated)**
-Options for consideration:
-- NAudio (Windows-focused)
-- OpenAL (Cross-platform)
-- Avalonia.Labs.Audio (if available)
-
-**Current Status:** AudioManager is a stub (console output only)
+### **Audio**
+- **SFML.Audio**: Cross-platform audio playback.
 
 ### **Testing Framework**
 ```
@@ -243,39 +240,49 @@ pacman-recreation/
 │       │   │   ├── GhostEnums.cs # GhostType, GhostState
 │       │   │   └── GameEnums.cs  # CollectibleType, TileType
 │       │   └── Game/
-│       │       └── ScoreEntry.cs # High score data
+│       │       ├── ScoreEntry.cs # High score data
+│       │       ├── Profile.cs    # User profile
+│       │       └── Settings.cs   # User settings
 │       │
 │       ├── ViewModels/           # MVVM ViewModels
 │       │   ├── ViewModelBase.cs  # Base class
 │       │   ├── MainWindowViewModel.cs
 │       │   ├── MainMenuViewModel.cs
 │       │   ├── GameViewModel.cs  # Main game logic
-│       │   └── ScoreBoardViewModel.cs
+│       │   ├── ScoreBoardViewModel.cs
+│       │   ├── ProfileCreationViewModel.cs
+│       │   ├── ProfileSelectionViewModel.cs
+│       │   └── SettingsViewModel.cs
 │       │
 │       ├── Views/                # MVVM Views
 │       │   ├── MainWindow.axaml(.cs)
 │       │   ├── MainMenuView.axaml(.cs)
 │       │   ├── GameView.axaml(.cs) # Game canvas
-│       │   └── ScoreBoardView.axaml(.cs)
+│       │   ├── ScoreBoardView.axaml(.cs)
+│       │   ├── ProfileCreationView.axaml(.cs)
+│       │   ├── ProfileSelectionView.axaml(.cs)
+│       │   └── SettingsView.axaml(.cs)
 │       │
 │       ├── Services/             # Business logic
 │       │   ├── Interfaces/       # Service contracts
 │       │   │   ├── IMapLoader.cs
 │       │   │   ├── ISpriteManager.cs
 │       │   │   ├── IAudioManager.cs
-│       │   │   └── ICollisionDetector.cs
-│       │   ├── Models/
-│       │   │   └── SpriteInfo.cs # Sprite metadata
+│       │   │   ├── ICollisionDetector.cs
+│       │   │   └── IProfileManager.cs
+│       │   ├── AI/               # Ghost AI
+│       │   │   ├── IGhostAI.cs
+│       │   │   ├── BlinkyAI.cs
+│       │   │   ├── PinkyAI.cs
+│       │   │   ├── InkyAI.cs
+│       │   │   └── ClydeAI.cs
+│       │   ├── Pathfinding/      # Pathfinding algorithms
+│       │   │   └── AStarPathfinder.cs
 │       │   ├── MapLoader.cs      # Load .txt maps
 │       │   ├── SpriteManager.cs  # Load PNG sprites
-│       │   ├── AudioManager.cs   # Audio playback (stub)
+│       │   ├── AudioManager.cs   # Audio playback
 │       │   ├── CollisionDetector.cs # Collision logic
-│       │   └── AI/               # Ghost AI (TO BE IMPLEMENTED)
-│       │       ├── IGhostAI.cs
-│       │       ├── BlinkyAI.cs
-│       │       ├── PinkyAI.cs
-│       │       ├── InkyAI.cs
-│       │       └── ClydeAI.cs
+│       │   └── ProfileManager.cs # SQLite database management
 │       │
 │       ├── Helpers/
 │       │   └── Constants.cs      # 100+ game constants
@@ -299,6 +306,7 @@ pacman-recreation/
 │   ├── ARCHITECTURE.md           # Architecture documentation
 │   ├── PROJECT_STRUCTURE.md      # File structure guide
 │   ├── MAP_GUIDE.md              # Level creation guide
+│   ├── DATABASE.md               # Database schema
 │   └── images/                   # Screenshots
 │
 ├── .gitignore                    # Git ignore rules
@@ -390,38 +398,37 @@ tile_wall_horizontal  → Wall tile
 |-----------|--------|-------|-------------|
 | **Project Structure** | ✅ | - | Complete file organization |
 | **Models** | ✅ | ~400 | All entities and enums |
-| **ViewModels** | ✅ | ~500 | All 4 ViewModels |
-| **Views (AXAML)** | ✅ | ~400 | All 4 views |
+| **ViewModels** | ✅ | ~500 | All ViewModels |
+| **Views (AXAML)** | ✅ | ~400 | All views |
 | **Constants** | ✅ | ~200 | 100+ game constants |
 | **MapLoader** | ✅ | ~200 | Load maps from .txt |
 | **SpriteManager** | ✅ | ~250 | Load and crop sprites |
 | **CollisionDetector** | ✅ | ~150 | Collision detection |
 | **ButtonStyles** | ✅ | ~50 | Arcade UI styles |
 | **Documentation** | ✅ | - | README, ARCHITECTURE, etc. |
+| **GameEngine** | ✅ | ~300 | Game loop, entity updates |
+| **Rendering System** | ✅ | ~150 | Canvas rendering |
+| **Pac-Man Movement** | ✅ | ~100 | Player movement logic |
+| **AudioManager** | ✅ | ~200 | SFML.Audio integration |
+| **Score/Profile Persistence** | ✅ | ~250 | SQLite database management |
+| **Advanced Ghost AI** | ✅ | ~400 | Unique AI for all 4 ghosts |
 
-**Total Code:** ~2,150 lines
+**Total Code:** ~3,500 lines
 
 ### **⚠️ Partially Implemented**
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **AudioManager** | ⚠️ | Stub only (console output) - needs NAudio integration |
-| **GameView rendering** | ⚠️ | Canvas exists, no drawing yet |
-| **Game loop** | ⚠️ | Not implemented |
+| **Power Pellet Mechanics** | ⚠️ | Ghosts become vulnerable, but no scoring combo yet. |
+| **Fruit System** | ⚠️ | Fruit spawns but has no effect. |
 
 ### **❌ Not Implemented (TO DO)**
 
 | Component | Priority | For |
 |-----------|----------|-----|
-| **GameEngine** | 🔴 High | Midterm |
-| **Rendering system** | 🔴 High | Midterm |
-| **Pac-Man movement** | 🔴 High | Midterm |
-| **Simple Ghost AI** | 🔴 High | Midterm |
-| **Score persistence** | 🟡 Medium | Final |
-| **Advanced Ghost AI** | 🟡 Medium | Final |
-| **Power pellet mechanics** | 🟡 Medium | Final |
-| **Fruit system** | 🟢 Low | Final |
-| **Settings menu** | 🟢 Low | Final |
+| **Multiple Levels** | 🟡 Medium | Final |
+| **Progressive Difficulty** | 🟡 Medium | Final |
+| **Unit Tests** | 🟢 Low | Final |
 
 ---
 

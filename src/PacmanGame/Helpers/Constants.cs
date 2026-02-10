@@ -51,6 +51,18 @@ public static class Constants
     public const int GhostAnimationFrames = 2;
     public const int DeathAnimationFrames = 11;
 
+    // Ghost AI
+    public const float ModeToggleInterval = 20.0f; // seconds
+    public const int ClydeShyDistance = 8; // tiles
+    public const int BlinkyScatterY = 0;
+    public const int BlinkyScatterX = 27;
+    public const int PinkyScatterY = 0;
+    public const int PinkyScatterX = 0;
+    public const int InkyScatterY = 30;
+    public const int InkyScatterX = 27;
+    public const int ClydeScatterY = 30;
+    public const int ClydeScatterX = 0;
+
     // File Paths
     public const string AssetsPath = "Assets";
     public const string SpritesPath = "Assets/Sprites";
