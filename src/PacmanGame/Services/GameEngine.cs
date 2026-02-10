@@ -648,6 +648,9 @@ public class GameEngine : IGameEngine
         bool hasLeft = col > 0 && _map[row, col - 1] == TileType.Wall;
         bool hasRight = col < Constants.MapWidth - 1 && _map[row, col + 1] == TileType.Wall;
 
+        // 4-way cross
+        if (hasUp && hasDown && hasLeft && hasRight) return "walls_cross";
+
         // T-junctions
         if (hasUp && hasDown && hasLeft && !hasRight) return "walls_t_right";
         if (hasUp && hasDown && !hasLeft && hasRight) return "walls_t_left";
@@ -665,10 +668,10 @@ public class GameEngine : IGameEngine
         if (hasLeft && hasRight) return "walls_horizontal";
 
         // End caps
-        if (hasUp) return "walls_end_down";
-        if (hasDown) return "walls_end_up";
-        if (hasLeft) return "walls_end_right";
-        if (hasRight) return "walls_end_left";
+        if (hasUp) return "walls_end_up";
+        if (hasDown) return "walls_end_down";
+        if (hasLeft) return "walls_end_left";
+        if (hasRight) return "walls_end_right";
 
         // Default for isolated walls
         return "walls_horizontal";
