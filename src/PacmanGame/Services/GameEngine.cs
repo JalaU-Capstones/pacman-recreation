@@ -82,7 +82,7 @@ public class GameEngine : IGameEngine
         {
             { GhostType.Blinky, new BlinkyAI() },
             { GhostType.Pinky, new PinkyAI() },
-            { GhostType.Inky, new PinkyAI() },
+            { GhostType.Inky, new InkyAI() },
             { GhostType.Clyde, new ClydeAI() }
         };
     }
@@ -700,28 +700,28 @@ public class GameEngine : IGameEngine
 
         if (neighbors == 3)
         {
-            if (!hasRight) return "walls_t_right";
-            if (!hasLeft) return "walls_t_left";
-            if (!hasDown) return "walls_t_down";
-            if (!hasUp) return "walls_t_up";
+            if (!hasRight) return "walls_t_left";
+            if (!hasLeft) return "walls_t_right";
+            if (!hasDown) return "walls_t_up";
+            if (!hasUp) return "walls_t_down";
         }
 
         if (neighbors == 2)
         {
             if (hasUp && hasDown) return "walls_vertical";
             if (hasLeft && hasRight) return "walls_horizontal";
-            if (hasDown && hasRight) return "walls_corner_tl";
-            if (hasDown && hasLeft) return "walls_corner_tr";
-            if (hasUp && hasRight) return "walls_corner_bl";
-            if (hasUp && hasLeft) return "walls_corner_br";
+            if (hasDown && hasRight) return "walls_corner_br";
+            if (hasDown && hasLeft) return "walls_corner_bl";
+            if (hasUp && hasRight) return "walls_corner_tr";
+            if (hasUp && hasLeft) return "walls_corner_tl";
         }
 
         if (neighbors == 1)
         {
             if (hasUp) return "walls_end_down";
             if (hasDown) return "walls_end_up";
-            if (hasLeft) return "walls_end_right";
-            if (hasRight) return "walls_end_left";
+            if (hasLeft) return "walls_end_left";
+            if (hasRight) return "walls_end_right";
         }
 
         // Default for isolated walls or errors
