@@ -8,6 +8,7 @@
 - [Data Flow](#data-flow)
 - [Key Components](#key-components)
 - [Ghost AI System](#ghost-ai-system)
+- [Logger Service](#logger-service)
 - [Design Patterns](#design-patterns)
 - [Technologies](#technologies)
 
@@ -207,7 +208,8 @@ src/PacmanGame/
 │   │   ├── ISpriteManager.cs
 │   │   ├── IAudioManager.cs
 │   │   ├── ICollisionDetector.cs
-│   │   └── IProfileManager.cs
+│   │   ├── IProfileManager.cs
+│   │   └── ILogger.cs      # New: Logging service interface
 │   ├── AI/                 # Ghost AI implementations
 │   │   ├── IGhostAI.cs
 │   │   ├── BlinkyAI.cs
@@ -221,7 +223,8 @@ src/PacmanGame/
 │   ├── AudioManager.cs     # Handles audio playback (SFML.Audio)
 │   ├── CollisionDetector.cs # Collision detection
 │   ├── ProfileManager.cs   # SQLite database management
-│   └── GameEngine.cs       # Main game loop
+│   ├── GameEngine.cs       # Main game loop
+│   └── Logger.cs           # New: Logging service implementation
 │
 ├── Helpers/                # Utility classes
 │   ├── Constants.cs        # Game constants
@@ -282,6 +285,7 @@ src/PacmanGame/
 - AI algorithms
 - Collision detection
 - Database operations
+- Logging
 
 **What it doesn't do:**
 - UI concerns
@@ -356,6 +360,7 @@ public class GameEngine : IGameEngine
     private readonly IAudioManager _audioManager;
     private readonly IMapLoader _mapLoader;
     private readonly ISpriteManager _spriteManager;
+    private readonly ILogger _logger; // New: Injected logger
     private readonly Dictionary<GhostType, IGhostAI> _ghostAIs; // New: AI instances
     private readonly AStarPathfinder _pathfinder; // New: Pathfinding service
     
@@ -369,6 +374,7 @@ public class GameEngine : IGameEngine
     {
         _isRunning = true;
         // Game loop logic
+        _logger.Info("Game engine started.");
     }
     
     public void Update(float deltaTime)
@@ -392,14 +398,21 @@ public class GameEngine : IGameEngine
 ```csharp
 public class ProfileManager : IProfileManager
 {
+    private readonly ILogger _logger; // New: Injected logger
+
+    public ProfileManager(ILogger logger) { /* ... */ }
+
     public void SaveSettings(int profileId, Settings settings)
     {
         // Upsert settings to database
+        _logger.Info($"Settings saved for profile {profileId}.");
     }
     
     public Settings LoadSettings(int profileId)
     {
         // Load settings or return defaults
+        _logger.Info($"Settings loaded for profile {profileId}.");
+        return new Settings();
     }
 }
 ```
@@ -410,21 +423,42 @@ public class ProfileManager : IProfileManager
 ```csharp
 public class AudioManager : IAudioManager
 {
+    private readonly ILogger _logger; // New: Injected logger
     private float _menuMusicVolume;
     private float _gameMusicVolume;
     
+    public AudioManager(ILogger logger) { /* ... */ }
+
     public void SetMenuMusicVolume(float volume)
     {
         _menuMusicVolume = volume;
         // Update if menu music is playing
+        _logger.Info($"Menu music volume set to {volume * 100}%.");
     }
     
     public void PlayMusic(string name, bool loop = true)
     {
         // Play music and apply correct volume based on type
+        _logger.Info($"Playing music: {name}.");
     }
 }
 ```
+
+### Logger Service
+
+**Purpose:** Centralized logging system for debugging and troubleshooting.
+
+**Interface:** `ILogger`
+
+**Methods:**
+- `Info(string message)` - Log normal events
+- `Warning(string message)` - Log non-critical issues
+- `Error(string message, Exception ex)` - Log errors with stack traces
+- `Debug(string message)` - Log detailed information (optional)
+
+**Output:** Writes to `AppData/PacmanGame/pacman.log` with timestamps and log levels.
+
+**Usage:** Injected into all services via dependency injection. Replaces Console.WriteLine throughout the codebase.
 
 ---
 
@@ -498,6 +532,7 @@ services.AddSingleton<ISpriteManager, SpriteManager>();
 services.AddSingleton<IAudioManager, AudioManager>();
 services.AddSingleton<IGameEngine, GameEngine>();
 services.AddSingleton<IProfileManager, ProfileManager>();
+services.AddSingleton<ILogger, Logger>(); // New: Logger service
 services.AddTransient<GameViewModel>();
 ```
 
@@ -516,7 +551,7 @@ public ReactiveCommand<Unit, Unit> StartGameCommand { get; }
 - GameEngine events (ScoreChanged, LifeLost, etc.)
 
 ### 6. Singleton Pattern
-- Services (AudioManager, SpriteManager, ProfileManager)
+- Services (AudioManager, SpriteManager, ProfileManager, Logger)
 
 ---
 

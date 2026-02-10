@@ -11,6 +11,7 @@ public class SettingsViewModel : ViewModelBase
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly IProfileManager _profileManager;
     private readonly IAudioManager _audioManager;
+    private readonly ILogger _logger;
 
     private Profile? _activeProfile;
     private bool _isDeleteConfirmationVisible;
@@ -81,11 +82,12 @@ public class SettingsViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> ConfirmDeleteCommand { get; }
     public ReactiveCommand<Unit, Unit> ReturnToMenuCommand { get; }
 
-    public SettingsViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager)
+    public SettingsViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger logger)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _profileManager = profileManager;
         _audioManager = audioManager;
+        _logger = logger;
 
         ActiveProfile = _profileManager.GetActiveProfile();
         // Avoid invoking the IsMusicEnabled property (which calls SaveSettings) during construction
@@ -130,7 +132,7 @@ public class SettingsViewModel : ViewModelBase
     {
         _audioManager.PlaySoundEffect("menu-select");
         // Pass the existing audio manager to preserve state/resources
-        _mainWindowViewModel.NavigateTo(new ProfileSelectionViewModel(_mainWindowViewModel, _profileManager, _audioManager));
+        _mainWindowViewModel.NavigateTo(new ProfileSelectionViewModel(_mainWindowViewModel, _profileManager, _logger, _audioManager));
     }
 
     private void ConfirmDelete()
@@ -144,11 +146,11 @@ public class SettingsViewModel : ViewModelBase
             var profiles = _profileManager.GetAllProfiles();
             if (profiles.Count > 0)
             {
-                _mainWindowViewModel.NavigateTo(new ProfileSelectionViewModel(_mainWindowViewModel, _profileManager, _audioManager));
+                _mainWindowViewModel.NavigateTo(new ProfileSelectionViewModel(_mainWindowViewModel, _profileManager, _logger, _audioManager));
             }
             else
             {
-                _mainWindowViewModel.NavigateTo(new ProfileCreationViewModel(_mainWindowViewModel, _profileManager, _audioManager));
+                _mainWindowViewModel.NavigateTo(new ProfileCreationViewModel(_mainWindowViewModel, _profileManager, _logger, _audioManager));
             }
         }
     }
@@ -156,6 +158,6 @@ public class SettingsViewModel : ViewModelBase
     private void ReturnToMenu()
     {
         _audioManager.PlaySoundEffect("menu-select");
-        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager));
+        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager, _logger));
     }
 }

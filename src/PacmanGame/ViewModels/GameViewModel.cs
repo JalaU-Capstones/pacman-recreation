@@ -17,7 +17,9 @@ public class GameViewModel : ViewModelBase
     private readonly IProfileManager _profileManager;
     private readonly IGameEngine _engine;
     private readonly IAudioManager _audioManager;
+    private readonly ILogger _logger;
     private int _extraLifeThreshold;
+    private int _frameCount; // For logging game loop frames
 
     // Game state properties
     private int _score;
@@ -81,10 +83,13 @@ public class GameViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> ResumeGameCommand { get; }
     public ReactiveCommand<Unit, Unit> ReturnToMenuCommand { get; }
 
-    public GameViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager? audioManager = null)
+    public GameViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger logger)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _profileManager = profileManager;
+        _audioManager = audioManager;
+        _logger = logger;
+        _frameCount = 0;
 
         // Initialize game state
         _score = 0;
@@ -94,18 +99,11 @@ public class GameViewModel : ViewModelBase
         _isPaused = false;
         _extraLifeThreshold = Constants.ExtraLifeScore;
 
-        // Create audio manager first (used in event handlers)
-        _audioManager = audioManager ?? new AudioManager();
-        if (audioManager == null)
-        {
-            _audioManager.Initialize();
-        }
-
         // Create engine with required services
-        // TODO: Inject these properly via DI container in production
         _engine = new GameEngine(
-            new MapLoader(),
-            new SpriteManager(),
+            _logger,
+            new MapLoader(_logger),
+            new SpriteManager(_logger),
             _audioManager,
             new CollisionDetector());
 
@@ -127,24 +125,46 @@ public class GameViewModel : ViewModelBase
     {
         try
         {
-            Console.WriteLine($"📝 StartGame called, Level={_level}");
+            _logger.Info($"Starting game at level {_level}");
             _engine.LoadLevel(_level);
-            Console.WriteLine($"✅ Level {_level} loaded");
             _engine.Start();
-            Console.WriteLine("✅ Engine started");
             _audioManager.PlayMusic(Constants.BackgroundMusic);
-            Console.WriteLine("✅ Background music playing");
             _audioManager.PlaySoundEffect("game-start");
-            Console.WriteLine("✅ Game start sound played");
 
             IsGameRunning = true;
             IsPaused = false;
-            Console.WriteLine("✅ Game state updated");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error in StartGame: {ex}");
+            _logger.Error("Error starting game", ex);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Updates the game logic for one frame. Called by the View's DispatcherTimer.
+    /// </summary>
+    public void UpdateGame(float deltaTime)
+    {
+        try
+        {
+            if (Engine == null)
+            {
+                _logger.Error("Game engine is null during update.");
+                return;
+            }
+
+            Engine.Update(deltaTime);
+            _frameCount++;
+            if (_frameCount % 60 == 0) // Log every second at 60 FPS
+            {
+                _logger.Debug($"Game loop running - Frame {_frameCount}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"Game loop error: {ex.Message}", ex);
+            // Optionally stop the game loop here or trigger game over
         }
     }
 
@@ -182,7 +202,7 @@ public class GameViewModel : ViewModelBase
         _engine.Stop();
         _audioManager.StopMusic();
         IsGameRunning = false;
-        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager));
+        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager, _logger));
     }
 
     /// <summary>
@@ -194,7 +214,7 @@ public class GameViewModel : ViewModelBase
         _engine.Stop();
         _audioManager.StopMusic();
         _audioManager.PlayMusic(Constants.GameOverMusic, loop: false);
-        Console.WriteLine($"Game Over! Final Score: {Score}");
+        _logger.Info($"Game Over! Final Score: {Score}");
 
         // Save score to profile
         var activeProfile = _profileManager.GetActiveProfile();
@@ -215,6 +235,7 @@ public class GameViewModel : ViewModelBase
             Lives++;
             _extraLifeThreshold += Constants.ExtraLifeScore;
             _audioManager.PlaySoundEffect("extra-life");
+            _logger.Info($"Extra life awarded at {Score} score. Lives remaining: {Lives}");
         }
     }
 
@@ -237,7 +258,7 @@ public class GameViewModel : ViewModelBase
     {
         _audioManager.PlaySoundEffect("level-complete");
         Level++;
-        Console.WriteLine($"Level {Level - 1} complete! Starting level {Level}");
+        _logger.Info($"Level {Level - 1} complete! Starting level {Level}");
 
         // TODO: Add delay before loading next level
         _engine.LoadLevel(Level);

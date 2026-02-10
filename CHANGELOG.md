@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Replaced all Console.WriteLine debugging statements with professional logging system
+- Added comprehensive logging to file (AppData/PacmanGame/pacman.log)
+- Removed all emojis from codebase for professional appearance
+
+### Added
+- Logger service with INFO, WARNING, ERROR log levels
+- Timestamped log entries with clear formatting
+
 ### Planned for Final (v1.0.0)
 - Power pellet mechanic
 - Bonus fruits system

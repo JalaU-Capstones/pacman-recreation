@@ -4,6 +4,7 @@ using System.Linq;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using PacmanGame.Helpers;
+using PacmanGame.Services.Interfaces;
 
 namespace PacmanGame.Services.Pathfinding;
 
@@ -39,7 +40,7 @@ public class AStarPathfinder
     /// <summary>
     /// Finds the optimal path from a start point to a target point on the map using A* algorithm.
     /// </summary>
-    public Direction FindPath(int startY, int startX, int targetY, int targetX, TileType[,] map, Ghost ghost)
+    public Direction FindPath(int startY, int startX, int targetY, int targetX, TileType[,] map, Ghost ghost, ILogger logger)
     {
         int mapHeight = map.GetLength(0);
         int mapWidth = map.GetLength(1);
@@ -47,15 +48,15 @@ public class AStarPathfinder
         targetY = Math.Clamp(targetY, 0, mapHeight - 1);
         targetX = Math.Clamp(targetX, 0, mapWidth - 1);
 
-        Console.WriteLine($"[PATH] FindPath start=({startY},{startX}) target=({targetY},{targetX}) ghost={ghost.GetName()} state={ghost.State}");
+        logger.Debug($"FindPath start=({startY},{startX}) target=({targetY},{targetX}) ghost={ghost.GetName()} state={ghost.State}");
 
         if (map[startY, startX] == TileType.Wall || map[targetY, targetX] == TileType.Wall)
         {
-            Console.WriteLine($"[PATH] start or target is a Wall; finding closest non-wall to target ({targetY},{targetX})");
+            logger.Debug($"start or target is a Wall; finding closest non-wall to target ({targetY},{targetX})");
             (targetY, targetX) = FindClosestNonWall(targetY, targetX, map);
-            Console.WriteLine($"[PATH] Adjusted target to ({targetY},{targetX})");
+            logger.Debug($"Adjusted target to ({targetY},{targetX})");
             if (map[targetY, targetX] == TileType.Wall) {
-                Console.WriteLine($"[PATH] Adjusted target still a Wall - returning None");
+                logger.Warning($"Adjusted target still a Wall - returning None");
                 return Direction.None;
             }
         }
@@ -132,7 +133,7 @@ public class AStarPathfinder
             }
         }
 
-        Console.WriteLine($"[PATH] No path found from ({startY},{startX}) to ({targetY},{targetX}) for ghost {ghost.GetName()}");
+        logger.Warning($"No path found from ({startY},{startX}) to ({targetY},{targetX}) for ghost {ghost.GetName()}");
         // Fallback: choose a greedy neighbor that is legal and reduces Manhattan distance
         Direction best = Direction.None;
         double bestDist = double.MaxValue;
@@ -173,7 +174,7 @@ public class AStarPathfinder
 
         if (best != Direction.None)
         {
-            Console.WriteLine($"[PATH] Fallback greedy direction {best} chosen for ghost {ghost.GetName()}");
+            logger.Debug($"Fallback greedy direction {best} chosen for ghost {ghost.GetName()}");
             return best;
         }
 

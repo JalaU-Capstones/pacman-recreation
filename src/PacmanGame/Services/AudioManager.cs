@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
 using PacmanGame.Helpers;
 using PacmanGame.Services.Interfaces;
 using SFML.Audio;
@@ -16,6 +13,7 @@ namespace PacmanGame.Services;
 /// </summary>
 public class AudioManager : IAudioManager, IDisposable
 {
+    private readonly ILogger _logger;
     private readonly string _musicPath;
     private readonly string _sfxPath;
     private bool _isMuted;
@@ -34,8 +32,9 @@ public class AudioManager : IAudioManager, IDisposable
     public float GameMusicVolume => _gameMusicVolume / 100f;
     public float SfxVolume => _sfxVolume / 100f;
 
-    public AudioManager()
+    public AudioManager(ILogger logger)
     {
+        _logger = logger;
         _musicPath = Path.Combine(AppContext.BaseDirectory, Constants.MusicPath);
         _sfxPath = Path.Combine(AppContext.BaseDirectory, Constants.SfxPath);
         _isMuted = false;
@@ -53,12 +52,12 @@ public class AudioManager : IAudioManager, IDisposable
         {
             if (!Directory.Exists(_musicPath))
             {
-                Console.WriteLine($"⚠️  Music directory not found: {_musicPath}");
+                _logger.Warning($"Music directory not found: {_musicPath}");
             }
 
             if (!Directory.Exists(_sfxPath))
             {
-                Console.WriteLine($"⚠️  SFX directory not found: {_sfxPath}");
+                _logger.Warning($"SFX directory not found: {_sfxPath}");
             }
 
             // Preload common sound effects
@@ -72,11 +71,11 @@ public class AudioManager : IAudioManager, IDisposable
             PreloadSound("menu-navigate");
 
             _isInitialized = true;
-            Console.WriteLine("✅ AudioManager initialized (SFML.Audio)");
+            _logger.Info("AudioManager initialized (SFML.Audio)");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ AudioManager initialization error: {ex.Message}");
+            _logger.Error("AudioManager initialization error", ex);
             // Don't set initialized to true if SFML fails to load
         }
     }
@@ -93,7 +92,7 @@ public class AudioManager : IAudioManager, IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"⚠️ Failed to preload sound {soundName}: {ex.Message}");
+            _logger.Warning($"Failed to preload sound {soundName}: {ex.Message}");
         }
     }
 
@@ -114,7 +113,10 @@ public class AudioManager : IAudioManager, IDisposable
             {
                 string filePath = Path.Combine(_sfxPath, $"{soundName}.wav");
                 if (!File.Exists(filePath))
+                {
+                    _logger.Warning($"Sound effect file not found: {soundName}.wav");
                     return;
+                }
 
                 buffer = new SoundBuffer(filePath);
                 _soundBuffers[soundName] = buffer;
@@ -131,7 +133,7 @@ public class AudioManager : IAudioManager, IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"⚠️ Failed to play sound {soundName}: {ex.Message}");
+            _logger.Warning($"Failed to play sound {soundName}: {ex.Message}");
         }
     }
 
@@ -154,7 +156,7 @@ public class AudioManager : IAudioManager, IDisposable
 
             if (!File.Exists(filePath))
             {
-                Console.WriteLine($"⚠️ Music file not found: {filePath}");
+                _logger.Warning($"Music file not found: {filePath}");
                 return;
             }
 
@@ -166,10 +168,11 @@ public class AudioManager : IAudioManager, IDisposable
             UpdateCurrentMusicVolume();
 
             _currentMusic.Play();
+            _logger.Info($"Playing music: {musicName}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"⚠️ Failed to play music {musicName}: {ex.Message}");
+            _logger.Error($"Failed to play music {musicName}", ex);
         }
     }
 
@@ -208,9 +211,9 @@ public class AudioManager : IAudioManager, IDisposable
                 _currentMusicName = null;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Ignore errors
+            _logger.Warning($"Error stopping music: {ex.Message}");
         }
     }
 
@@ -226,9 +229,9 @@ public class AudioManager : IAudioManager, IDisposable
                 _currentMusic.Pause();
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Ignore errors
+            _logger.Warning($"Error pausing music: {ex.Message}");
         }
     }
 
@@ -244,9 +247,9 @@ public class AudioManager : IAudioManager, IDisposable
                 _currentMusic.Play();
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Ignore errors
+            _logger.Warning($"Error resuming music: {ex.Message}");
         }
     }
 
@@ -306,11 +309,12 @@ public class AudioManager : IAudioManager, IDisposable
             {
                 sound.Volume = 0;
             }
+            _logger.Info("Audio muted");
         }
         else
         {
             UpdateCurrentMusicVolume();
-
+            _logger.Info("Audio unmuted");
             // We don't restore volume for active sounds as they are short-lived
         }
     }
@@ -330,5 +334,6 @@ public class AudioManager : IAudioManager, IDisposable
             buffer.Dispose();
         }
         _soundBuffers.Clear();
+        _logger.Info("AudioManager disposed");
     }
 }

@@ -17,9 +17,15 @@ namespace PacmanGame.Services;
 /// </summary>
 public class SpriteManager : ISpriteManager
 {
+    private readonly ILogger _logger;
     private readonly Dictionary<string, Bitmap> _spriteSheets = new();
     private readonly Dictionary<string, (string SheetName, SpriteInfo Info)> _flattenedSprites = new();
     private bool _isInitialized;
+
+    public SpriteManager(ILogger logger)
+    {
+        _logger = logger;
+    }
 
     /// <summary>
     /// Initialize and load all sprite sheets and their mappings
@@ -44,11 +50,11 @@ public class SpriteManager : ISpriteManager
             LoadSpriteSheet("tiles", Constants.TilesSpriteSheet, Constants.TilesSpriteMap);
 
             _isInitialized = true;
-            Console.WriteLine("✅ SpriteManager initialized successfully");
+            _logger.Info("SpriteManager initialized successfully");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error initializing SpriteManager: {ex.Message}");
+            _logger.Error("Error initializing SpriteManager", ex);
             throw;
         }
     }
@@ -84,11 +90,11 @@ public class SpriteManager : ISpriteManager
                 FlattenSpriteObject(name, spritesObj, spriteSize, "");
             }
 
-            Console.WriteLine($"   Loaded {name}: {_flattenedSprites.Count} sprites");
+            _logger.Info($"Loaded sprite sheet '{name}' with {_flattenedSprites.Count} sprites");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"   ❌ Error loading {name}: {ex.Message}");
+            _logger.Error($"Error loading sprite sheet {name}", ex);
             throw;
         }
     }
@@ -178,11 +184,9 @@ public class SpriteManager : ISpriteManager
             return null;
         }
 
-        // Console.WriteLine($"[SPRITE] Requesting sprite key={flatKey}");
-
         if (!_flattenedSprites.TryGetValue(flatKey, out var entry))
         {
-            // Console.WriteLine($"[SPRITE] Key not found: {flatKey}");
+            _logger.Warning($"Sprite not found: {flatKey} - Using fallback");
             return null;
         }
 
@@ -190,7 +194,7 @@ public class SpriteManager : ISpriteManager
 
         if (!_spriteSheets.TryGetValue(sheetName, out var sheet))
         {
-            Console.WriteLine($"[SPRITE] Sheet not loaded: {sheetName} for key={flatKey}");
+            _logger.Warning($"Sheet not loaded: {sheetName} for key={flatKey}");
             return null;
         }
 
@@ -202,7 +206,7 @@ public class SpriteManager : ISpriteManager
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[SPRITE] Error cropping sprite key={flatKey}: {ex.Message}");
+            _logger.Error($"Error cropping sprite key={flatKey}", ex);
             return null;
         }
     }
@@ -222,7 +226,6 @@ public class SpriteManager : ISpriteManager
     public CroppedBitmap? GetGhostSprite(string ghostType, string direction, int frame)
     {
         string flatKey = $"ghosts_{ghostType.ToLower()}_{direction.ToLower()}_{frame}";
-        // Console.WriteLine($"[SPRITE] GetGhostSprite -> {flatKey}");
         return GetSprite(flatKey);
     }
 
@@ -232,7 +235,6 @@ public class SpriteManager : ISpriteManager
     public CroppedBitmap? GetVulnerableGhostSprite(int frame)
     {
         string flatKey = $"ghosts_vulnerable_normal_{frame}";
-        // Console.WriteLine($"[SPRITE] GetVulnerableGhostSprite -> {flatKey}");
         return GetSprite(flatKey);
     }
 
@@ -242,7 +244,6 @@ public class SpriteManager : ISpriteManager
     public CroppedBitmap? GetWarningGhostSprite(int frame)
     {
         string flatKey = $"ghosts_vulnerable_warning_{frame}";
-        // Console.WriteLine($"[SPRITE] GetWarningGhostSprite -> {flatKey}");
         return GetSprite(flatKey);
     }
 

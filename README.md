@@ -26,6 +26,7 @@
   - [Running the Game](#running-the-game)
 - [Project Structure](#-project-structure)
 - [Game Controls](#-game-controls)
+- [Logging & Troubleshooting](#-logging--troubleshooting)
 - [Development Roadmap](#-development-roadmap)
 - [Assets](#-assets)
 - [Contributing](#-contributing)
@@ -102,7 +103,13 @@ This project is an educational recreation of the iconic **Pac-Man** arcade game,
 - **IDE:** Visual Studio Code / Visual Studio 2022 / JetBrains Rider
 - **Version Control:** Git
 - **Package Manager:** NuGet
-- **Asset Generation:** Python 3.x (scripts included)
+- **Asset Generation:** Python 3.8+ with NumPy and Pillow
+
+#### Platform Support
+- ✅ **Windows 10/11** (x64, ARM64)
+- ✅ **Linux** (x64, ARM64)
+  - Tested on: Ubuntu 22.04, Debian 12, Fedora 39
+- ✅ **macOS** (x64, ARM64) - Theoretical support (not tested)
 
 ### Libraries & Dependencies
 ```xml
@@ -126,12 +133,6 @@ This project is an educational recreation of the iconic **Pac-Man** arcade game,
 
 #### Optional (for asset regeneration)
 - Python 3.8+ with NumPy and Pillow
-
-#### Platform Support
-- ✅ **Windows 10/11** (x64, ARM64)
-- ✅ **Linux** (x64, ARM64)
-  - Tested on: Ubuntu 22.04, Debian 12, Fedora 39
-- ✅ **macOS** (x64, ARM64) - Theoretical support (not tested)
 
 ### Installation
 
@@ -279,6 +280,23 @@ pacman-recreation/
 - **F1:** Toggle FPS counter
 - **F2:** Toggle collision boxes
 - **F3:** God mode (invincibility)
+
+---
+
+## 📝 Logging & Troubleshooting
+
+The application logs all important events to a log file for troubleshooting:
+
+**Log location:** 
+- Windows: `C:\Users\{Username}\AppData\Roaming\PacmanGame\pacman.log`
+- Linux: `~/.config/PacmanGame/pacman.log`
+
+**Log levels:**
+- INFO: Normal application events
+- WARNING: Non-critical issues that don't stop the game
+- ERROR: Errors that impact functionality
+
+To troubleshoot issues, check the log file for ERROR or WARNING entries.
 
 ---
 

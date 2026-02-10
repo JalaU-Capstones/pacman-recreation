@@ -5,6 +5,7 @@ using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using PacmanGame.Helpers;
 using PacmanGame.Services.Pathfinding;
+using PacmanGame.Services.Interfaces;
 
 namespace PacmanGame.Services.AI;
 
@@ -18,7 +19,7 @@ public class InkyAI : IGhostAI
     /// <summary>
     /// Inky's behavior is complex, based on Pac-Man's position and Blinky's position.
     /// </summary>
-    public Direction GetNextMove(Ghost ghost, Pacman pacman, TileType[,] map, List<Ghost> allGhosts, bool isChaseMode)
+    public Direction GetNextMove(Ghost ghost, Pacman pacman, TileType[,] map, List<Ghost> allGhosts, bool isChaseMode, ILogger logger)
     {
         int targetY, targetX;
 
@@ -30,8 +31,9 @@ public class InkyAI : IGhostAI
             if (blinky == null)
             {
                 // Fallback to Blinky's behavior if Blinky is not found
-                var fallback = _pathfinder.FindPath(ghost.Y, ghost.X, pacman.Y, pacman.X, map, ghost);
-                Console.WriteLine($"[AI] Inky fallback NextMove={fallback}");
+                logger.Warning("Blinky not found for Inky's AI. Falling back to direct Pac-Man chase.");
+                var fallback = _pathfinder.FindPath(ghost.Y, ghost.X, pacman.Y, pacman.X, map, ghost, logger);
+                logger.Debug($"Inky fallback NextMove={fallback}");
                 return fallback;
             }
 
@@ -68,17 +70,18 @@ public class InkyAI : IGhostAI
             targetY = Math.Clamp(targetY, 0, map.GetLength(0) - 1);
             targetX = Math.Clamp(targetX, 0, map.GetLength(1) - 1);
 
-            Console.WriteLine($"[AI] Inky pivot=({pivotY},{pivotX}) blinky=({blinky.Y},{blinky.X}) vector=({vectorY},{vectorX}) target=({targetY},{targetX})");
+            logger.Debug($"Inky pivot=({pivotY},{pivotX}) blinky=({blinky.Y},{blinky.X}) vector=({vectorY},{vectorX}) target=({targetY},{targetX})");
         }
         else
         {
             // Scatter Mode: Target is the bottom-right corner.
             targetY = Constants.InkyScatterY;
             targetX = Constants.InkyScatterX;
+            logger.Debug($"Inky target=({targetY},{targetX}) mode=Scatter");
         }
 
-        var next = _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost);
-        Console.WriteLine($"[AI] Inky NextMove={next}");
+        var next = _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost, logger);
+        logger.Debug($"Inky NextMove={next}");
         return next;
     }
 }

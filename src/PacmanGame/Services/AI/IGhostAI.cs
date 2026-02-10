@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
+using PacmanGame.Services.Interfaces;
 
 namespace PacmanGame.Services.AI;
 
@@ -17,6 +18,7 @@ public interface IGhostAI
     /// <param name="map">The current game map.</param>
     /// <param name="allGhosts">A list of all ghosts in the game (needed for Inky's AI).</param>
     /// <param name="isChaseMode">True if the ghosts are in chase mode, false for scatter mode.</param>
+    /// <param name="logger">The logger instance for logging.</param>
     /// <returns>The recommended direction for the ghost to move.</returns>
-    Direction GetNextMove(Ghost ghost, Pacman pacman, TileType[,] map, List<Ghost> allGhosts, bool isChaseMode);
+    Direction GetNextMove(Ghost ghost, Pacman pacman, TileType[,] map, List<Ghost> allGhosts, bool isChaseMode, ILogger logger);
 }

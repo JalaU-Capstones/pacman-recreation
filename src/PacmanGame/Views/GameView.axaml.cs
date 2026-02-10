@@ -34,56 +34,20 @@ public partial class GameView : UserControl
         // Start the game if ViewModel is available
         if (DataContext is GameViewModel gameViewModel)
         {
-            try
+            gameViewModel.StartGame();
+
+            // Start the game loop timer (60 FPS)
+            _gameLoopTimer = new DispatcherTimer
             {
-                gameViewModel.StartGame();
-                Console.WriteLine("✅ Game started successfully");
+                Interval = TimeSpan.FromMilliseconds(1000.0 / Constants.TargetFps)
+            };
 
-                // Start the game loop timer (60 FPS)
-                _gameLoopTimer = new DispatcherTimer
-                {
-                    Interval = TimeSpan.FromMilliseconds(1000.0 / Constants.TargetFps)
-                };
-
-                int frameCount = 0;
-                _gameLoopTimer.Tick += (_, _) =>
-                {
-                    try
-                    {
-                        if (gameViewModel?.Engine == null)
-                        {
-                            Console.WriteLine("❌ Engine is null!");
-                            return;
-                        }
-
-                        gameViewModel.Engine.Update(Constants.FixedDeltaTime);
-                        gameViewModel.Engine.Render(GameCanvas);
-
-                        frameCount++;
-                        if (frameCount % 60 == 0)
-                        {
-                            Console.WriteLine($"🎮 Game loop running - Frame {frameCount}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"❌ Game loop error: {ex.Message}");
-                        Console.WriteLine($"   Stack: {ex.StackTrace}");
-                        _gameLoopTimer?.Stop();
-                    }
-                };
-                _gameLoopTimer.Start();
-                Console.WriteLine("✅ Game loop timer started");
-                Console.WriteLine("✅ Game loop timer started");
-            }
-            catch (Exception ex)
+            _gameLoopTimer.Tick += (_, _) =>
             {
-                Console.WriteLine($"❌ Failed to start game: {ex}");
-            }
-        }
-        else
-        {
-            Console.WriteLine("❌ GameViewModel not found in DataContext");
+                gameViewModel.UpdateGame(Constants.FixedDeltaTime);
+                gameViewModel.Engine.Render(GameCanvas);
+            };
+            _gameLoopTimer.Start();
         }
     }
 
@@ -133,7 +97,6 @@ public partial class GameView : UserControl
 
             case Key.F1:
                 // TODO: Toggle FPS counter (debug)
-                Console.WriteLine("Toggle FPS");
                 e.Handled = true;
                 break;
         }

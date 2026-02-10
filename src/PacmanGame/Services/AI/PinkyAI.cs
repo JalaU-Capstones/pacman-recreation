@@ -4,6 +4,7 @@ using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using PacmanGame.Helpers;
 using PacmanGame.Services.Pathfinding;
+using PacmanGame.Services.Interfaces;
 
 namespace PacmanGame.Services.AI;
 
@@ -17,7 +18,7 @@ public class PinkyAI : IGhostAI
     /// <summary>
     /// Pinky's behavior is to ambush Pac-Man by targeting 4 tiles ahead of Pac-Man's direction.
     /// </summary>
-    public Direction GetNextMove(Ghost ghost, Pacman pacman, TileType[,] map, List<Ghost> allGhosts, bool isChaseMode)
+    public Direction GetNextMove(Ghost ghost, Pacman pacman, TileType[,] map, List<Ghost> allGhosts, bool isChaseMode, ILogger logger)
     {
         int targetY, targetX;
 
@@ -60,9 +61,9 @@ public class PinkyAI : IGhostAI
             targetX = Constants.PinkyScatterX;
         }
 
-        Console.WriteLine($"[AI] Pinky target=({targetY},{targetX}) mode={(isChaseMode ? "Chase" : "Scatter")}");
-        var next = _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost);
-        Console.WriteLine($"[AI] Pinky NextMove={next}");
+        logger.Debug($"Pinky target=({targetY},{targetX}) mode={(isChaseMode ? "Chase" : "Scatter")}");
+        var next = _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost, logger);
+        logger.Debug($"Pinky NextMove={next}");
         return next;
     }
 }

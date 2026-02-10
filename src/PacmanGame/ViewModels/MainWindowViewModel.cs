@@ -1,5 +1,4 @@
 using ReactiveUI;
-using System.Reactive;
 using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
 
@@ -12,6 +11,7 @@ namespace PacmanGame.ViewModels;
 public class MainWindowViewModel : ViewModelBase
 {
     private ViewModelBase _currentViewModel;
+    private readonly ILogger _logger;
     private readonly IProfileManager _profileManager;
 
     /// <summary>
@@ -26,17 +26,18 @@ public class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         // Initialize services
-        _profileManager = new ProfileManager();
+        _logger = new Logger();
+        _profileManager = new ProfileManager(_logger);
 
         // Check if any profiles exist
         var profiles = _profileManager.GetAllProfiles();
         if (profiles.Count == 0)
         {
-            _currentViewModel = new ProfileCreationViewModel(this, _profileManager);
+            _currentViewModel = new ProfileCreationViewModel(this, _profileManager, _logger);
         }
         else
         {
-            _currentViewModel = new ProfileSelectionViewModel(this, _profileManager);
+            _currentViewModel = new ProfileSelectionViewModel(this, _profileManager, _logger);
         }
     }
 

@@ -16,6 +16,7 @@ public class ScoreBoardViewModel : ViewModelBase
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly IProfileManager _profileManager;
     private readonly IAudioManager _audioManager;
+    private readonly ILogger _logger;
 
     private ObservableCollection<ScoreEntry> _scores;
 
@@ -30,15 +31,12 @@ public class ScoreBoardViewModel : ViewModelBase
 
     public ReactiveCommand<Unit, Unit> ReturnToMenuCommand { get; }
 
-    public ScoreBoardViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager? audioManager = null)
+    public ScoreBoardViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger logger)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _profileManager = profileManager;
-        _audioManager = audioManager ?? new PacmanGame.Services.AudioManager();
-        if (audioManager == null)
-        {
-            _audioManager.Initialize();
-        }
+        _audioManager = audioManager;
+        _logger = logger;
 
         _scores = new ObservableCollection<ScoreEntry>();
 
@@ -64,7 +62,7 @@ public class ScoreBoardViewModel : ViewModelBase
             Scores.Add(score);
         }
 
-        Console.WriteLine($"Loaded {Scores.Count} high scores");
+        _logger.Info($"Loaded {Scores.Count} high scores");
     }
 
     /// <summary>
@@ -73,6 +71,6 @@ public class ScoreBoardViewModel : ViewModelBase
     private void ReturnToMenu()
     {
         _audioManager.PlaySoundEffect("menu-select");
-        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager));
+        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager, _logger));
     }
 }

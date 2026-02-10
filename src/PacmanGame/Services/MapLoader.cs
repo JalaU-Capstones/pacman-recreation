@@ -13,10 +13,12 @@ namespace PacmanGame.Services;
 /// </summary>
 public class MapLoader : IMapLoader
 {
+    private readonly ILogger _logger;
     private readonly string _mapsPath;
 
-    public MapLoader()
+    public MapLoader(ILogger logger)
     {
+        _logger = logger;
         _mapsPath = Path.Combine(AppContext.BaseDirectory, Constants.MapsPath);
     }
 
@@ -29,16 +31,20 @@ public class MapLoader : IMapLoader
 
         if (!File.Exists(filePath))
         {
+            _logger.Error($"Map file not found: {filePath}");
             throw new FileNotFoundException($"Map file not found: {filePath}");
         }
 
+        _logger.Info($"Loading map: {fileName}");
         // Read all lines from the file
         string[] lines = File.ReadAllLines(filePath);
 
         if (lines.Length != Constants.MapHeight)
         {
-            throw new InvalidOperationException(
+            var ex = new InvalidOperationException(
                 $"Map height mismatch. Expected {Constants.MapHeight}, got {lines.Length}");
+            _logger.Error($"Error loading map {fileName}", ex);
+            throw ex;
         }
 
         // Create the tile array
@@ -51,8 +57,10 @@ public class MapLoader : IMapLoader
 
             if (line.Length > Constants.MapWidth)
             {
-                throw new InvalidOperationException(
+                var ex = new InvalidOperationException(
                     $"Map width mismatch on line {row + 1}. Expected max {Constants.MapWidth}, got {line.Length}");
+                _logger.Error($"Error loading map {fileName}", ex);
+                throw ex;
             }
 
             for (int col = 0; col < Constants.MapWidth; col++)
@@ -82,7 +90,9 @@ public class MapLoader : IMapLoader
             }
         }
 
-        throw new InvalidOperationException($"Pac-Man spawn point '{Constants.PacmanChar}' not found in map {fileName}");
+        var ex = new InvalidOperationException($"Pac-Man spawn point '{Constants.PacmanChar}' not found in map {fileName}");
+        _logger.Error($"Error finding Pac-Man spawn in {fileName}", ex);
+        throw ex;
     }
 
     /// <summary>
@@ -108,7 +118,9 @@ public class MapLoader : IMapLoader
 
         if (spawns.Count == 0)
         {
-            throw new InvalidOperationException($"No ghost spawn points '{Constants.GhostChar}' found in map {fileName}");
+            var ex = new InvalidOperationException($"No ghost spawn points '{Constants.GhostChar}' found in map {fileName}");
+            _logger.Error($"Error finding ghost spawns in {fileName}", ex);
+            throw ex;
         }
 
         return spawns;
