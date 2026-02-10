@@ -29,6 +29,8 @@ public static class Constants
     // Power Pellet
     public const float PowerPelletDuration = 6.0f;  // seconds
     public const float PowerPelletWarningTime = 2.0f;  // seconds before ending
+    public const float GhostRespawnTime = 3.0f; // seconds for eaten ghost to respawn
+    public const float GhostReleaseInterval = 2.0f; // seconds between releasing ghosts from the house
 
     // Scoring
     public const int SmallDotPoints = 10;
@@ -54,6 +56,7 @@ public static class Constants
     // Ghost AI
     public const float ModeToggleInterval = 20.0f; // seconds
     public const int ClydeShyDistance = 8; // tiles
+    public const int GhostHouseExitY = 11; // Y-coordinate for ghost house exit (outside the door)
     public const int BlinkyScatterY = 0;
     public const int BlinkyScatterX = 27;
     public const int PinkyScatterY = 0;

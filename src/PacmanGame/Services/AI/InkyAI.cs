@@ -30,7 +30,9 @@ public class InkyAI : IGhostAI
             if (blinky == null)
             {
                 // Fallback to Blinky's behavior if Blinky is not found
-                return _pathfinder.FindPath(ghost.Y, ghost.X, pacman.Y, pacman.X, map, ghost);
+                var fallback = _pathfinder.FindPath(ghost.Y, ghost.X, pacman.Y, pacman.X, map, ghost);
+                Console.WriteLine($"[AI] Inky fallback NextMove={fallback}");
+                return fallback;
             }
 
             // 1. Find "pivot point" = 2 tiles ahead of Pac-Man
@@ -41,9 +43,6 @@ public class InkyAI : IGhostAI
             {
                 case Direction.Up:
                     pivotY -= 2;
-                    // Original Pac-Man bug: when Pac-Man faces up, pivot is 2 tiles up and 2 tiles left.
-                    // For this project, we simplify to just 2 tiles up.
-                    // pivotX -= 2;
                     break;
                 case Direction.Down:
                     pivotY += 2;
@@ -55,13 +54,10 @@ public class InkyAI : IGhostAI
                     pivotX += 2;
                     break;
                 case Direction.None:
-                    // If Pac-Man is not moving, pivot is his current position
                     break;
             }
 
             // 2. Draw vector from Blinky's position to this pivot point
-            // 3. Double the length of that vector
-            // 4. The end of the doubled vector is Inky's target
             int vectorX = pivotX - blinky.X;
             int vectorY = pivotY - blinky.Y;
 
@@ -71,6 +67,8 @@ public class InkyAI : IGhostAI
             // Clamp target to map bounds
             targetY = Math.Clamp(targetY, 0, map.GetLength(0) - 1);
             targetX = Math.Clamp(targetX, 0, map.GetLength(1) - 1);
+
+            Console.WriteLine($"[AI] Inky pivot=({pivotY},{pivotX}) blinky=({blinky.Y},{blinky.X}) vector=({vectorY},{vectorX}) target=({targetY},{targetX})");
         }
         else
         {
@@ -79,6 +77,8 @@ public class InkyAI : IGhostAI
             targetX = Constants.InkyScatterX;
         }
 
-        return _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost);
+        var next = _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost);
+        Console.WriteLine($"[AI] Inky NextMove={next}");
+        return next;
     }
 }

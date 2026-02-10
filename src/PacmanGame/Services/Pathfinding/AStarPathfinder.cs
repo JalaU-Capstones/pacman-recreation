@@ -47,10 +47,17 @@ public class AStarPathfinder
         targetY = Math.Clamp(targetY, 0, mapHeight - 1);
         targetX = Math.Clamp(targetX, 0, mapWidth - 1);
 
+        Console.WriteLine($"[PATH] FindPath start=({startY},{startX}) target=({targetY},{targetX}) ghost={ghost.GetName()} state={ghost.State}");
+
         if (map[startY, startX] == TileType.Wall || map[targetY, targetX] == TileType.Wall)
         {
+            Console.WriteLine($"[PATH] start or target is a Wall; finding closest non-wall to target ({targetY},{targetX})");
             (targetY, targetX) = FindClosestNonWall(targetY, targetX, map);
-            if (map[targetY, targetX] == TileType.Wall) return Direction.None;
+            Console.WriteLine($"[PATH] Adjusted target to ({targetY},{targetX})");
+            if (map[targetY, targetX] == TileType.Wall) {
+                Console.WriteLine($"[PATH] Adjusted target still a Wall - returning None");
+                return Direction.None;
+            }
         }
 
         if (startY == targetY && startX == targetX) return Direction.None;
@@ -76,7 +83,7 @@ public class AStarPathfinder
 
             foreach (Direction direction in Enum.GetValues(typeof(Direction)))
             {
-                if (direction == Direction.None || direction == GetOppositeDirection(ghost.CurrentDirection)) continue;
+                if (direction == Direction.None) continue;
 
                 int neighborY = currentNode.Y;
                 int neighborX = currentNode.X;
@@ -99,8 +106,11 @@ public class AStarPathfinder
                 bool isWall = map[neighborY, neighborX] == TileType.Wall;
                 bool isGhostHouseDoor = map[neighborY, neighborX] == TileType.GhostDoor;
 
-                if (isWall && !isGhostHouseDoor) continue;
-                if (isGhostHouseDoor && ghost.State != GhostState.Eaten) continue;
+                // Walls block movement
+                if (isWall) continue;
+
+                // Ghost doors are allowed for ghosts (Ghost.CanMove was updated to allow them)
+                // Previously the pathfinder blocked ghost doors for non-eaten ghosts; remove that restriction
 
                 double newGCost = currentNode.GCost + 1;
 
@@ -120,6 +130,51 @@ public class AStarPathfinder
                     allNodes.Add((neighborY, neighborX), neighborNode);
                 }
             }
+        }
+
+        Console.WriteLine($"[PATH] No path found from ({startY},{startX}) to ({targetY},{targetX}) for ghost {ghost.GetName()}");
+        // Fallback: choose a greedy neighbor that is legal and reduces Manhattan distance
+        Direction best = Direction.None;
+        double bestDist = double.MaxValue;
+        foreach (Direction dir in new[] { Direction.Up, Direction.Down, Direction.Left, Direction.Right })
+        {
+            if (dir == GetOppositeDirection(ghost.CurrentDirection)) continue; // avoid immediate U-turn if possible
+
+            int ny = startY;
+            int nx = startX;
+            switch (dir)
+            {
+                case Direction.Up: ny--; break;
+                case Direction.Down: ny++; break;
+                case Direction.Left: nx--; break;
+                case Direction.Right: nx++; break;
+            }
+
+            // wrap tunnels
+            if (nx < 0) nx = mapWidth - 1;
+            else if (nx >= mapWidth) nx = 0;
+            if (ny < 0) ny = mapHeight - 1;
+            else if (ny >= mapHeight) ny = 0;
+
+            // check tile
+            if (map[ny, nx] == TileType.Wall) continue;
+            // ghost doors allowed
+
+            // ensure ghost can move to that tile
+            if (!ghost.CanMove(dir, map)) continue;
+
+            double dist = GetManhattanDistance(ny, nx, targetY, targetX);
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                best = dir;
+            }
+        }
+
+        if (best != Direction.None)
+        {
+            Console.WriteLine($"[PATH] Fallback greedy direction {best} chosen for ghost {ghost.GetName()}");
+            return best;
         }
 
         return Direction.None;

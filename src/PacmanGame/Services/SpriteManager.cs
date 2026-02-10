@@ -178,8 +178,11 @@ public class SpriteManager : ISpriteManager
             return null;
         }
 
+        // Console.WriteLine($"[SPRITE] Requesting sprite key={flatKey}");
+
         if (!_flattenedSprites.TryGetValue(flatKey, out var entry))
         {
+            // Console.WriteLine($"[SPRITE] Key not found: {flatKey}");
             return null;
         }
 
@@ -187,6 +190,7 @@ public class SpriteManager : ISpriteManager
 
         if (!_spriteSheets.TryGetValue(sheetName, out var sheet))
         {
+            Console.WriteLine($"[SPRITE] Sheet not loaded: {sheetName} for key={flatKey}");
             return null;
         }
 
@@ -196,8 +200,9 @@ public class SpriteManager : ISpriteManager
             var cropped = new CroppedBitmap(sheet, sourceRect);
             return cropped;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Console.WriteLine($"[SPRITE] Error cropping sprite key={flatKey}: {ex.Message}");
             return null;
         }
     }
@@ -217,6 +222,7 @@ public class SpriteManager : ISpriteManager
     public CroppedBitmap? GetGhostSprite(string ghostType, string direction, int frame)
     {
         string flatKey = $"ghosts_{ghostType.ToLower()}_{direction.ToLower()}_{frame}";
+        // Console.WriteLine($"[SPRITE] GetGhostSprite -> {flatKey}");
         return GetSprite(flatKey);
     }
 
@@ -226,6 +232,7 @@ public class SpriteManager : ISpriteManager
     public CroppedBitmap? GetVulnerableGhostSprite(int frame)
     {
         string flatKey = $"ghosts_vulnerable_normal_{frame}";
+        // Console.WriteLine($"[SPRITE] GetVulnerableGhostSprite -> {flatKey}");
         return GetSprite(flatKey);
     }
 
@@ -235,6 +242,7 @@ public class SpriteManager : ISpriteManager
     public CroppedBitmap? GetWarningGhostSprite(int frame)
     {
         string flatKey = $"ghosts_vulnerable_warning_{frame}";
+        // Console.WriteLine($"[SPRITE] GetWarningGhostSprite -> {flatKey}");
         return GetSprite(flatKey);
     }
 
@@ -252,11 +260,18 @@ public class SpriteManager : ISpriteManager
     /// </summary>
     public CroppedBitmap? GetItemSprite(string itemType, int frame = 0)
     {
-        string flatKey = frame > 0
-            ? $"items_{itemType.ToLower()}_{frame}"
-            : $"items_{itemType.ToLower()}";
+        // Try with frame suffix first
+        string flatKeyWithFrame = $"items_{itemType.ToLower()}_{frame}";
+        var sprite = GetSprite(flatKeyWithFrame);
 
-        return GetSprite(flatKey);
+        if (sprite != null)
+        {
+            return sprite;
+        }
+
+        // If not found, try without frame suffix (for static items like dots)
+        string flatKeyNoFrame = $"items_{itemType.ToLower()}";
+        return GetSprite(flatKeyNoFrame);
     }
 
     /// <summary>
@@ -277,5 +292,3 @@ public class SpriteManager : ISpriteManager
         return GetSprite(flatKey);
     }
 }
-
-

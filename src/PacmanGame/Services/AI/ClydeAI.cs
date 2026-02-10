@@ -38,14 +38,19 @@ public class ClydeAI : IGhostAI
                 targetY = Constants.ClydeScatterY;
                 targetX = Constants.ClydeScatterX;
             }
+
+            Console.WriteLine($"[AI] Clyde distance={distance} target=({targetY},{targetX}) mode=Chase");
         }
         else
         {
             // Scatter Mode: Target is the bottom-left corner.
             targetY = Constants.ClydeScatterY;
             targetX = Constants.ClydeScatterX;
+            Console.WriteLine($"[AI] Clyde target=({targetY},{targetX}) mode=Scatter");
         }
 
-        return _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost);
+        var next = _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost);
+        Console.WriteLine($"[AI] Clyde NextMove={next}");
+        return next;
     }
 }

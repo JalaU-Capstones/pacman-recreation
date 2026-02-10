@@ -18,6 +18,16 @@ public abstract class Entity
     public int Y { get; set; }
 
     /// <summary>
+    /// Exact X position for smooth movement (float)
+    /// </summary>
+    public float ExactX { get; set; }
+
+    /// <summary>
+    /// Exact Y position for smooth movement (float)
+    /// </summary>
+    public float ExactY { get; set; }
+
+    /// <summary>
     /// Current movement direction
     /// </summary>
     public Direction CurrentDirection { get; set; }
@@ -41,6 +51,8 @@ public abstract class Entity
     {
         X = x;
         Y = y;
+        ExactX = x;
+        ExactY = y;
         CurrentDirection = Direction.None;
         NextDirection = Direction.None;
         Speed = 1.0f;

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
@@ -33,6 +34,9 @@ public class BlinkyAI : IGhostAI
             targetX = Constants.BlinkyScatterX;
         }
 
-        return _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost);
+        Console.WriteLine($"[AI] Blinky target=({targetY},{targetX}) mode={(isChaseMode ? "Chase" : "Scatter")}");
+        var next = _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost);
+        Console.WriteLine($"[AI] Blinky NextMove={next}");
+        return next;
     }
 }

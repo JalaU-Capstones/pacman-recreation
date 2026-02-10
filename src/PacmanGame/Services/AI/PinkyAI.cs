@@ -60,6 +60,9 @@ public class PinkyAI : IGhostAI
             targetX = Constants.PinkyScatterX;
         }
 
-        return _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost);
+        Console.WriteLine($"[AI] Pinky target=({targetY},{targetX}) mode={(isChaseMode ? "Chase" : "Scatter")}");
+        var next = _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost);
+        Console.WriteLine($"[AI] Pinky NextMove={next}");
+        return next;
     }
 }
