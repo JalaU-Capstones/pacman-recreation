@@ -29,21 +29,13 @@ def create_wall_horizontal():
     size = SPRITE_SIZE
     img = Image.new('RGBA', (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
-    
+
     # Pared horizontal en el centro
     wall_y = size // 2 - WALL_THICKNESS // 2
-    
-    # Línea exterior superior
-    draw.rectangle([0, wall_y, size, wall_y + 1], fill=COLORS['wall'])
-    
-    # Línea exterior inferior
-    draw.rectangle([0, wall_y + WALL_THICKNESS - 1, size, wall_y + WALL_THICKNESS], 
-                   fill=COLORS['wall'])
-    
-    # Relleno
-    draw.rectangle([0, wall_y + 1, size, wall_y + WALL_THICKNESS - 1], 
-                   fill=COLORS['wall_fill'])
-    
+
+    # Pared completa (sólida)
+    draw.rectangle([0, wall_y, size, wall_y + WALL_THICKNESS], fill=COLORS['wall'])
+
     return img
 
 def create_wall_vertical():
@@ -53,21 +45,13 @@ def create_wall_vertical():
     size = SPRITE_SIZE
     img = Image.new('RGBA', (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
-    
+
     # Pared vertical en el centro
     wall_x = size // 2 - WALL_THICKNESS // 2
-    
-    # Línea exterior izquierda
-    draw.rectangle([wall_x, 0, wall_x + 1, size], fill=COLORS['wall'])
-    
-    # Línea exterior derecha
-    draw.rectangle([wall_x + WALL_THICKNESS - 1, 0, wall_x + WALL_THICKNESS, size], 
-                   fill=COLORS['wall'])
-    
-    # Relleno
-    draw.rectangle([wall_x + 1, 0, wall_x + WALL_THICKNESS - 1, size], 
-                   fill=COLORS['wall_fill'])
-    
+
+    # Pared completa (sólida)
+    draw.rectangle([wall_x, 0, wall_x + WALL_THICKNESS, size], fill=COLORS['wall'])
+
     return img
 
 def create_wall_corner_tl():
@@ -77,33 +61,25 @@ def create_wall_corner_tl():
     size = SPRITE_SIZE
     img = Image.new('RGBA', (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
-    
+
     center = size // 2
-    
-    # Pared horizontal (derecha)
+
+    # Pared horizontal (izquierda) - sólida
     wall_y = center - WALL_THICKNESS // 2
-    draw.rectangle([center, wall_y, size, wall_y + 1], fill=COLORS['wall'])
-    draw.rectangle([center, wall_y + WALL_THICKNESS - 1, size, wall_y + WALL_THICKNESS], 
-                   fill=COLORS['wall'])
-    draw.rectangle([center, wall_y + 1, size, wall_y + WALL_THICKNESS - 1], 
-                   fill=COLORS['wall_fill'])
-    
-    # Pared vertical (abajo)
+    draw.rectangle([0, wall_y, center, wall_y + WALL_THICKNESS], fill=COLORS['wall'])
+
+    # Pared vertical (arriba) - sólida
     wall_x = center - WALL_THICKNESS // 2
-    draw.rectangle([wall_x, center, wall_x + 1, size], fill=COLORS['wall'])
-    draw.rectangle([wall_x + WALL_THICKNESS - 1, center, wall_x + WALL_THICKNESS, size], 
-                   fill=COLORS['wall'])
-    draw.rectangle([wall_x + 1, center, wall_x + WALL_THICKNESS - 1, size], 
-                   fill=COLORS['wall_fill'])
-    
+    draw.rectangle([wall_x, 0, wall_x + WALL_THICKNESS, center], fill=COLORS['wall'])
+
     # Esquina redondeada
     corner_radius = WALL_THICKNESS
     corner_bbox = [center - corner_radius, center - corner_radius,
                    center + corner_radius, center + corner_radius]
-    
+
     # Dibujar arco exterior
     draw.arc(corner_bbox, start=0, end=90, fill=COLORS['wall'], width=2)
-    
+
     return img
 
 def create_wall_corner_tr():
@@ -113,31 +89,23 @@ def create_wall_corner_tr():
     size = SPRITE_SIZE
     img = Image.new('RGBA', (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
-    
+
     center = size // 2
-    
-    # Pared horizontal (izquierda)
+
+    # Pared horizontal (derecha) - sólida
     wall_y = center - WALL_THICKNESS // 2
-    draw.rectangle([0, wall_y, center, wall_y + 1], fill=COLORS['wall'])
-    draw.rectangle([0, wall_y + WALL_THICKNESS - 1, center, wall_y + WALL_THICKNESS], 
-                   fill=COLORS['wall'])
-    draw.rectangle([0, wall_y + 1, center, wall_y + WALL_THICKNESS - 1], 
-                   fill=COLORS['wall_fill'])
-    
-    # Pared vertical (abajo)
+    draw.rectangle([center, wall_y, size, wall_y + WALL_THICKNESS], fill=COLORS['wall'])
+
+    # Pared vertical (arriba) - sólida
     wall_x = center - WALL_THICKNESS // 2
-    draw.rectangle([wall_x, center, wall_x + 1, size], fill=COLORS['wall'])
-    draw.rectangle([wall_x + WALL_THICKNESS - 1, center, wall_x + WALL_THICKNESS, size], 
-                   fill=COLORS['wall'])
-    draw.rectangle([wall_x + 1, center, wall_x + WALL_THICKNESS - 1, size], 
-                   fill=COLORS['wall_fill'])
-    
+    draw.rectangle([wall_x, 0, wall_x + WALL_THICKNESS, center], fill=COLORS['wall'])
+
     # Esquina redondeada
     corner_radius = WALL_THICKNESS
     corner_bbox = [center - corner_radius, center - corner_radius,
                    center + corner_radius, center + corner_radius]
     draw.arc(corner_bbox, start=90, end=180, fill=COLORS['wall'], width=2)
-    
+
     return img
 
 def create_wall_corner_bl():
@@ -147,31 +115,23 @@ def create_wall_corner_bl():
     size = SPRITE_SIZE
     img = Image.new('RGBA', (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
-    
+
     center = size // 2
-    
-    # Pared horizontal (derecha)
+
+    # Pared horizontal (izquierda) - sólida
     wall_y = center - WALL_THICKNESS // 2
-    draw.rectangle([center, wall_y, size, wall_y + 1], fill=COLORS['wall'])
-    draw.rectangle([center, wall_y + WALL_THICKNESS - 1, size, wall_y + WALL_THICKNESS], 
-                   fill=COLORS['wall'])
-    draw.rectangle([center, wall_y + 1, size, wall_y + WALL_THICKNESS - 1], 
-                   fill=COLORS['wall_fill'])
-    
-    # Pared vertical (arriba)
+    draw.rectangle([0, wall_y, center, wall_y + WALL_THICKNESS], fill=COLORS['wall'])
+
+    # Pared vertical (abajo) - sólida
     wall_x = center - WALL_THICKNESS // 2
-    draw.rectangle([wall_x, 0, wall_x + 1, center], fill=COLORS['wall'])
-    draw.rectangle([wall_x + WALL_THICKNESS - 1, 0, wall_x + WALL_THICKNESS, center], 
-                   fill=COLORS['wall'])
-    draw.rectangle([wall_x + 1, 0, wall_x + WALL_THICKNESS - 1, center], 
-                   fill=COLORS['wall_fill'])
-    
+    draw.rectangle([wall_x, center, wall_x + WALL_THICKNESS, size], fill=COLORS['wall'])
+
     # Esquina redondeada
     corner_radius = WALL_THICKNESS
     corner_bbox = [center - corner_radius, center - corner_radius,
                    center + corner_radius, center + corner_radius]
     draw.arc(corner_bbox, start=270, end=360, fill=COLORS['wall'], width=2)
-    
+
     return img
 
 def create_wall_corner_br():
@@ -181,108 +141,72 @@ def create_wall_corner_br():
     size = SPRITE_SIZE
     img = Image.new('RGBA', (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
-    
+
     center = size // 2
-    
-    # Pared horizontal (izquierda)
+
+    # Pared horizontal (derecha) - sólida
     wall_y = center - WALL_THICKNESS // 2
-    draw.rectangle([0, wall_y, center, wall_y + 1], fill=COLORS['wall'])
-    draw.rectangle([0, wall_y + WALL_THICKNESS - 1, center, wall_y + WALL_THICKNESS], 
-                   fill=COLORS['wall'])
-    draw.rectangle([0, wall_y + 1, center, wall_y + WALL_THICKNESS - 1], 
-                   fill=COLORS['wall_fill'])
-    
-    # Pared vertical (arriba)
+    draw.rectangle([center, wall_y, size, wall_y + WALL_THICKNESS], fill=COLORS['wall'])
+
+    # Pared vertical (abajo) - sólida
     wall_x = center - WALL_THICKNESS // 2
-    draw.rectangle([wall_x, 0, wall_x + 1, center], fill=COLORS['wall'])
-    draw.rectangle([wall_x + WALL_THICKNESS - 1, 0, wall_x + WALL_THICKNESS, center], 
-                   fill=COLORS['wall'])
-    draw.rectangle([wall_x + 1, 0, wall_x + WALL_THICKNESS - 1, center], 
-                   fill=COLORS['wall_fill'])
-    
+    draw.rectangle([wall_x, center, wall_x + WALL_THICKNESS, size], fill=COLORS['wall'])
+
     # Esquina redondeada
     corner_radius = WALL_THICKNESS
     corner_bbox = [center - corner_radius, center - corner_radius,
                    center + corner_radius, center + corner_radius]
     draw.arc(corner_bbox, start=180, end=270, fill=COLORS['wall'], width=2)
-    
+
     return img
 
 def create_wall_t_junction(direction):
     """
     Crea una unión en T
-    
+
     Args:
         direction: 'up', 'down', 'left', 'right' (indica hacia dónde apunta la T)
     """
     size = SPRITE_SIZE
     img = Image.new('RGBA', (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
-    
+
     center = size // 2
     wall_x = center - WALL_THICKNESS // 2
     wall_y = center - WALL_THICKNESS // 2
-    
+
     if direction == 'up':
-        # Horizontal completo
-        draw.rectangle([0, wall_y, size, wall_y + 1], fill=COLORS['wall'])
-        draw.rectangle([0, wall_y + WALL_THICKNESS - 1, size, wall_y + WALL_THICKNESS], 
-                       fill=COLORS['wall'])
-        draw.rectangle([0, wall_y + 1, size, wall_y + WALL_THICKNESS - 1], 
-                       fill=COLORS['wall_fill'])
-        
-        # Vertical hacia arriba
-        draw.rectangle([wall_x, 0, wall_x + 1, center], fill=COLORS['wall'])
-        draw.rectangle([wall_x + WALL_THICKNESS - 1, 0, wall_x + WALL_THICKNESS, center], 
-                       fill=COLORS['wall'])
-        draw.rectangle([wall_x + 1, 0, wall_x + WALL_THICKNESS - 1, center], 
-                       fill=COLORS['wall_fill'])
-        
+        # T pointing UP - has horizontal wall on bottom + vertical wall on top
+        # Horizontal completo - sólido
+        draw.rectangle([0, wall_y, size, wall_y + WALL_THICKNESS], fill=COLORS['wall'])
+
+        # Vertical hacia arriba - sólido
+        draw.rectangle([wall_x, 0, wall_x + WALL_THICKNESS, center], fill=COLORS['wall'])
+
     elif direction == 'down':
-        # Horizontal completo
-        draw.rectangle([0, wall_y, size, wall_y + 1], fill=COLORS['wall'])
-        draw.rectangle([0, wall_y + WALL_THICKNESS - 1, size, wall_y + WALL_THICKNESS], 
-                       fill=COLORS['wall'])
-        draw.rectangle([0, wall_y + 1, size, wall_y + WALL_THICKNESS - 1], 
-                       fill=COLORS['wall_fill'])
-        
-        # Vertical hacia abajo
-        draw.rectangle([wall_x, center, wall_x + 1, size], fill=COLORS['wall'])
-        draw.rectangle([wall_x + WALL_THICKNESS - 1, center, wall_x + WALL_THICKNESS, size], 
-                       fill=COLORS['wall'])
-        draw.rectangle([wall_x + 1, center, wall_x + WALL_THICKNESS - 1, size], 
-                       fill=COLORS['wall_fill'])
-        
+        # T pointing DOWN - has horizontal wall on top + vertical wall on bottom
+        # Horizontal completo - sólido
+        draw.rectangle([0, wall_y, size, wall_y + WALL_THICKNESS], fill=COLORS['wall'])
+
+        # Vertical hacia abajo - sólido
+        draw.rectangle([wall_x, center, wall_x + WALL_THICKNESS, size], fill=COLORS['wall'])
+
     elif direction == 'left':
-        # Vertical completo
-        draw.rectangle([wall_x, 0, wall_x + 1, size], fill=COLORS['wall'])
-        draw.rectangle([wall_x + WALL_THICKNESS - 1, 0, wall_x + WALL_THICKNESS, size], 
-                       fill=COLORS['wall'])
-        draw.rectangle([wall_x + 1, 0, wall_x + WALL_THICKNESS - 1, size], 
-                       fill=COLORS['wall_fill'])
-        
-        # Horizontal hacia izquierda
-        draw.rectangle([0, wall_y, center, wall_y + 1], fill=COLORS['wall'])
-        draw.rectangle([0, wall_y + WALL_THICKNESS - 1, center, wall_y + WALL_THICKNESS], 
-                       fill=COLORS['wall'])
-        draw.rectangle([0, wall_y + 1, center, wall_y + WALL_THICKNESS - 1], 
-                       fill=COLORS['wall_fill'])
-        
+        # T pointing LEFT - has vertical wall on right + horizontal wall on left
+        # Vertical completo - sólido
+        draw.rectangle([wall_x, 0, wall_x + WALL_THICKNESS, size], fill=COLORS['wall'])
+
+        # Horizontal hacia izquierda - sólido
+        draw.rectangle([0, wall_y, center, wall_y + WALL_THICKNESS], fill=COLORS['wall'])
+
     elif direction == 'right':
-        # Vertical completo
-        draw.rectangle([wall_x, 0, wall_x + 1, size], fill=COLORS['wall'])
-        draw.rectangle([wall_x + WALL_THICKNESS - 1, 0, wall_x + WALL_THICKNESS, size], 
-                       fill=COLORS['wall'])
-        draw.rectangle([wall_x + 1, 0, wall_x + WALL_THICKNESS - 1, size], 
-                       fill=COLORS['wall_fill'])
-        
-        # Horizontal hacia derecha
-        draw.rectangle([center, wall_y, size, wall_y + 1], fill=COLORS['wall'])
-        draw.rectangle([center, wall_y + WALL_THICKNESS - 1, size, wall_y + WALL_THICKNESS], 
-                       fill=COLORS['wall'])
-        draw.rectangle([center, wall_y + 1, size, wall_y + WALL_THICKNESS - 1], 
-                       fill=COLORS['wall_fill'])
-    
+        # T pointing RIGHT - has vertical wall on left + horizontal wall on right
+        # Vertical completo - sólido
+        draw.rectangle([wall_x, 0, wall_x + WALL_THICKNESS, size], fill=COLORS['wall'])
+
+        # Horizontal hacia derecha - sólido
+        draw.rectangle([center, wall_y, size, wall_y + WALL_THICKNESS], fill=COLORS['wall'])
+
     return img
 
 def create_wall_cross():
@@ -292,100 +216,68 @@ def create_wall_cross():
     size = SPRITE_SIZE
     img = Image.new('RGBA', (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
-    
+
     center = size // 2
     wall_x = center - WALL_THICKNESS // 2
     wall_y = center - WALL_THICKNESS // 2
-    
-    # Horizontal completo
-    draw.rectangle([0, wall_y, size, wall_y + 1], fill=COLORS['wall'])
-    draw.rectangle([0, wall_y + WALL_THICKNESS - 1, size, wall_y + WALL_THICKNESS], 
-                   fill=COLORS['wall'])
-    draw.rectangle([0, wall_y + 1, size, wall_y + WALL_THICKNESS - 1], 
-                   fill=COLORS['wall_fill'])
-    
-    # Vertical completo
-    draw.rectangle([wall_x, 0, wall_x + 1, size], fill=COLORS['wall'])
-    draw.rectangle([wall_x + WALL_THICKNESS - 1, 0, wall_x + WALL_THICKNESS, size], 
-                   fill=COLORS['wall'])
-    draw.rectangle([wall_x + 1, 0, wall_x + WALL_THICKNESS - 1, size], 
-                   fill=COLORS['wall_fill'])
-    
+
+    # Horizontal completo - sólido
+    draw.rectangle([0, wall_y, size, wall_y + WALL_THICKNESS], fill=COLORS['wall'])
+
+    # Vertical completo - sólido
+    draw.rectangle([wall_x, 0, wall_x + WALL_THICKNESS, size], fill=COLORS['wall'])
+
     return img
 
 def create_wall_end(direction):
     """
     Crea un terminal de pared (pared que termina)
-    
+
     Args:
         direction: 'up', 'down', 'left', 'right'
     """
     size = SPRITE_SIZE
     img = Image.new('RGBA', (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
-    
+
     center = size // 2
     wall_x = center - WALL_THICKNESS // 2
     wall_y = center - WALL_THICKNESS // 2
-    
+
     if direction == 'up':
-        # Vertical hacia arriba
-        draw.rectangle([wall_x, 0, wall_x + 1, center + WALL_THICKNESS // 2], 
+        # Vertical hacia arriba - sólida
+        draw.rectangle([wall_x, 0, wall_x + WALL_THICKNESS, center + WALL_THICKNESS // 2],
                        fill=COLORS['wall'])
-        draw.rectangle([wall_x + WALL_THICKNESS - 1, 0, 
-                       wall_x + WALL_THICKNESS, center + WALL_THICKNESS // 2], 
-                       fill=COLORS['wall'])
-        draw.rectangle([wall_x + 1, 0, wall_x + WALL_THICKNESS - 1, 
-                       center + WALL_THICKNESS // 2], 
-                       fill=COLORS['wall_fill'])
-        
+
         # Tapa superior
         draw.rectangle([wall_x, 0, wall_x + WALL_THICKNESS, 2], fill=COLORS['wall'])
-        
+
     elif direction == 'down':
-        # Vertical hacia abajo
-        draw.rectangle([wall_x, center - WALL_THICKNESS // 2, wall_x + 1, size], 
+        # Vertical hacia abajo - sólida
+        draw.rectangle([wall_x, center - WALL_THICKNESS // 2, wall_x + WALL_THICKNESS, size],
                        fill=COLORS['wall'])
-        draw.rectangle([wall_x + WALL_THICKNESS - 1, center - WALL_THICKNESS // 2, 
-                       wall_x + WALL_THICKNESS, size], 
-                       fill=COLORS['wall'])
-        draw.rectangle([wall_x + 1, center - WALL_THICKNESS // 2, 
-                       wall_x + WALL_THICKNESS - 1, size], 
-                       fill=COLORS['wall_fill'])
-        
+
         # Tapa inferior
-        draw.rectangle([wall_x, size - 2, wall_x + WALL_THICKNESS, size], 
+        draw.rectangle([wall_x, size - 2, wall_x + WALL_THICKNESS, size],
                        fill=COLORS['wall'])
-        
+
     elif direction == 'left':
-        # Horizontal hacia izquierda
-        draw.rectangle([0, wall_y, center + WALL_THICKNESS // 2, wall_y + 1], 
+        # Horizontal hacia izquierda - sólida
+        draw.rectangle([0, wall_y, center + WALL_THICKNESS // 2, wall_y + WALL_THICKNESS],
                        fill=COLORS['wall'])
-        draw.rectangle([0, wall_y + WALL_THICKNESS - 1, 
-                       center + WALL_THICKNESS // 2, wall_y + WALL_THICKNESS], 
-                       fill=COLORS['wall'])
-        draw.rectangle([0, wall_y + 1, center + WALL_THICKNESS // 2, 
-                       wall_y + WALL_THICKNESS - 1], 
-                       fill=COLORS['wall_fill'])
-        
+
         # Tapa izquierda
         draw.rectangle([0, wall_y, 2, wall_y + WALL_THICKNESS], fill=COLORS['wall'])
-        
+
     elif direction == 'right':
-        # Horizontal hacia derecha
-        draw.rectangle([center - WALL_THICKNESS // 2, wall_y, size, wall_y + 1], 
+        # Horizontal hacia derecha - sólida
+        draw.rectangle([center - WALL_THICKNESS // 2, wall_y, size, wall_y + WALL_THICKNESS],
                        fill=COLORS['wall'])
-        draw.rectangle([center - WALL_THICKNESS // 2, wall_y + WALL_THICKNESS - 1, 
-                       size, wall_y + WALL_THICKNESS], 
-                       fill=COLORS['wall'])
-        draw.rectangle([center - WALL_THICKNESS // 2, wall_y + 1, 
-                       size, wall_y + WALL_THICKNESS - 1], 
-                       fill=COLORS['wall_fill'])
-        
+
         # Tapa derecha
-        draw.rectangle([size - 2, wall_y, size, wall_y + WALL_THICKNESS], 
+        draw.rectangle([size - 2, wall_y, size, wall_y + WALL_THICKNESS],
                        fill=COLORS['wall'])
-    
+
     return img
 
 def create_ghost_door():
@@ -395,23 +287,23 @@ def create_ghost_door():
     size = SPRITE_SIZE
     img = Image.new('RGBA', (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
-    
+
     center = size // 2
     door_height = 3
-    
+
     # Línea horizontal de la puerta
     door_y = center - door_height // 2
-    
+
     # Dibujar línea con patrón discontinuo
     segment_length = 4
     gap_length = 2
-    
+
     x = 0
     while x < size:
         draw.rectangle([x, door_y, min(x + segment_length, size), door_y + door_height],
                       fill=COLORS['door'])
         x += segment_length + gap_length
-    
+
     return img
 
 def create_empty_tile():
@@ -421,30 +313,30 @@ def create_empty_tile():
     size = SPRITE_SIZE
     img = Image.new('RGBA', (size, size), TRANSPARENT)
     draw = ImageDraw.Draw(img)
-    
+
     # Fondo completamente negro
     draw.rectangle([0, 0, size, size], fill=COLORS['background'])
-    
+
     return img
 
 def create_tiles_spritesheet():
     """
     Crea el sprite sheet completo de tiles del laberinto
-    
+
     Layout (2 filas):
     Fila 1: [H][V][TL][TR][BL][BR][T-Up][T-Down]
     Fila 2: [T-Left][T-Right][Cross][End-Up][End-Down][End-Left][End-Right][Door][Empty]
     """
-    
+
     # Dimensiones del sprite sheet
     cols = 9
     rows = 2
-    
+
     sheet_width = SPRITE_SIZE * cols
     sheet_height = SPRITE_SIZE * rows
-    
+
     sprite_sheet = Image.new('RGBA', (sheet_width, sheet_height), TRANSPARENT)
-    
+
     # Primera fila
     row1_sprites = [
         create_wall_horizontal(),      # 0: Horizontal
@@ -457,12 +349,12 @@ def create_tiles_spritesheet():
         create_wall_t_junction('down'),# 7: T-Junction Down
         create_wall_t_junction('left') # 8: T-Junction Left
     ]
-    
+
     for col, sprite in enumerate(row1_sprites):
         x = col * SPRITE_SIZE
         y = 0
         sprite_sheet.paste(sprite, (x, y))
-    
+
     # Segunda fila
     row2_sprites = [
         create_wall_t_junction('right'), # 0: T-Junction Right
@@ -475,12 +367,12 @@ def create_tiles_spritesheet():
         create_empty_tile(),             # 7: Empty/Background
         create_empty_tile()              # 8: Extra empty
     ]
-    
+
     for col, sprite in enumerate(row2_sprites):
         x = col * SPRITE_SIZE
         y = SPRITE_SIZE
         sprite_sheet.paste(sprite, (x, y))
-    
+
     return sprite_sheet
 
 def create_sprite_map_json():
@@ -513,29 +405,29 @@ def create_sprite_map_json():
             }
         }
     }
-    
+
     import json
     with open('tiles_sprite_map.json', 'w') as f:
         json.dump(sprite_map, f, indent=2)
-    
+
     print("✅ Archivo JSON de mapeo creado: tiles_sprite_map.json")
 
 def main():
     print("🧱 Generador de Sprites de Tiles del Laberinto")
     print("=" * 50)
-    
+
     # Generar sprite sheet de tiles
     print("Generando sprite sheet de tiles...")
     tiles_sheet = create_tiles_spritesheet()
-    
+
     # Guardar sprite sheet
     output_path = 'tiles_spritesheet.png'
     tiles_sheet.save(output_path)
     print(f"✅ Sprite sheet guardado: {output_path}")
-    
+
     # Crear mapa de sprites (JSON)
     create_sprite_map_json()
-    
+
     # Información del sprite sheet
     print("\n📊 Información del Sprite Sheet:")
     print(f"   - Tamaño total: {tiles_sheet.width}x{tiles_sheet.height} píxeles")
@@ -550,13 +442,13 @@ def main():
     print(f"     • Terminales: 4 tiles (arriba, abajo, izq, der)")
     print(f"     • Puerta de fantasmas: 1 tile")
     print(f"     • Fondo vacío: 1 tile")
-    
+
     print("\n💡 Uso de los tiles:")
     print("   - Color azul clásico (#2121FF) para las paredes")
     print("   - Grosor de pared: 4 píxeles")
     print("   - Diseño modular para construir cualquier laberinto")
     print("   - Puerta rosa para la casa de los fantasmas")
-    
+
     print("\n✨ ¡Generación completada!")
     print(f"   Archivos creados:")
     print(f"   - tiles_spritesheet.png")
