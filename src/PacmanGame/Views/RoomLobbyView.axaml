@@ -3,36 +3,106 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:PacmanGame.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             mc:Ignorable="d" d:DesignWidth="1156" d:DesignHeight="800"
              x:Class="PacmanGame.Views.RoomLobbyView"
              x:DataType="vm:RoomLobbyViewModel"
-             x:CompileBindings="False"
-             x:Name="Root">
-  <Design.DataContext>
-    <vm:RoomLobbyViewModel/>
-  </Design.DataContext>
-  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
-    <TextBlock Text="{Binding RoomName}" FontSize="24" />
-    <DataGrid ItemsSource="{Binding Players}">
-      <DataGrid.Columns>
-        <DataGridTextColumn Header="Player Name" Binding="{Binding Name}" />
-        <DataGridTemplateColumn Header="Role">
-          <DataGridTemplateColumn.CellTemplate>
-            <DataTemplate x:DataType="vm:PlayerViewModel">
-              <ComboBox ItemsSource="{Binding $parent[DataGrid].DataContext.Roles}" SelectedItem="{Binding Role}" IsVisible="{Binding $parent[DataGrid].DataContext.IsAdmin}" />
-            </DataTemplate>
-          </DataGridTemplateColumn.CellTemplate>
-        </DataGridTemplateColumn>
-        <DataGridTemplateColumn>
-          <DataGridTemplateColumn.CellTemplate>
-            <DataTemplate x:DataType="vm:PlayerViewModel">
-              <Button Content="Kick" Command="{Binding $parent[DataGrid].DataContext.KickPlayerCommand}" CommandParameter="{Binding}" IsVisible="{Binding $parent[DataGrid].DataContext.IsAdmin}" />
-            </DataTemplate>
-          </DataGridTemplateColumn.CellTemplate>
-        </DataGridTemplateColumn>
-      </DataGrid.Columns>
-    </DataGrid>
-    <Button Content="Start Game" Command="{Binding StartGameCommand}" IsVisible="{Binding IsAdmin}" />
-    <Button Content="Leave Room" Command="{Binding LeaveRoomCommand}" />
-  </StackPanel>
+             x:Name="PageRoot"
+             Background="Black">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- Row 0: Header -->
+        <StackPanel Grid.Row="0" Margin="20" HorizontalAlignment="Center">
+            <TextBlock Text="{Binding RoomName}" FontSize="48" Foreground="#FFFF00" HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding RoomVisibility}" FontSize="16" Foreground="#888888" HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Row 1: Main Content (2 columns) -->
+        <Grid Grid.Row="1" ColumnDefinitions="3*,2*" Margin="20">
+
+            <!-- Column 0: Player List -->
+            <Border Grid.Column="0" Background="#1A1A1A" BorderBrush="#FFFF00" BorderThickness="2" CornerRadius="8" Padding="20" Margin="0,0,10,0">
+                <StackPanel>
+                    <TextBlock Text="PLAYERS" FontSize="24" Foreground="#FFFF00" Margin="0,0,0,20"/>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
+                        <ItemsControl ItemsSource="{Binding Players}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PlayerViewModel" x:CompileBindings="False">
+                                    <Border BorderBrush="#FFFF00" BorderThickness="0,0,0,1" Padding="10">
+                                        <Grid ColumnDefinitions="*,Auto,Auto">
+                                            <StackPanel Grid.Column="0" Spacing="5">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="{Binding Name}" Foreground="White" FontSize="18" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="[YOU]" Foreground="Cyan" IsVisible="{Binding IsYou}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="[ADMIN]" Foreground="Yellow" IsVisible="{Binding IsAdmin}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding !$parent[UserControl].DataContext.IsAdmin}">
+                                                    <TextBlock Text="Role:" Foreground="Gray"/>
+                                                    <TextBlock Text="{Binding Role}" Foreground="White"/>
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <ComboBox Grid.Column="1"
+                                                      ItemsSource="{Binding $parent[UserControl].DataContext.Roles}"
+                                                      SelectedItem="{Binding Role}"
+                                                      IsVisible="{Binding $parent[UserControl].DataContext.IsAdmin}"
+                                                      MinWidth="120"
+                                                      Margin="10,0"/>
+
+                                            <Button Grid.Column="2"
+                                                    Content="KICK"
+                                                    Classes="arcade"
+                                                    Command="{Binding $parent[UserControl].DataContext.KickPlayerCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    IsVisible="{Binding $parent[UserControl].DataContext.IsAdmin}"
+                                                    Foreground="Red"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+            </Border>
+
+            <!-- Column 1: Rules Panel -->
+            <Border Grid.Column="1" Background="#1A1A1A" BorderBrush="#2121FF" BorderThickness="2" CornerRadius="8" Padding="20" Margin="10,0,0,0">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="GAME RULES" FontSize="24" Foreground="#FFFF00" Margin="0,0,0,10"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="White">
+                        <Run Text="Pac-Man:" FontWeight="Bold"/> Collect all dots across 3 levels to win. A bonus of 5000 points is awarded for completing the game.
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" Foreground="White">
+                        <Run Text="Ghosts:" FontWeight="Bold"/> Eliminate Pac-Man before he clears the levels. Pac-Man has 3 lives.
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" Foreground="White">
+                        <Run Text="Victory:" FontWeight="Bold"/> The game ends when Pac-Man completes Level 3 or when the Ghosts deplete all of Pac-Man's lives.
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" Foreground="White">
+                        <Run Text="Respawn:" FontWeight="Bold"/> Eaten ghosts will respawn in the ghost house after 3 seconds.
+                    </TextBlock>
+                    <TextBlock Text="{Binding SpectatorCount, StringFormat='Spectators: {0}/5'}" Foreground="Gray" Margin="0,20,0,0"/>
+                </StackPanel>
+            </Border>
+
+        </Grid>
+
+        <!-- Row 2: Bottom Controls -->
+        <Border Grid.Row="2" Background="#1A1A1A" BorderBrush="#FFFF00" BorderThickness="0,2,0,0" Padding="20">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20">
+                <Button Content="START GAME"
+                        Command="{Binding StartGameCommand}"
+                        IsVisible="{Binding IsAdmin}"
+                        IsEnabled="{Binding CanStartGame}"
+                        Classes="arcade"
+                        MinWidth="200"/>
+                <Button Content="LEAVE ROOM"
+                        Command="{Binding LeaveRoomCommand}"
+                        Classes="arcade"
+                        MinWidth="200"/>
+                <TextBlock Text="{Binding StatusText}" Foreground="Yellow" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+    </Grid>
 </UserControl>

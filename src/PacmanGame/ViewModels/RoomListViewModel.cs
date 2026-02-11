@@ -4,6 +4,7 @@ using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
 using PacmanGame.Shared;
 using ReactiveUI;
+using System.Reactive;
 
 namespace PacmanGame.ViewModels;
 
@@ -16,8 +17,40 @@ public class RoomListViewModel : ViewModelBase
     private readonly IProfileManager _profileManager;
 
     public ObservableCollection<RoomViewModel> Rooms { get; } = new();
-    public ICommand JoinRoomCommand { get; }
+
+    private bool _isPrivateJoinFormVisible;
+    public bool IsPrivateJoinFormVisible
+    {
+        get => _isPrivateJoinFormVisible;
+        set => this.RaiseAndSetIfChanged(ref _isPrivateJoinFormVisible, value);
+    }
+
+    private string _privateRoomName = string.Empty;
+    public string PrivateRoomName
+    {
+        get => _privateRoomName;
+        set => this.RaiseAndSetIfChanged(ref _privateRoomName, value);
+    }
+
+    private string _privateRoomPassword = string.Empty;
+    public string PrivateRoomPassword
+    {
+        get => _privateRoomPassword;
+        set => this.RaiseAndSetIfChanged(ref _privateRoomPassword, value);
+    }
+
+    private string _errorMessage = string.Empty;
+    public string ErrorMessage
+    {
+        get => _errorMessage;
+        set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
+    }
+
+    public ICommand JoinPublicRoomCommand { get; }
     public ICommand RefreshCommand { get; }
+    public ICommand ShowPrivateJoinFormCommand { get; }
+    public ICommand CancelPrivateJoinCommand { get; }
+    public ICommand JoinPrivateRoomCommand { get; }
     public ICommand BackCommand { get; }
 
     public RoomListViewModel(MainWindowViewModel mainWindowViewModel, NetworkService networkService, IAudioManager audioManager, ILogger logger, IProfileManager profileManager)
@@ -29,14 +62,17 @@ public class RoomListViewModel : ViewModelBase
         _profileManager = profileManager;
         _networkService.OnJoinRoomResponse += OnJoinRoomResponse;
 
-        JoinRoomCommand = ReactiveCommand.Create<RoomViewModel>(JoinRoom);
+        JoinPublicRoomCommand = ReactiveCommand.Create<RoomViewModel>(JoinPublicRoom);
         RefreshCommand = ReactiveCommand.Create(RefreshRooms);
+        ShowPrivateJoinFormCommand = ReactiveCommand.Create(() => IsPrivateJoinFormVisible = true);
+        CancelPrivateJoinCommand = ReactiveCommand.Create(() => IsPrivateJoinFormVisible = false);
+        JoinPrivateRoomCommand = ReactiveCommand.Create(JoinPrivateRoom);
         BackCommand = ReactiveCommand.Create(Back);
 
         RefreshRooms();
     }
 
-    private void JoinRoom(RoomViewModel? room)
+    private void JoinPublicRoom(RoomViewModel? room)
     {
         if (room == null) return;
         _audioManager.PlaySoundEffect("menu-select");
@@ -47,10 +83,32 @@ public class RoomListViewModel : ViewModelBase
         _networkService.SendJoinRoomRequest(request);
     }
 
+    private void JoinPrivateRoom()
+    {
+        ErrorMessage = string.Empty;
+        if (string.IsNullOrWhiteSpace(PrivateRoomName) || string.IsNullOrWhiteSpace(PrivateRoomPassword))
+        {
+            ErrorMessage = "Room name and password cannot be empty.";
+            return;
+        }
+
+        _audioManager.PlaySoundEffect("menu-select");
+        var request = new JoinRoomRequest
+        {
+            RoomName = PrivateRoomName,
+            Password = PrivateRoomPassword
+        };
+        _networkService.SendJoinRoomRequest(request);
+    }
+
     private void RefreshRooms()
     {
         _audioManager.PlaySoundEffect("menu-navigate");
         Rooms.Clear();
+        // In a real implementation, we would request the room list from the server here.
+        // For now, we'll just add some dummy data.
+        Rooms.Add(new RoomViewModel { Name = "Public Room 1", PlayerCount = "2/5" });
+        Rooms.Add(new RoomViewModel { Name = "Public Room 2", PlayerCount = "4/5" });
     }
 
     private void OnJoinRoomResponse(JoinRoomResponse response)
@@ -61,7 +119,8 @@ public class RoomListViewModel : ViewModelBase
         }
         else
         {
-            _logger.Error("Failed to join room.");
+            ErrorMessage = $"Failed to join room: {response.Message}";
+            _logger.Error(ErrorMessage);
         }
     }
 
@@ -69,6 +128,11 @@ public class RoomListViewModel : ViewModelBase
     {
         _audioManager.PlaySoundEffect("menu-select");
         _mainWindowViewModel.NavigateTo(new MultiplayerMenuViewModel(_mainWindowViewModel, _networkService, _audioManager, _logger, _profileManager));
+    }
+
+    ~RoomListViewModel()
+    {
+        _networkService.OnJoinRoomResponse -= OnJoinRoomResponse;
     }
 }
 
