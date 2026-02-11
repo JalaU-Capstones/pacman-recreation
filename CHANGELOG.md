@@ -7,20 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- Replaced all Console.WriteLine debugging statements with professional logging system
-- Added comprehensive logging to file (AppData/PacmanGame/pacman.log)
-- Removed all emojis from codebase for professional appearance
-
-### Added
-- Logger service with INFO, WARNING, ERROR log levels
-- Timestamped log entries with clear formatting
-
 ### Planned for Final (v1.0.0)
 - Power pellet mechanic
 - Bonus fruits system
 - Multiple levels
 - UI polish and animations
+
+## [0.4.0] - 2026-02-08
+
+### Added
+- Vertical sidebar UI layout for better screen space utilization
+- Left sidebar: Score, Level, Lives display
+- Right sidebar: Game controls (Pause, Resume, Menu)
+- Comprehensive Ghost AI rule verification and fixes
+- MVVM architecture compliance audit
+
+### Changed
+- Window size adjusted to 1156×1020 to accommodate new sidebar layout
+- Game canvas remains centered at 896×992
+- HUD and controls now scale better with different screen sizes
+
+### Fixed
+- Bottom control bar no longer cut off by canvas
+- All Ghost AI behaviors verified against original Pac-Man specifications
+- MVVM violations corrected throughout codebase
 
 ## [0.3.0] - 2026-02-05
 

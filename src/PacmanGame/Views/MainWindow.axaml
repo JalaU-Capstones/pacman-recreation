@@ -3,12 +3,15 @@
         xmlns:vm="using:PacmanGame.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+        mc:Ignorable="d" d:DesignWidth="1156" d:DesignHeight="1020"
         x:Class="PacmanGame.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/pacman-recreation.ico"
         Title="Pac-Man - Educational Recreation"
-        Width="896" Height="1024"
+        Width="1156" Height="1020"
+        MinWidth="1156" MinHeight="1020"
+        MaxWidth="1156" MaxHeight="1020"
+        CanResize="False"
         WindowStartupLocation="CenterScreen"
         Background="Black">
 

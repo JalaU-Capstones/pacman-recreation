@@ -1,4 +1,5 @@
 using PacmanGame.Models.Enums;
+using PacmanGame.Helpers;
 
 namespace PacmanGame.Models.Entities;
 
@@ -27,13 +28,19 @@ public class Pacman : Entity
     /// </summary>
     public bool IsDying { get; set; }
 
+    /// <summary>
+    /// Duration of the power pellet effect for the current level
+    /// </summary>
+    public float PowerPelletDuration { get; set; }
+
     public Pacman(int x, int y) : base(x, y)
     {
-        Speed = 4.0f; // Default Pac-Man speed
+        Speed = Constants.PacmanSpeed;
         AnimationFrame = 0;
         IsInvulnerable = false;
         InvulnerabilityTime = 0f;
         IsDying = false;
+        PowerPelletDuration = Constants.Level1PowerPelletDuration;
     }
 
     /// <summary>
@@ -42,7 +49,7 @@ public class Pacman : Entity
     public void ActivatePowerPellet()
     {
         IsInvulnerable = true;
-        InvulnerabilityTime = 6.0f; // 6 seconds of invulnerability
+        InvulnerabilityTime = PowerPelletDuration;
     }
 
     /// <summary>
@@ -93,6 +100,6 @@ public class Pacman : Entity
 
         // Check if it's a walkable tile
         TileType tile = map[nextY, nextX];
-        return tile == TileType.Empty || tile == TileType.TeleportLeft || tile == TileType.TeleportRight;
+        return tile != TileType.Wall && tile != TileType.GhostDoor;
     }
 }

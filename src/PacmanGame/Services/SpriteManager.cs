@@ -37,16 +37,9 @@ public class SpriteManager : ISpriteManager
 
         try
         {
-            // Load Pac-Man sprites
             LoadSpriteSheet("pacman", Constants.PacmanSpriteSheet, Constants.PacmanSpriteMap);
-
-            // Load Ghost sprites
             LoadSpriteSheet("ghosts", Constants.GhostsSpriteSheet, Constants.GhostsSpriteMap);
-
-            // Load Item sprites
             LoadSpriteSheet("items", Constants.ItemsSpriteSheet, Constants.ItemsSpriteMap);
-
-            // Load Tile sprites
             LoadSpriteSheet("tiles", Constants.TilesSpriteSheet, Constants.TilesSpriteMap);
 
             _isInitialized = true;
@@ -59,19 +52,14 @@ public class SpriteManager : ISpriteManager
         }
     }
 
-    /// <summary>
-    /// Load a sprite sheet and its JSON mapping, flattening the nested structure
-    /// </summary>
     private void LoadSpriteSheet(string name, string imageFileName, string mapFileName)
     {
         try
         {
-            // Load the PNG sprite sheet using Avalonia's asset system
             var uri = new Uri($"avares://PacmanGame/{Constants.SpritesPath}/{imageFileName}");
             var asset = AssetLoader.Open(uri);
             _spriteSheets[name] = new Bitmap(asset);
 
-            // Load and parse the JSON mapping
             var mapUri = new Uri($"avares://PacmanGame/{Constants.SpritesPath}/{mapFileName}");
             var mapAsset = AssetLoader.Open(mapUri);
             using var reader = new StreamReader(mapAsset);
@@ -84,7 +72,6 @@ public class SpriteManager : ISpriteManager
                 spriteSize = doc["sprite_size"]!.GetValue<int>();
             }
 
-            // Flatten the nested sprite structure
             if (doc?["sprites"] is JsonObject spritesObj)
             {
                 FlattenSpriteObject(name, spritesObj, spriteSize, "");
@@ -99,63 +86,52 @@ public class SpriteManager : ISpriteManager
         }
     }
 
-    /// <summary>
-    /// Recursively flatten nested sprite JSON into a flat dictionary
-    /// </summary>
     private void FlattenSpriteObject(string sheetName, JsonObject obj, int spriteSize, string prefix)
     {
         foreach (var kvp in obj)
         {
-            string key = string.IsNullOrEmpty(prefix) ? kvp.Key : $"{prefix}_{kvp.Key}";
+            string currentKey = string.IsNullOrEmpty(prefix) ? kvp.Key : $"{prefix}_{kvp.Key}";
 
             if (kvp.Value is JsonArray frameArray)
             {
-                // This is an array of frames (e.g., "right": [{...}, {...}, {...}])
                 for (int i = 0; i < frameArray.Count; i++)
                 {
                     if (frameArray[i] is JsonObject frameObj)
                     {
                         var sprite = ExtractSpriteInfo(frameObj, spriteSize);
-                        string flatKey = $"{sheetName}_{key}_{i}";
+                        string flatKey = $"{sheetName}_{currentKey}_{i}";
                         _flattenedSprites[flatKey] = (sheetName, sprite);
                     }
                 }
             }
             else if (kvp.Value is JsonObject nestedObj)
             {
-                // Check if this is a sprite definition (has x, y) or a nested category
                 if (nestedObj.ContainsKey("x") && nestedObj.ContainsKey("y"))
                 {
-                    // This is a direct sprite definition (no frames)
                     var sprite = ExtractSpriteInfo(nestedObj, spriteSize);
-                    string flatKey = $"{sheetName}_{key}";
+                    string flatKey = $"{sheetName}_{currentKey}";
                     _flattenedSprites[flatKey] = (sheetName, sprite);
                 }
                 else if (nestedObj.ContainsKey("frames") && nestedObj["frames"] is JsonArray framesArray)
                 {
-                    // This is a sprite with multiple frames in a "frames" property
                     for (int i = 0; i < framesArray.Count; i++)
                     {
                         if (framesArray[i] is JsonObject frameObj)
                         {
                             var sprite = ExtractSpriteInfo(frameObj, spriteSize);
-                            string flatKey = $"{sheetName}_{key}_{i}";
+                            string flatKey = $"{sheetName}_{currentKey}_{i}";
                             _flattenedSprites[flatKey] = (sheetName, sprite);
                         }
                     }
                 }
                 else
                 {
-                    // This is a category, recurse into it
-                    FlattenSpriteObject(sheetName, nestedObj, spriteSize, key);
+                    FlattenSpriteObject(sheetName, nestedObj, spriteSize, currentKey);
                 }
             }
         }
     }
 
-    /// <summary>
-    /// Extract x, y, width, height from a sprite JSON object
-    /// </summary>
     private SpriteInfo ExtractSpriteInfo(JsonObject obj, int defaultSize)
     {
         var x = obj["x"]?.GetValue<int>() ?? 0;
@@ -163,30 +139,16 @@ public class SpriteManager : ISpriteManager
         var width = obj["width"]?.GetValue<int>() ?? defaultSize;
         var height = obj["height"]?.GetValue<int>() ?? defaultSize;
 
-        return new SpriteInfo
-        {
-            X = x,
-            Y = y,
-            Width = width,
-            Height = height,
-            Name = ""
-        };
+        return new SpriteInfo { X = x, Y = y, Width = width, Height = height, Name = "" };
     }
-
-    /// <summary>
-    /// Get a sprite from a sheet by looking up in the flattened dictionary
-    /// </summary>
 
     private CroppedBitmap? GetSprite(string flatKey)
     {
-        if (!_isInitialized)
-        {
-            return null;
-        }
+        if (!_isInitialized) return null;
 
         if (!_flattenedSprites.TryGetValue(flatKey, out var entry))
         {
-            _logger.Warning($"Sprite not found: {flatKey} - Using fallback");
+            _logger.Warning($"Sprite not found: {flatKey}");
             return null;
         }
 
@@ -201,8 +163,7 @@ public class SpriteManager : ISpriteManager
         try
         {
             var sourceRect = new PixelRect(info.X, info.Y, info.Width, info.Height);
-            var cropped = new CroppedBitmap(sheet, sourceRect);
-            return cropped;
+            return new CroppedBitmap(sheet, sourceRect);
         }
         catch (Exception ex)
         {
@@ -211,82 +172,66 @@ public class SpriteManager : ISpriteManager
         }
     }
 
-    /// <summary>
-    /// Get a Pac-Man sprite
-    /// </summary>
     public CroppedBitmap? GetPacmanSprite(string direction, int frame)
     {
         string flatKey = $"pacman_pacman_{direction.ToLower()}_{frame}";
         return GetSprite(flatKey);
     }
 
-    /// <summary>
-    /// Get a ghost sprite
-    /// </summary>
     public CroppedBitmap? GetGhostSprite(string ghostType, string direction, int frame)
     {
         string flatKey = $"ghosts_{ghostType.ToLower()}_{direction.ToLower()}_{frame}";
         return GetSprite(flatKey);
     }
 
-    /// <summary>
-    /// Get a vulnerable ghost sprite
-    /// </summary>
     public CroppedBitmap? GetVulnerableGhostSprite(int frame)
     {
         string flatKey = $"ghosts_vulnerable_normal_{frame}";
         return GetSprite(flatKey);
     }
 
-    /// <summary>
-    /// Get a warning (flashing) ghost sprite
-    /// </summary>
     public CroppedBitmap? GetWarningGhostSprite(int frame)
     {
         string flatKey = $"ghosts_vulnerable_warning_{frame}";
         return GetSprite(flatKey);
     }
 
-    /// <summary>
-    /// Get ghost eyes sprite (when eaten)
-    /// </summary>
     public CroppedBitmap? GetGhostEyesSprite(string direction)
     {
         string flatKey = $"ghosts_eyes_only_{direction.ToLower()}";
         return GetSprite(flatKey);
     }
 
-    /// <summary>
-    /// Get a collectible item sprite
-    /// </summary>
     public CroppedBitmap? GetItemSprite(string itemType, int frame = 0)
     {
-        // Try with frame suffix first
-        string flatKeyWithFrame = $"items_{itemType.ToLower()}_{frame}";
-        var sprite = GetSprite(flatKeyWithFrame);
-
-        if (sprite != null)
+        string baseKey;
+        if (itemType == "dot" || itemType == "power_pellet")
         {
-            return sprite;
+            baseKey = $"items_{itemType.ToLower()}";
+        }
+        else // Assume it's a fruit, which are nested under "fruits" in the JSON
+        {
+            baseKey = $"items_fruits_{itemType.ToLower()}";
         }
 
-        // If not found, try without frame suffix (for static items like dots)
-        string flatKeyNoFrame = $"items_{itemType.ToLower()}";
-        return GetSprite(flatKeyNoFrame);
+        // For animated items (like power_pellet)
+        if (itemType == "power_pellet")
+        {
+            string flatKeyWithFrame = $"{baseKey}_{frame}";
+            var sprite = GetSprite(flatKeyWithFrame);
+            if (sprite != null) return sprite;
+        }
+
+        // For static items (dot, fruits) or if animated frame not found
+        return GetSprite(baseKey);
     }
 
-    /// <summary>
-    /// Get a tile sprite
-    /// </summary>
     public CroppedBitmap? GetTileSprite(string tileType)
     {
         string flatKey = $"tiles_{tileType.ToLower()}";
         return GetSprite(flatKey);
     }
 
-    /// <summary>
-    /// Get Pac-Man death animation sprite
-    /// </summary>
     public CroppedBitmap? GetDeathSprite(int frame)
     {
         string flatKey = $"pacman_pacman_death_{frame}";

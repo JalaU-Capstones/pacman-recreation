@@ -1,9 +1,11 @@
 using ReactiveUI;
 using PacmanGame.Helpers;
+using PacmanGame.Models.Enums;
 using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
 using System;
 using System.Reactive;
+using System.Threading.Tasks;
 
 namespace PacmanGame.ViewModels;
 
@@ -27,6 +29,9 @@ public class GameViewModel : ViewModelBase
     private int _level;
     private bool _isGameRunning;
     private bool _isPaused;
+    private bool _isGameOver;
+    private int _finalScore;
+    private bool _isLevelComplete;
 
     /// <summary>
     /// Current player score
@@ -74,6 +79,33 @@ public class GameViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Is the game over
+    /// </summary>
+    public bool IsGameOver
+    {
+        get => _isGameOver;
+        set => this.RaiseAndSetIfChanged(ref _isGameOver, value);
+    }
+
+    /// <summary>
+    /// Final score when the game is over
+    /// </summary>
+    public int FinalScore
+    {
+        get => _finalScore;
+        set => this.RaiseAndSetIfChanged(ref _finalScore, value);
+    }
+
+    /// <summary>
+    /// Is the level complete message showing
+    /// </summary>
+    public bool IsLevelComplete
+    {
+        get => _isLevelComplete;
+        set => this.RaiseAndSetIfChanged(ref _isLevelComplete, value);
+    }
+
+    /// <summary>
     /// Get the game engine
     /// </summary>
     public IGameEngine Engine => _engine;
@@ -82,6 +114,8 @@ public class GameViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> PauseGameCommand { get; }
     public ReactiveCommand<Unit, Unit> ResumeGameCommand { get; }
     public ReactiveCommand<Unit, Unit> ReturnToMenuCommand { get; }
+    public ReactiveCommand<Unit, Unit> RestartGameCommand { get; }
+    public ReactiveCommand<Direction, Unit> SetDirectionCommand { get; }
 
     public GameViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger logger)
     {
@@ -93,10 +127,12 @@ public class GameViewModel : ViewModelBase
 
         // Initialize game state
         _score = 0;
-        _lives = 3;
+        _lives = Constants.StartingLives;
         _level = 1;
         _isGameRunning = false;
         _isPaused = false;
+        _isGameOver = false;
+        _isLevelComplete = false;
         _extraLifeThreshold = Constants.ExtraLifeScore;
 
         // Create engine with required services
@@ -117,6 +153,8 @@ public class GameViewModel : ViewModelBase
         PauseGameCommand = ReactiveCommand.Create(PauseGame);
         ResumeGameCommand = ReactiveCommand.Create(ResumeGame);
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
+        RestartGameCommand = ReactiveCommand.Create(RestartGame);
+        SetDirectionCommand = ReactiveCommand.Create<Direction>(SetPacmanDirection);
     }
     /// <summary>
     /// Start the game
@@ -133,6 +171,7 @@ public class GameViewModel : ViewModelBase
 
             IsGameRunning = true;
             IsPaused = false;
+            IsGameOver = false;
         }
         catch (Exception ex)
         {
@@ -206,6 +245,24 @@ public class GameViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Restart the game after a game over
+    /// </summary>
+    private void RestartGame()
+    {
+        IsGameOver = false;
+        Score = 0;
+        Lives = Constants.StartingLives;
+        Level = 1;
+        _extraLifeThreshold = Constants.ExtraLifeScore;
+        StartGame();
+    }
+
+    private void SetPacmanDirection(Direction direction)
+    {
+        _engine.SetPacmanDirection(direction);
+    }
+
+    /// <summary>
     /// Handle game over
     /// </summary>
     public void GameOver()
@@ -215,6 +272,9 @@ public class GameViewModel : ViewModelBase
         _audioManager.StopMusic();
         _audioManager.PlayMusic(Constants.GameOverMusic, loop: false);
         _logger.Info($"Game Over! Final Score: {Score}");
+
+        FinalScore = Score;
+        IsGameOver = true;
 
         // Save score to profile
         var activeProfile = _profileManager.GetActiveProfile();
@@ -254,13 +314,16 @@ public class GameViewModel : ViewModelBase
     /// <summary>
     /// Complete the current level
     /// </summary>
-    private void OnLevelComplete()
+    private async void OnLevelComplete()
     {
         _audioManager.PlaySoundEffect("level-complete");
-        Level++;
-        _logger.Info($"Level {Level - 1} complete! Starting level {Level}");
+        _logger.Info($"Level {Level} complete! Starting level {Level + 1}");
 
-        // TODO: Add delay before loading next level
+        IsLevelComplete = true;
+        await Task.Delay(3000); // 3 second delay
+        IsLevelComplete = false;
+
+        Level++;
         _engine.LoadLevel(Level);
     }
 

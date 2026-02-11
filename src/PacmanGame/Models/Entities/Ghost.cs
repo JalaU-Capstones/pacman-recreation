@@ -50,6 +50,11 @@ public class Ghost : Entity
     /// </summary>
     public float ReleaseTimer { get; set; }
 
+    /// <summary>
+    /// Speed multiplier for difficulty scaling
+    /// </summary>
+    public float SpeedMultiplier { get; set; }
+
     public Ghost(int x, int y) : base(x, y)
     {
         Type = GhostType.Blinky; // Default, will be set by GameEngine
@@ -60,6 +65,7 @@ public class Ghost : Entity
         AnimationFrame = 0;
         RespawnTimer = 0f;
         ReleaseTimer = 0f; // Will be set by GameEngine
+        SpeedMultiplier = 1.0f;
     }
 
     public Ghost(int x, int y, GhostType type) : base(x, y)
@@ -72,6 +78,7 @@ public class Ghost : Entity
         AnimationFrame = 0;
         RespawnTimer = 0f;
         ReleaseTimer = 0f; // Will be set by GameEngine
+        SpeedMultiplier = 1.0f;
     }
 
     /// <summary>
@@ -79,7 +86,7 @@ public class Ghost : Entity
     /// </summary>
     public float GetSpeed()
     {
-        return State switch
+        float baseSpeed = State switch
         {
             GhostState.Vulnerable or GhostState.Warning => Constants.GhostVulnerableSpeed,
             GhostState.Eaten => Constants.GhostEatenSpeed,
@@ -92,6 +99,7 @@ public class Ghost : Entity
                 _ => Constants.GhostNormalSpeed
             }
         };
+        return baseSpeed * SpeedMultiplier;
     }
 
     /// <summary>
@@ -205,7 +213,7 @@ public class Ghost : Entity
         }
 
         // Normal movement rules
-        return tile == TileType.Empty || tile == TileType.TeleportLeft || tile == TileType.TeleportRight;
+        return tile != TileType.Wall;
     }
 
     /// <summary>

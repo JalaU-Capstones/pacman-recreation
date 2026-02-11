@@ -66,6 +66,23 @@ public static class Constants
     public const int ClydeScatterY = 30;
     public const int ClydeScatterX = 0;
 
+    // Level difficulty multipliers
+    public const float Level1GhostSpeedMultiplier = 1.0f;
+    public const float Level2GhostSpeedMultiplier = 1.05f;
+    public const float Level3GhostSpeedMultiplier = 1.10f;
+
+    public const float Level1PowerPelletDuration = 6.0f;
+    public const float Level2PowerPelletDuration = 5.0f;
+    public const float Level3PowerPelletDuration = 4.0f;
+
+    public const float Level1ChaseDuration = 20.0f;
+    public const float Level2ChaseDuration = 25.0f;
+    public const float Level3ChaseDuration = 30.0f;
+
+    public const float Level1ScatterDuration = 20.0f;
+    public const float Level2ScatterDuration = 15.0f;
+    public const float Level3ScatterDuration = 10.0f;
+
     // File Paths
     public const string AssetsPath = "Assets";
     public const string SpritesPath = "Assets/Sprites";

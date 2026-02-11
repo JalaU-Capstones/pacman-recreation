@@ -1,5 +1,3 @@
-using Avalonia.Controls;
-using Avalonia.Media.Imaging;
 using PacmanGame.Helpers;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
@@ -9,13 +7,14 @@ using PacmanGame.Services.Pathfinding;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using PacmanGame.Views;
 
 namespace PacmanGame.Services;
 
 /// <summary>
-/// Main game engine managing game loop, logic, and rendering
+/// Main game engine managing game loop and logic
 /// </summary>
-public class GameEngine : IGameEngine
+public class GameEngine : IGameEngine, IGameEngineInternal
 {
     private readonly ILogger _logger;
     private readonly IMapLoader _mapLoader;
@@ -32,16 +31,22 @@ public class GameEngine : IGameEngine
     private List<Collectible> _collectibles;
     private float _animationAccumulator;
     private int _ghostsEatenThisRound;
+    private int _currentLevel;
 
     // AI specific fields
     private readonly Dictionary<GhostType, IGhostAI> _ghostAIs;
     private readonly AStarPathfinder _pathfinder;
     private bool _isChaseMode = false;
     private float _modeTimer = 0f;
+    private float _chaseDuration;
+    private float _scatterDuration;
 
     // Ghost house release logic
     private float _ghostReleaseTimer = 0f;
     private int _nextGhostToRelease = 0;
+
+    // Death animation
+    private float _deathAnimationTimer = 0f;
 
     public event Action<int>? ScoreChanged;
     public event Action? LifeLost;
@@ -52,6 +57,7 @@ public class GameEngine : IGameEngine
     public Pacman Pacman => _pacman;
     public List<Ghost> Ghosts => _ghosts;
     public List<Collectible> Collectibles => _collectibles;
+    public ISpriteManager SpriteManager => _spriteManager;
 
     /// <summary>
     /// Create a new GameEngine instance
@@ -78,6 +84,7 @@ public class GameEngine : IGameEngine
         _collectibles = new List<Collectible>();
         _animationAccumulator = 0f;
         _ghostsEatenThisRound = 0;
+        _currentLevel = 1;
 
         // Initialize AI
         _pathfinder = new AStarPathfinder();
@@ -97,6 +104,7 @@ public class GameEngine : IGameEngine
     {
         try
         {
+            _currentLevel = level;
             _logger.Info($"Loading level {level}...");
             string fileName = "level" + level + ".txt";
 
@@ -114,6 +122,8 @@ public class GameEngine : IGameEngine
 
             var ghostSpawns = _mapLoader.GetGhostSpawns(fileName);
             _ghosts = new List<Ghost>();
+
+            ApplyDifficultySettings(level);
 
             GhostType[] ghostTypes = { GhostType.Blinky, GhostType.Pinky, GhostType.Inky, GhostType.Clyde };
             for (int i = 0; i < ghostSpawns.Count && i < ghostTypes.Length; i++)
@@ -140,6 +150,34 @@ public class GameEngine : IGameEngine
         {
             _logger.Error("Error loading level", ex);
             throw;
+        }
+    }
+
+    private void ApplyDifficultySettings(int level)
+    {
+        float speedMultiplier = Constants.Level1GhostSpeedMultiplier;
+        _pacman.PowerPelletDuration = Constants.Level1PowerPelletDuration;
+        _chaseDuration = Constants.Level1ChaseDuration;
+        _scatterDuration = Constants.Level1ScatterDuration;
+
+        if (level == 2)
+        {
+            speedMultiplier = Constants.Level2GhostSpeedMultiplier;
+            _pacman.PowerPelletDuration = Constants.Level2PowerPelletDuration;
+            _chaseDuration = Constants.Level2ChaseDuration;
+            _scatterDuration = Constants.Level2ScatterDuration;
+        }
+        else if (level >= 3)
+        {
+            speedMultiplier = Constants.Level3GhostSpeedMultiplier;
+            _pacman.PowerPelletDuration = Constants.Level3PowerPelletDuration;
+            _chaseDuration = Constants.Level3ChaseDuration;
+            _scatterDuration = Constants.Level3ScatterDuration;
+        }
+
+        foreach (var ghost in _ghosts)
+        {
+            ghost.SpeedMultiplier = speedMultiplier;
         }
     }
 
@@ -192,7 +230,7 @@ public class GameEngine : IGameEngine
     /// </summary>
     public void SetPacmanDirection(Direction direction)
     {
-        if (_isRunning && !_isPaused)
+        if (_isRunning && !_isPaused && !_pacman.IsDying)
         {
             _pacman.NextDirection = direction;
         }
@@ -206,10 +244,41 @@ public class GameEngine : IGameEngine
         if (!_isRunning || _isPaused)
             return;
 
+        if (_pacman.IsDying)
+        {
+            UpdateDeathAnimation(deltaTime);
+            return;
+        }
+
         UpdatePacman(deltaTime);
         UpdateGhosts(deltaTime);
         UpdateCollisions();
         UpdateTimers(deltaTime);
+    }
+
+    private void UpdateDeathAnimation(float deltaTime)
+    {
+        _deathAnimationTimer += deltaTime;
+        if (_deathAnimationTimer >= 0.1f) // 100ms per frame
+        {
+            _pacman.AnimationFrame++;
+            _deathAnimationTimer = 0;
+            if (_pacman.AnimationFrame >= Constants.DeathAnimationFrames)
+            {
+                FinishDeathSequence();
+            }
+        }
+    }
+
+    private void FinishDeathSequence()
+    {
+        _pacman.IsDying = false;
+        _pacman.AnimationFrame = 0;
+        LifeLost?.Invoke();
+        if (_isRunning) // Check if game is still running (not game over)
+        {
+            ResetPositions();
+        }
     }
 
     /// <summary>
@@ -290,8 +359,6 @@ public class GameEngine : IGameEngine
         }
 
         // Check if ghost is centered on a tile to make a new decision.
-        // The threshold must be smaller than the smallest movement in one frame.
-        // Min speed = 2.0 tiles/sec. Min movement = 2.0/60.0 = 0.0333.
         const float centeringThreshold = 0.03f;
         bool isCentered = Math.Abs(ghost.ExactX - ghost.X) < centeringThreshold && Math.Abs(ghost.ExactY - ghost.Y) < centeringThreshold;
 
@@ -353,12 +420,10 @@ public class GameEngine : IGameEngine
 
             case GhostState.Vulnerable:
             case GhostState.Warning:
-                // When fleeing, ghosts can reverse direction. Find all valid moves.
                 var fleeMoves = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
                     .Where(d => ghost.CanMove(d, _map))
                     .ToList();
 
-                // Prefer not to reverse, but allow it if it's the only way to escape or the best option.
                 var nonReversingFleeMoves = fleeMoves.Where(d => d != GetOppositeDirection(ghost.CurrentDirection)).ToList();
                 if (nonReversingFleeMoves.Any())
                 {
@@ -367,7 +432,6 @@ public class GameEngine : IGameEngine
 
                 if (fleeMoves.Any())
                 {
-                    // Fleeing behavior: choose move that maximizes distance from Pac-Man
                     Direction bestDirection = Direction.None;
                     float maxDistance = -1;
 
@@ -376,7 +440,6 @@ public class GameEngine : IGameEngine
                         (int dx, int dy) = GetDirectionDeltas(direction);
                         int newX = ghost.X + dx;
                         int newY = ghost.Y + dy;
-                        // Using squared distance is fine and avoids a sqrt operation
                         float distance = (newX - _pacman.X) * (newX - _pacman.X) + (newY - _pacman.Y) * (newY - _pacman.Y);
 
                         if (distance > maxDistance)
@@ -390,12 +453,11 @@ public class GameEngine : IGameEngine
                 break;
 
             case GhostState.ExitingHouse:
-                // Move up until past the exit Y-coordinate
                 if (ghost.Y > Constants.GhostHouseExitY)
                 {
                     nextMove = Direction.Up;
                 }
-                else // Reached outside the house
+                else
                 {
                     ghost.State = GhostState.Normal;
                 }
@@ -409,7 +471,6 @@ public class GameEngine : IGameEngine
                 break;
         }
 
-        // Fallback logic in case no move was selected
         if (nextMove == Direction.None || !ghost.CanMove(nextMove, _map))
         {
             _logger.Warning($"Ghost pathfinding failed for {ghost.Type} - using fallback random move");
@@ -424,7 +485,6 @@ public class GameEngine : IGameEngine
 
             if (fallbackMoves.Any()) return fallbackMoves[_random.Next(fallbackMoves.Count)];
 
-            // If all else fails, try reversing
             if (ghost.CanMove(GetOppositeDirection(ghost.CurrentDirection), _map))
             {
                 return GetOppositeDirection(ghost.CurrentDirection);
@@ -434,25 +494,20 @@ public class GameEngine : IGameEngine
         return nextMove;
     }
 
-
-    /// <summary>
-    /// Handle all collision detection and reactions
-    /// </summary>
     private void UpdateCollisions()
     {
-        // Pac-Man vs Collectibles
         var collected = _collisionDetector.CheckPacmanCollectibleCollision(_pacman, _collectibles);
         if (collected != null)
         {
             collected.IsActive = false;
             if (collected.Type == CollectibleType.PowerPellet)
             {
-                _logger.Info("Power pellet collected - Ghosts vulnerable for 6 seconds");
+                _logger.Info($"Power pellet collected - Ghosts vulnerable for {_pacman.PowerPelletDuration} seconds");
                 _pacman.ActivatePowerPellet();
-                _ghostsEatenThisRound = 0; // Reset combo on new power pellet
+                _ghostsEatenThisRound = 0;
                 foreach (var ghost in _ghosts.Where(g => g.State == GhostState.Normal))
                 {
-                    ghost.MakeVulnerable(Constants.PowerPelletDuration, _logger);
+                    ghost.MakeVulnerable(_pacman.PowerPelletDuration, _logger);
                 }
                 _audioManager.PlaySoundEffect("eat-power-pellet");
             }
@@ -462,14 +517,12 @@ public class GameEngine : IGameEngine
             }
             ScoreChanged?.Invoke(collected.Points);
 
-            // Check if all collectibles are collected
             if (_collectibles.All(c => !c.IsActive))
             {
                 LevelComplete?.Invoke();
             }
         }
 
-        // Pac-Man vs Ghosts
         var hitGhost = _collisionDetector.CheckPacmanGhostCollision(_pacman, _ghosts);
         if (hitGhost != null)
         {
@@ -478,7 +531,7 @@ public class GameEngine : IGameEngine
                 hitGhost.GetEaten();
                 _audioManager.PlaySoundEffect("eat-ghost");
                 _ghostsEatenThisRound++;
-                int points = Constants.GhostPoints * (1 << (_ghostsEatenThisRound - 1)); // 200, 400, 800, 1600
+                int points = Constants.GhostPoints * (1 << (_ghostsEatenThisRound - 1));
                 ScoreChanged?.Invoke(points);
                 _logger.Info($"Eaten ghost {hitGhost.Type} for {points} points");
             }
@@ -486,20 +539,15 @@ public class GameEngine : IGameEngine
             {
                 _logger.Info("Ghost collision detected - Life lost");
                 _audioManager.PlaySoundEffect("death");
-                LifeLost?.Invoke();
-                ResetPositions();
+                _pacman.IsDying = true;
             }
         }
     }
 
-    /// <summary>
-    /// Reset Pac-Man and all ghosts to spawn positions
-    /// </summary>
     private void ResetPositions()
     {
         _logger.Info("Resetting entity positions after life lost");
-        // Reset Pac-Man
-        var pacmanSpawn = _mapLoader.GetPacmanSpawn("level1.txt"); // Assuming level 1 for now
+        var pacmanSpawn = _mapLoader.GetPacmanSpawn($"level{_currentLevel}.txt");
         _pacman.X = pacmanSpawn.Col;
         _pacman.Y = pacmanSpawn.Row;
         _pacman.ExactX = pacmanSpawn.Col;
@@ -509,7 +557,6 @@ public class GameEngine : IGameEngine
         _pacman.IsInvulnerable = false;
         _pacman.InvulnerabilityTime = 0f;
 
-        // Reset ghosts
         foreach (var ghost in _ghosts)
         {
             ghost.X = ghost.SpawnX;
@@ -517,21 +564,17 @@ public class GameEngine : IGameEngine
             ghost.ExactX = ghost.SpawnX;
             ghost.ExactY = ghost.SpawnY;
             ghost.CurrentDirection = Direction.None;
-            ghost.State = GhostState.InHouse; // Return to house
+            ghost.State = GhostState.InHouse;
             ghost.VulnerableTime = 0f;
             ghost.RespawnTimer = 0f;
-            // Re-stagger release timers
             ghost.ReleaseTimer = 0.5f + (int)ghost.Type * Constants.GhostReleaseInterval;
         }
 
         _ghostsEatenThisRound = 0;
-        _modeTimer = 0f; // Reset mode timer
-        _isChaseMode = false; // Start in Scatter mode
+        _modeTimer = 0f;
+        _isChaseMode = false;
     }
 
-    /// <summary>
-    /// Update timers for animation and effects
-    /// </summary>
     private void UpdateTimers(float deltaTime)
     {
         _animationAccumulator += deltaTime;
@@ -545,9 +588,9 @@ public class GameEngine : IGameEngine
             _animationAccumulator = 0f;
         }
 
-        // Update mode timer
         _modeTimer += deltaTime;
-        if (_modeTimer >= Constants.ModeToggleInterval)
+        float currentDuration = _isChaseMode ? _chaseDuration : _scatterDuration;
+        if (_modeTimer >= currentDuration)
         {
             _isChaseMode = !_isChaseMode;
             _modeTimer = 0f;
@@ -555,191 +598,6 @@ public class GameEngine : IGameEngine
         }
     }
 
-    /// <summary>
-    /// Render the game to the canvas using sprites
-    /// </summary>
-    public void Render(Canvas canvas)
-    {
-        try
-        {
-            if (_map.Length == 0)
-            {
-                return;
-            }
-
-            canvas.Children.Clear();
-
-            // 1. Draw tiles (Z-index: 0)
-            for (int row = 0; row < Constants.MapHeight; row++)
-            {
-                for (int col = 0; col < Constants.MapWidth; col++)
-                {
-                    if (_map[row, col] == TileType.Wall)
-                    {
-                        string spriteName = GetWallSpriteName(row, col);
-                        var sprite = _spriteManager.GetTileSprite(spriteName);
-                        if (sprite != null)
-                        {
-                            DrawImage(canvas, sprite, col * Constants.TileSize, row * Constants.TileSize, zIndex: 0);
-                        }
-                    }
-                }
-            }
-
-            // 2. Draw collectibles (Z-index: 1)
-            foreach (var collectible in _collectibles.Where(c => c.IsActive))
-            {
-                string itemType = collectible.Type switch
-                {
-                    CollectibleType.SmallDot => "dot",
-                    CollectibleType.PowerPellet => "power_pellet",
-                    CollectibleType.Cherry => "cherry",
-                    CollectibleType.Strawberry => "strawberry",
-                    _ => "dot"
-                };
-                var sprite = _spriteManager.GetItemSprite(itemType, _pacman.AnimationFrame % 2); // Use 0 or 1 for animation
-                if (sprite != null)
-                {
-                    DrawImage(canvas, sprite, collectible.X * Constants.TileSize, collectible.Y * Constants.TileSize, zIndex: 1);
-                }
-            }
-
-            // 3. Draw Pac-Man (Z-index: 2)
-            if (!_pacman.IsDying)
-            {
-                string direction = _pacman.CurrentDirection switch
-                {
-                    Direction.Up => "down",
-                    Direction.Down => "up",
-                    Direction.Left => "left",
-                    _ => "right"
-                };
-                var sprite = _spriteManager.GetPacmanSprite(direction, _pacman.AnimationFrame);
-                if (sprite != null)
-                {
-                    DrawImage(canvas, sprite, (int)(_pacman.ExactX * Constants.TileSize), (int)(_pacman.ExactY * Constants.TileSize), zIndex: 2);
-                }
-            }
-
-            // 4. Draw ghosts (Z-index: 3)
-            foreach (var ghost in _ghosts)
-            {
-                CroppedBitmap? sprite = null;
-
-                if (ghost.State == GhostState.Eaten)
-                {
-                    string eyeDirection = ghost.CurrentDirection switch
-                    {
-                        Direction.Up => "up",
-                        Direction.Down => "down",
-                        Direction.Left => "left",
-                        _ => "right"
-                    };
-                    sprite = _spriteManager.GetGhostEyesSprite(eyeDirection);
-                }
-                else if (ghost.State == GhostState.Vulnerable)
-                {
-                    sprite = _spriteManager.GetVulnerableGhostSprite(0); // Blue
-                }
-                else if (ghost.State == GhostState.Warning)
-                {
-                    // Flashing effect
-                    sprite = (ghost.AnimationFrame % 2 == 0) ? _spriteManager.GetVulnerableGhostSprite(1) : _spriteManager.GetVulnerableGhostSprite(0);
-                }
-                else // Normal, InHouse, ExitingHouse
-                {
-                    string ghostTypeName = ghost.Type.ToString().ToLower();
-                    string ghostDirection = ghost.CurrentDirection switch
-                    {
-                        Direction.Up => "up",
-                        Direction.Down => "down",
-                        Direction.Left => "left",
-                        _ => "right"
-                    };
-                    sprite = _spriteManager.GetGhostSprite(ghostTypeName, ghostDirection, ghost.AnimationFrame);
-                }
-
-                if (sprite != null)
-                {
-                    DrawImage(canvas, sprite, (int)(ghost.ExactX * Constants.TileSize), (int)(ghost.ExactY * Constants.TileSize), zIndex: 3);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.Error("Error in Render", ex);
-        }
-    }
-
-    private string GetWallSpriteName(int row, int col)
-    {
-        bool hasUp = row > 0 && _map[row - 1, col] == TileType.Wall;
-        bool hasDown = row < Constants.MapHeight - 1 && _map[row + 1, col] == TileType.Wall;
-        bool hasLeft = col > 0 && _map[row, col - 1] == TileType.Wall;
-        bool hasRight = col < Constants.MapWidth - 1 && _map[row, col + 1] == TileType.Wall;
-
-        int neighbors = (hasUp ? 1 : 0) + (hasDown ? 1 : 0) + (hasLeft ? 1 : 0) + (hasRight ? 1 : 0);
-
-        if (neighbors == 4) return "walls_cross";
-
-        if (neighbors == 3)
-        {
-            if (!hasRight) return "walls_t_left";
-            if (!hasLeft) return "walls_t_right";
-            if (!hasDown) return "walls_t_up";
-            if (!hasUp) return "walls_t_down";
-        }
-
-        if (neighbors == 2)
-        {
-            if (hasUp && hasDown) return "walls_vertical";
-            if (hasLeft && hasRight) return "walls_horizontal";
-            if (hasDown && hasRight) return "walls_corner_br";
-            if (hasDown && hasLeft) return "walls_corner_bl";
-            if (hasUp && hasRight) return "walls_corner_tr";
-            if (hasUp && hasLeft) return "walls_corner_tl";
-        }
-
-        if (neighbors == 1)
-        {
-            if (hasUp) return "walls_end_down";
-            if (hasDown) return "walls_end_up";
-            if (hasLeft) return "walls_end_left";
-            if (hasRight) return "walls_end_right";
-        }
-
-        // Default for isolated walls or errors
-        return "special_empty"; // Use an empty sprite for unconnected walls
-    }
-
-    /// <summary>
-    /// Draw a sprite image on the canvas at the specified position
-    /// </summary>
-    private static void DrawImage(Canvas canvas, CroppedBitmap sprite, int x, int y, int zIndex = 0)
-    {
-        try
-        {
-            var image = new Image
-            {
-                Source = sprite,
-                Width = Constants.TileSize,
-                Height = Constants.TileSize,
-                ZIndex = zIndex
-            };
-
-            Canvas.SetLeft(image, x);
-            Canvas.SetTop(image, y);
-            canvas.Children.Add(image);
-        }
-        catch (Exception)
-        {
-            // Silently fail individual sprite draws
-        }
-    }
-
-    /// <summary>
-    /// Get the delta (dx, dy) for a direction
-    /// </summary>
     private static (int dx, int dy) GetDirectionDeltas(Direction direction)
     {
         return direction switch
@@ -752,9 +610,6 @@ public class GameEngine : IGameEngine
         };
     }
 
-    /// <summary>
-    /// Get the opposite direction
-    /// </summary>
     private static Direction GetOppositeDirection(Direction direction)
     {
         return direction switch
@@ -767,7 +622,6 @@ public class GameEngine : IGameEngine
         };
     }
 
-    // Helper method to trigger game over manually if needed
     public void TriggerGameOver()
     {
         GameOver?.Invoke();

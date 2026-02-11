@@ -1,4 +1,3 @@
-using Avalonia.Controls;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using System;
@@ -7,7 +6,7 @@ using System.Collections.Generic;
 namespace PacmanGame.Services.Interfaces;
 
 /// <summary>
-/// Interface for the game engine that manages all game logic, updates, and rendering
+/// Interface for the game engine that manages all game logic and updates
 /// </summary>
 public interface IGameEngine
 {
@@ -88,10 +87,4 @@ public interface IGameEngine
     /// </summary>
     /// <param name="deltaTime">Time elapsed since last frame in seconds</param>
     void Update(float deltaTime);
-
-    /// <summary>
-    /// Render the current game state to the canvas
-    /// </summary>
-    /// <param name="canvas">Canvas to render to</param>
-    void Render(Canvas canvas);
 }
