@@ -1,6 +1,6 @@
-using ReactiveUI;
 using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
+using ReactiveUI;
 
 namespace PacmanGame.ViewModels;
 
@@ -11,25 +11,26 @@ namespace PacmanGame.ViewModels;
 public class MainWindowViewModel : ViewModelBase
 {
     private ViewModelBase _currentViewModel;
-    private readonly ILogger _logger;
-    private readonly IProfileManager _profileManager;
-
-    /// <summary>
-    /// The currently displayed ViewModel (for view navigation)
-    /// </summary>
     public ViewModelBase CurrentViewModel
     {
         get => _currentViewModel;
         set => this.RaiseAndSetIfChanged(ref _currentViewModel, value);
     }
 
+    private readonly ILogger _logger;
+    private readonly IProfileManager _profileManager;
+    private readonly NetworkService _networkService;
+    private readonly IAudioManager _audioManager;
+
     public MainWindowViewModel()
     {
-        // Initialize services
         _logger = new Logger();
         _profileManager = new ProfileManager(_logger);
+        _networkService = NetworkService.Instance;
+        _audioManager = new AudioManager(_logger);
 
-        // Check if any profiles exist
+        _networkService.Start();
+
         var profiles = _profileManager.GetAllProfiles();
         if (profiles.Count == 0)
         {
@@ -41,11 +42,14 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Navigate to a specific view
-    /// </summary>
     public void NavigateTo(ViewModelBase viewModel)
     {
         CurrentViewModel = viewModel;
+    }
+
+    public void NavigateToRoomLobby(int roomId, string roomName, bool isAdmin)
+    {
+        var lobbyViewModel = new RoomLobbyViewModel(roomId, roomName, isAdmin, _networkService, this, _audioManager, _logger, _profileManager);
+        CurrentViewModel = lobbyViewModel;
     }
 }

@@ -1,7 +1,8 @@
+using PacmanGame.Services.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Reactive;
-using PacmanGame.Services.Interfaces;
+using System.Windows.Input;
 using ReactiveUI;
 
 namespace PacmanGame.ViewModels;
@@ -12,22 +13,22 @@ public class ProfileCreationViewModel : ViewModelBase
     private readonly IProfileManager _profileManager;
     private readonly IAudioManager _audioManager;
     private readonly ILogger _logger;
-    private string _name = string.Empty;
-    private string _selectedColor = "#FFFF00"; // Default Pacman Yellow
-    private string _errorMessage = string.Empty;
 
+    private string _name = string.Empty;
     public string Name
     {
         get => _name;
         set => this.RaiseAndSetIfChanged(ref _name, value);
     }
 
+    private string _selectedColor = "#FFFF00"; // Default Pacman Yellow
     public string SelectedColor
     {
         get => _selectedColor;
         set => this.RaiseAndSetIfChanged(ref _selectedColor, value);
     }
 
+    private string _errorMessage = string.Empty;
     public string ErrorMessage
     {
         get => _errorMessage;
@@ -46,9 +47,9 @@ public class ProfileCreationViewModel : ViewModelBase
         "#9999FF"  // Lavender
     };
 
-    public ReactiveCommand<Unit, Unit> CreateProfileCommand { get; }
-    public ReactiveCommand<string, Unit> SelectColorCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelCommand { get; }
+    public ICommand CreateProfileCommand { get; }
+    public ReactiveCommand<string?, Unit> SelectColorCommand { get; }
+    public ICommand CancelCommand { get; }
 
     public ProfileCreationViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, ILogger logger, IAudioManager? audioManager = null)
     {
@@ -62,7 +63,13 @@ public class ProfileCreationViewModel : ViewModelBase
         }
 
         CreateProfileCommand = ReactiveCommand.Create(CreateProfile);
-        SelectColorCommand = ReactiveCommand.Create<string>(color => SelectedColor = color);
+        SelectColorCommand = ReactiveCommand.Create<string?>(color =>
+        {
+            if (color != null)
+            {
+                SelectedColor = color;
+            }
+        });
         CancelCommand = ReactiveCommand.Create(Cancel);
     }
 
@@ -82,7 +89,6 @@ public class ProfileCreationViewModel : ViewModelBase
             return;
         }
 
-        // Simple alphanumeric check
         foreach (char c in Name)
         {
             if (!char.IsLetterOrDigit(c) && c != ' ')
@@ -97,7 +103,6 @@ public class ProfileCreationViewModel : ViewModelBase
             var profile = _profileManager.CreateProfile(Name.Trim(), SelectedColor);
             _profileManager.SetActiveProfile(profile.Id);
 
-            // Load and apply default settings for the new profile
             var settings = _profileManager.LoadSettings(profile.Id);
             _audioManager.SetMenuMusicVolume((float)settings.MenuMusicVolume);
             _audioManager.SetGameMusicVolume((float)settings.GameMusicVolume);
@@ -122,7 +127,6 @@ public class ProfileCreationViewModel : ViewModelBase
         }
         else
         {
-            // If no profiles exist, we can't cancel, must create one.
             ErrorMessage = "You must create a profile to play.";
         }
     }

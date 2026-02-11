@@ -71,15 +71,15 @@ public partial class GameView : UserControl
 
         if (direction != Direction.None)
         {
-            vm.SetDirectionCommand.Execute(direction).Subscribe();
+            vm.SetDirectionCommand.Execute(direction);
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)
         {
             if (vm.IsPaused)
-                vm.ResumeGameCommand.Execute().Subscribe();
+                vm.ResumeGameCommand.Execute(null);
             else
-                vm.PauseGameCommand.Execute().Subscribe();
+                vm.PauseGameCommand.Execute(null);
             e.Handled = true;
         }
     }

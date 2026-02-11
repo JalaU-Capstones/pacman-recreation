@@ -1,6 +1,7 @@
 using ReactiveUI;
 using System;
 using System.Reactive;
+using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
 
 namespace PacmanGame.ViewModels;
@@ -18,6 +19,7 @@ public class MainMenuViewModel : ViewModelBase
 
     public ReactiveCommand<Unit, Unit> StartGameCommand { get; }
     public ReactiveCommand<Unit, Unit> ShowScoreBoardCommand { get; }
+    public ReactiveCommand<Unit, Unit> ShowMultiplayerCommand { get; }
     public ReactiveCommand<Unit, Unit> ShowSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
 
@@ -34,6 +36,7 @@ public class MainMenuViewModel : ViewModelBase
         // Initialize commands
         StartGameCommand = ReactiveCommand.Create(StartGame);
         ShowScoreBoardCommand = ReactiveCommand.Create(ShowScoreBoard);
+        ShowMultiplayerCommand = ReactiveCommand.Create(ShowMultiplayer);
         ShowSettingsCommand = ReactiveCommand.Create(ShowSettings);
         ExitCommand = ReactiveCommand.Create(Exit);
     }
@@ -50,6 +53,13 @@ public class MainMenuViewModel : ViewModelBase
         _audioManager.PlaySoundEffect("menu-select");
         _audioManager.StopMusic();
         _mainWindowViewModel.NavigateTo(new ScoreBoardViewModel(_mainWindowViewModel, _profileManager, _audioManager, _logger));
+    }
+
+    private void ShowMultiplayer()
+    {
+        _audioManager.PlaySoundEffect("menu-select");
+        _audioManager.StopMusic();
+        _mainWindowViewModel.NavigateTo(new MultiplayerMenuViewModel(_mainWindowViewModel, NetworkService.Instance, _audioManager, _logger, _profileManager));
     }
 
     private void ShowSettings()

@@ -1,6 +1,6 @@
-using System.Reactive;
 using PacmanGame.Models.Game;
 using PacmanGame.Services.Interfaces;
+using System.Windows.Input;
 using ReactiveUI;
 using System;
 
@@ -14,73 +14,52 @@ public class SettingsViewModel : ViewModelBase
     private readonly ILogger _logger;
 
     private Profile? _activeProfile;
-    private bool _isDeleteConfirmationVisible;
-    private bool _isMusicEnabled;
-    private int _menuMusicVolume;
-    private int _gameMusicVolume;
-    private int _sfxVolume;
-
     public Profile? ActiveProfile
     {
         get => _activeProfile;
         set => this.RaiseAndSetIfChanged(ref _activeProfile, value);
     }
 
+    private bool _isDeleteConfirmationVisible;
     public bool IsDeleteConfirmationVisible
     {
         get => _isDeleteConfirmationVisible;
         set => this.RaiseAndSetIfChanged(ref _isDeleteConfirmationVisible, value);
     }
 
+    private bool _isMusicEnabled;
     public bool IsMusicEnabled
     {
         get => _isMusicEnabled;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _isMusicEnabled, value);
-            _audioManager.SetMuted(!value);
-            SaveSettings();
-        }
+        set => this.RaiseAndSetIfChanged(ref _isMusicEnabled, value);
     }
 
+    private int _menuMusicVolume;
     public int MenuMusicVolume
     {
         get => _menuMusicVolume;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _menuMusicVolume, value);
-            _audioManager.SetMenuMusicVolume(value / 100f);
-            SaveSettings();
-        }
+        set => this.RaiseAndSetIfChanged(ref _menuMusicVolume, value);
     }
 
+    private int _gameMusicVolume;
     public int GameMusicVolume
     {
         get => _gameMusicVolume;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _gameMusicVolume, value);
-            _audioManager.SetGameMusicVolume(value / 100f);
-            SaveSettings();
-        }
+        set => this.RaiseAndSetIfChanged(ref _gameMusicVolume, value);
     }
 
+    private int _sfxVolume;
     public int SfxVolume
     {
         get => _sfxVolume;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _sfxVolume, value);
-            _audioManager.SetSfxVolume(value / 100f);
-            SaveSettings();
-        }
+        set => this.RaiseAndSetIfChanged(ref _sfxVolume, value);
     }
 
-    public ReactiveCommand<Unit, Unit> SwitchProfileCommand { get; }
-    public ReactiveCommand<Unit, Unit> ShowDeleteConfirmationCommand { get; }
-    public ReactiveCommand<Unit, Unit> CancelDeleteCommand { get; }
-    public ReactiveCommand<Unit, Unit> ConfirmDeleteCommand { get; }
-    public ReactiveCommand<Unit, Unit> ReturnToMenuCommand { get; }
+    public ICommand SwitchProfileCommand { get; }
+    public ICommand ShowDeleteConfirmationCommand { get; }
+    public ICommand CancelDeleteCommand { get; }
+    public ICommand ConfirmDeleteCommand { get; }
+    public ICommand ReturnToMenuCommand { get; }
 
     public SettingsViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger logger)
     {
@@ -89,28 +68,41 @@ public class SettingsViewModel : ViewModelBase
         _audioManager = audioManager;
         _logger = logger;
 
-        ActiveProfile = _profileManager.GetActiveProfile();
-        // Avoid invoking the IsMusicEnabled property (which calls SaveSettings) during construction
-        // because the volume fields haven't been initialized yet and would be saved as zeros.
+        _activeProfile = _profileManager.GetActiveProfile();
         _isMusicEnabled = !_audioManager.IsMuted;
-
-        // Initialize volumes from AudioManager
         _menuMusicVolume = (int)(_audioManager.MenuMusicVolume * 100);
         _gameMusicVolume = (int)(_audioManager.GameMusicVolume * 100);
         _sfxVolume = (int)(_audioManager.SfxVolume * 100);
 
         SwitchProfileCommand = ReactiveCommand.Create(SwitchProfile);
-
-        ShowDeleteConfirmationCommand = ReactiveCommand.Create(() => {
-            IsDeleteConfirmationVisible = true;
-        });
-
-        CancelDeleteCommand = ReactiveCommand.Create(() => {
-            IsDeleteConfirmationVisible = false;
-        });
-
+        ShowDeleteConfirmationCommand = ReactiveCommand.Create(() => IsDeleteConfirmationVisible = true);
+        CancelDeleteCommand = ReactiveCommand.Create(() => IsDeleteConfirmationVisible = false);
         ConfirmDeleteCommand = ReactiveCommand.Create(ConfirmDelete);
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
+
+        this.WhenAnyValue(x => x.IsMusicEnabled).Subscribe(value =>
+        {
+            _audioManager.SetMuted(!value);
+            SaveSettings();
+        });
+
+        this.WhenAnyValue(x => x.MenuMusicVolume).Subscribe(value =>
+        {
+            _audioManager.SetMenuMusicVolume(value / 100f);
+            SaveSettings();
+        });
+
+        this.WhenAnyValue(x => x.GameMusicVolume).Subscribe(value =>
+        {
+            _audioManager.SetGameMusicVolume(value / 100f);
+            SaveSettings();
+        });
+
+        this.WhenAnyValue(x => x.SfxVolume).Subscribe(value =>
+        {
+            _audioManager.SetSfxVolume(value / 100f);
+            SaveSettings();
+        });
     }
 
     private void SaveSettings()
@@ -131,7 +123,6 @@ public class SettingsViewModel : ViewModelBase
     private void SwitchProfile()
     {
         _audioManager.PlaySoundEffect("menu-select");
-        // Pass the existing audio manager to preserve state/resources
         _mainWindowViewModel.NavigateTo(new ProfileSelectionViewModel(_mainWindowViewModel, _profileManager, _logger, _audioManager));
     }
 
@@ -142,7 +133,6 @@ public class SettingsViewModel : ViewModelBase
             _audioManager.PlaySoundEffect("menu-select");
             _profileManager.DeleteProfile(ActiveProfile.Id);
 
-            // Navigate back to profile selection (or creation if no profiles left)
             var profiles = _profileManager.GetAllProfiles();
             if (profiles.Count > 0)
             {

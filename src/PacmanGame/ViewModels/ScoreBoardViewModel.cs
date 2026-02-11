@@ -1,9 +1,8 @@
-using ReactiveUI;
-using System;
-using System.Collections.ObjectModel;
-using System.Reactive;
 using PacmanGame.Models.Game;
 using PacmanGame.Services.Interfaces;
+using System.Collections.ObjectModel;
+using System.Windows.Input;
+using ReactiveUI;
 
 namespace PacmanGame.ViewModels;
 
@@ -19,17 +18,13 @@ public class ScoreBoardViewModel : ViewModelBase
     private readonly ILogger _logger;
 
     private ObservableCollection<ScoreEntry> _scores;
-
-    /// <summary>
-    /// Collection of high scores
-    /// </summary>
     public ObservableCollection<ScoreEntry> Scores
     {
         get => _scores;
         set => this.RaiseAndSetIfChanged(ref _scores, value);
     }
 
-    public ReactiveCommand<Unit, Unit> ReturnToMenuCommand { get; }
+    public ICommand ReturnToMenuCommand { get; }
 
     public ScoreBoardViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger logger)
     {
@@ -40,16 +35,11 @@ public class ScoreBoardViewModel : ViewModelBase
 
         _scores = new ObservableCollection<ScoreEntry>();
 
-        // Initialize commands
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
 
-        // Load scores
         LoadScores();
     }
 
-    /// <summary>
-    /// Load high scores from file
-    /// </summary>
     private void LoadScores()
     {
         var topScores = _profileManager.GetTopScores(10);
@@ -65,9 +55,6 @@ public class ScoreBoardViewModel : ViewModelBase
         _logger.Info($"Loaded {Scores.Count} high scores");
     }
 
-    /// <summary>
-    /// Return to main menu
-    /// </summary>
     private void ReturnToMenu()
     {
         _audioManager.PlaySoundEffect("menu-select");

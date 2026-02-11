@@ -1,11 +1,12 @@
 using ReactiveUI;
+using System;
+using System.Reactive;
+using System.Threading.Tasks;
+using System.Windows.Input;
 using PacmanGame.Helpers;
 using PacmanGame.Models.Enums;
 using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
-using System;
-using System.Reactive;
-using System.Threading.Tasks;
 
 namespace PacmanGame.ViewModels;
 
@@ -23,108 +24,75 @@ public class GameViewModel : ViewModelBase
     private int _extraLifeThreshold;
     private int _frameCount; // For logging game loop frames
 
-    // Game state properties
     private int _score;
-    private int _lives;
-    private int _level;
-    private bool _isGameRunning;
-    private bool _isPaused;
-    private bool _isGameOver;
-    private int _finalScore;
-    private bool _isLevelComplete;
-    private bool _isVictory;
-
-    /// <summary>
-    /// Current player score
-    /// </summary>
     public int Score
     {
         get => _score;
         set => this.RaiseAndSetIfChanged(ref _score, value);
     }
 
-    /// <summary>
-    /// Remaining lives
-    /// </summary>
+    private int _lives;
     public int Lives
     {
         get => _lives;
         set => this.RaiseAndSetIfChanged(ref _lives, value);
     }
 
-    /// <summary>
-    /// Current level number
-    /// </summary>
+    private int _level;
     public int Level
     {
         get => _level;
         set => this.RaiseAndSetIfChanged(ref _level, value);
     }
 
-    /// <summary>
-    /// Is the game currently running
-    /// </summary>
+    private bool _isGameRunning;
     public bool IsGameRunning
     {
         get => _isGameRunning;
         set => this.RaiseAndSetIfChanged(ref _isGameRunning, value);
     }
 
-    /// <summary>
-    /// Is the game paused
-    /// </summary>
+    private bool _isPaused;
     public bool IsPaused
     {
         get => _isPaused;
         set => this.RaiseAndSetIfChanged(ref _isPaused, value);
     }
 
-    /// <summary>
-    /// Is the game over
-    /// </summary>
+    private bool _isGameOver;
     public bool IsGameOver
     {
         get => _isGameOver;
         set => this.RaiseAndSetIfChanged(ref _isGameOver, value);
     }
 
-    /// <summary>
-    /// Final score when the game is over
-    /// </summary>
+    private int _finalScore;
     public int FinalScore
     {
         get => _finalScore;
         set => this.RaiseAndSetIfChanged(ref _finalScore, value);
     }
 
-    /// <summary>
-    /// Is the level complete message showing
-    /// </summary>
+    private bool _isLevelComplete;
     public bool IsLevelComplete
     {
         get => _isLevelComplete;
         set => this.RaiseAndSetIfChanged(ref _isLevelComplete, value);
     }
 
-    /// <summary>
-    /// Is the victory screen showing
-    /// </summary>
+    private bool _isVictory;
     public bool IsVictory
     {
         get => _isVictory;
         set => this.RaiseAndSetIfChanged(ref _isVictory, value);
     }
 
-    /// <summary>
-    /// Get the game engine
-    /// </summary>
     public IGameEngine Engine => _engine;
 
-    // Commands
-    public ReactiveCommand<Unit, Unit> PauseGameCommand { get; }
-    public ReactiveCommand<Unit, Unit> ResumeGameCommand { get; }
-    public ReactiveCommand<Unit, Unit> ReturnToMenuCommand { get; }
-    public ReactiveCommand<Unit, Unit> RestartGameCommand { get; }
+    public ICommand PauseGameCommand { get; }
+    public ICommand ResumeGameCommand { get; }
+    public ICommand ReturnToMenuCommand { get; }
+    public ICommand RestartGameCommand { get; }
     public ReactiveCommand<Direction, Unit> SetDirectionCommand { get; }
 
     public GameViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger logger)
@@ -135,7 +103,6 @@ public class GameViewModel : ViewModelBase
         _logger = logger;
         _frameCount = 0;
 
-        // Initialize game state
         _score = 0;
         _lives = Constants.StartingLives;
         _level = 1;
@@ -146,7 +113,6 @@ public class GameViewModel : ViewModelBase
         _isVictory = false;
         _extraLifeThreshold = Constants.ExtraLifeScore;
 
-        // Create engine with required services
         _engine = new GameEngine(
             _logger,
             new MapLoader(_logger),
@@ -154,29 +120,25 @@ public class GameViewModel : ViewModelBase
             _audioManager,
             new CollisionDetector());
 
-        // Subscribe to engine events
-        _engine.ScoreChanged += OnScoreChanged;
+        _engine.ScoreChanged += HandleScoreChanged;
         _engine.LifeLost += OnLifeLost;
         _engine.LevelComplete += OnLevelComplete;
         _engine.GameOver += OnGameOver;
         _engine.Victory += OnVictory;
 
-        // Initialize commands
         PauseGameCommand = ReactiveCommand.Create(PauseGame);
         ResumeGameCommand = ReactiveCommand.Create(ResumeGame);
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
         RestartGameCommand = ReactiveCommand.Create(RestartGame);
         SetDirectionCommand = ReactiveCommand.Create<Direction>(SetPacmanDirection);
     }
-    /// <summary>
-    /// Start the game
-    /// </summary>
+
     public void StartGame()
     {
         try
         {
-            _logger.Info($"Starting game at level {_level}");
-            _engine.LoadLevel(_level);
+            _logger.Info($"Starting game at level {Level}");
+            _engine.LoadLevel(Level);
             _engine.Start();
             _audioManager.PlayMusic(Constants.BackgroundMusic);
             _audioManager.PlaySoundEffect("game-start");
@@ -193,9 +155,6 @@ public class GameViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Updates the game logic for one frame. Called by the View's DispatcherTimer.
-    /// </summary>
     public void UpdateGame(float deltaTime)
     {
         try
@@ -208,7 +167,7 @@ public class GameViewModel : ViewModelBase
 
             Engine.Update(deltaTime);
             _frameCount++;
-            if (_frameCount % 60 == 0) // Log every second at 60 FPS
+            if (_frameCount % 60 == 0)
             {
                 _logger.Debug($"Game loop running - Frame {_frameCount}");
             }
@@ -216,13 +175,9 @@ public class GameViewModel : ViewModelBase
         catch (Exception ex)
         {
             _logger.Error($"Game loop error: {ex.Message}", ex);
-            // Optionally stop the game loop here or trigger game over
         }
     }
 
-    /// <summary>
-    /// Pause the game
-    /// </summary>
     private void PauseGame()
     {
         if (IsGameRunning && !IsPaused)
@@ -233,9 +188,6 @@ public class GameViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Resume the game
-    /// </summary>
     private void ResumeGame()
     {
         if (IsGameRunning && IsPaused)
@@ -246,9 +198,6 @@ public class GameViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Return to main menu
-    /// </summary>
     private void ReturnToMenu()
     {
         _engine.Stop();
@@ -257,9 +206,6 @@ public class GameViewModel : ViewModelBase
         _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager, _logger));
     }
 
-    /// <summary>
-    /// Restart the game after a game over or victory
-    /// </summary>
     private void RestartGame()
     {
         IsGameOver = false;
@@ -276,9 +222,6 @@ public class GameViewModel : ViewModelBase
         _engine.SetPacmanDirection(direction);
     }
 
-    /// <summary>
-    /// Handle game over
-    /// </summary>
     public void GameOver()
     {
         IsGameRunning = false;
@@ -290,7 +233,6 @@ public class GameViewModel : ViewModelBase
         FinalScore = Score;
         IsGameOver = true;
 
-        // Save score to profile
         var activeProfile = _profileManager.GetActiveProfile();
         if (activeProfile != null)
         {
@@ -298,10 +240,7 @@ public class GameViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Add points to the score and check for extra life
-    /// </summary>
-    private void OnScoreChanged(int points)
+    private void HandleScoreChanged(int points)
     {
         Score += points;
         if (Score >= _extraLifeThreshold && Lives < Constants.MaxLives)
@@ -313,9 +252,6 @@ public class GameViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Lose a life
-    /// </summary>
     private void OnLifeLost()
     {
         Lives--;
@@ -325,45 +261,35 @@ public class GameViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Complete the current level
-    /// </summary>
     private async void OnLevelComplete()
     {
         _audioManager.PlaySoundEffect("level-complete");
         _logger.Info($"Level {Level} complete! Starting level {Level + 1}");
 
         IsLevelComplete = true;
-        await Task.Delay(3000); // 3 second delay
+        await Task.Delay(3000);
         IsLevelComplete = false;
 
         Level++;
         _engine.LoadLevel(Level);
     }
 
-    /// <summary>
-    /// Handle game over event
-    /// </summary>
     private void OnGameOver()
     {
         GameOver();
     }
 
-    /// <summary>
-    /// Handle victory event
-    /// </summary>
     private void OnVictory()
     {
         IsGameRunning = false;
         _engine.Stop();
         _audioManager.StopMusic();
-        _audioManager.PlaySoundEffect("level-complete"); // Or a dedicated victory sound
+        _audioManager.PlaySoundEffect("level-complete");
         _logger.Info($"Victory! Final Score: {Score}");
 
         FinalScore = Score;
         IsVictory = true;
 
-        // Save score to profile
         var activeProfile = _profileManager.GetActiveProfile();
         if (activeProfile != null)
         {

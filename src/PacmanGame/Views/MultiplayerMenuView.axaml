@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:PacmanGame.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="896" d:DesignHeight="1024"
+             x:Class="PacmanGame.Views.MultiplayerMenuView"
+             x:DataType="vm:MultiplayerMenuViewModel"
+             Background="Black">
+
+    <UserControl.Styles>
+        <StyleInclude Source="/Styles/ButtonStyles.axaml" />
+    </UserControl.Styles>
+
+    <Grid>
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="25"
+                    MaxWidth="480">
+
+            <!-- Page Title -->
+            <TextBlock Text="MULTIPLAYER"
+                       FontSize="60"
+                       FontWeight="Bold"
+                       Foreground="#FFFF00"
+                       HorizontalAlignment="Center"
+                       FontFamily="Consolas, Courier New"
+                       Margin="0,0,0,50">
+                <TextBlock.Effect>
+                    <DropShadowEffect Color="#2121FF"
+                                      BlurRadius="15"
+                                      OffsetX="0"
+                                      OffsetY="0"/>
+                </TextBlock.Effect>
+            </TextBlock>
+
+            <!-- Menu Buttons -->
+            <Button Classes="arcade"
+                    Command="{Binding CreateRoomCommand}"
+                    HorizontalAlignment="Stretch">
+                <TextBlock Text="CREATE ROOM"
+                           FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"/>
+            </Button>
+
+            <Button Classes="arcade"
+                    Command="{Binding JoinRoomCommand}"
+                    HorizontalAlignment="Stretch">
+                <TextBlock Text="JOIN ROOM"
+                           FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"/>
+            </Button>
+
+            <Button Classes="arcade"
+                    Command="{Binding BackCommand}"
+                    HorizontalAlignment="Stretch"
+                    Margin="0,40,0,0">
+                <TextBlock Text="BACK TO MAIN MENU"
+                           FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"/>
+            </Button>
+        </StackPanel>
+    </Grid>
+</UserControl>

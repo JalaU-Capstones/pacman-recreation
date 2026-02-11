@@ -1,0 +1,232 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:PacmanGame.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1156" d:DesignHeight="1020"
+             x:Class="PacmanGame.Views.MultiplayerGameView"
+             x:DataType="vm:MultiplayerGameViewModel"
+             Background="Black">
+
+    <Grid ColumnDefinitions="Auto,*,Auto">
+
+        <!-- Left Sidebar - HUD -->
+        <Border Grid.Column="0"
+                Background="#1A1A1A"
+                BorderBrush="#FFFF00"
+                BorderThickness="0,0,2,0"
+                MinWidth="120"
+                Padding="15">
+
+            <StackPanel VerticalAlignment="Center"
+                        Spacing="40">
+
+                <!-- Score -->
+                <StackPanel Spacing="5">
+                    <TextBlock Text="SCORE"
+                              FontSize="14"
+                              Foreground="#888888"
+                              HorizontalAlignment="Center"
+                              FontFamily="Consolas, Courier New"/>
+                    <TextBlock Text="{Binding Score, StringFormat='{}{0:N0}'}"
+                              FontSize="28"
+                              FontWeight="Bold"
+                              Foreground="#FFFF00"
+                              HorizontalAlignment="Center"
+                              FontFamily="Consolas, Courier New"/>
+                </StackPanel>
+
+                <!-- Level -->
+                <StackPanel Spacing="5">
+                    <TextBlock Text="LEVEL"
+                              FontSize="14"
+                              Foreground="#888888"
+                              HorizontalAlignment="Center"
+                              FontFamily="Consolas, Courier New"/>
+                    <TextBlock Text="{Binding Level}"
+                              FontSize="28"
+                              FontWeight="Bold"
+                              Foreground="White"
+                              HorizontalAlignment="Center"
+                              FontFamily="Consolas, Courier New"/>
+                </StackPanel>
+
+                <!-- Lives -->
+                <StackPanel Spacing="5">
+                    <TextBlock Text="LIVES"
+                              FontSize="14"
+                              Foreground="#888888"
+                              HorizontalAlignment="Center"
+                              FontFamily="Consolas, Courier New"/>
+                    <TextBlock Text="{Binding Lives}"
+                              FontSize="28"
+                              FontWeight="Bold"
+                              Foreground="#FF0000"
+                              HorizontalAlignment="Center"
+                              FontFamily="Consolas, Courier New"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Center - Game Canvas -->
+        <Border Grid.Column="1"
+                Background="Black"
+                BorderBrush="#2121FF"
+                BorderThickness="2">
+
+            <Canvas x:Name="GameCanvas"
+                    Width="896"
+                    Height="992"
+                    Background="Black"
+                    ClipToBounds="True"/>
+        </Border>
+
+        <!-- Right Sidebar - Controls -->
+        <Border Grid.Column="2"
+                Background="#1A1A1A"
+                BorderBrush="#FFFF00"
+                BorderThickness="2,0,0,0"
+                MinWidth="120"
+                Padding="15">
+
+            <StackPanel VerticalAlignment="Center"
+                        Spacing="20">
+
+                <Button Content="PAUSE"
+                       Command="{Binding PauseGameCommand}"
+                       IsEnabled="{Binding IsGameRunning}"
+                       Classes="arcade"
+                       HorizontalAlignment="Stretch"/>
+
+                <Button Content="RESUME"
+                       Command="{Binding ResumeGameCommand}"
+                       IsEnabled="{Binding IsPaused}"
+                       Classes="arcade"
+                       HorizontalAlignment="Stretch"/>
+
+                <Button Content="MENU"
+                       Command="{Binding ReturnToMenuCommand}"
+                       Classes="arcade"
+                       HorizontalAlignment="Stretch"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Column="1" Background="#AA000000" IsVisible="{Binding IsPausedByHost}" ZIndex="98">
+            <TextBlock Text="PAUSED BY HOST" FontSize="60" FontWeight="Bold" Foreground="Yellow" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+
+        <Border Grid.Column="1" Background="#AA000000" IsVisible="{Binding IsSpectating}" ZIndex="98">
+            <TextBlock Text="SPECTATING" FontSize="60" FontWeight="Bold" Foreground="Cyan" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,20,0,0"/>
+        </Border>
+
+        <!-- Level Complete Message -->
+        <Border Grid.Column="1"
+                Background="#CC000000"
+                IsVisible="{Binding IsLevelComplete}"
+                ZIndex="99">
+            <TextBlock Text="LEVEL COMPLETE"
+                       FontSize="60"
+                       FontWeight="Bold"
+                       Foreground="#00FF00"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       FontFamily="Consolas, Courier New"/>
+        </Border>
+
+        <!-- Game Over Dialog (overlay) -->
+        <Border Grid.Column="0" Grid.ColumnSpan="3"
+                Background="#CC000000"
+                IsVisible="{Binding IsGameOver}"
+                ZIndex="100">
+
+            <StackPanel VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Spacing="30">
+
+                <TextBlock Text="GAME OVER"
+                          FontSize="80"
+                          FontWeight="Bold"
+                          Foreground="#FF0000"
+                          HorizontalAlignment="Center"
+                          FontFamily="Consolas, Courier New"/>
+
+                <TextBlock Text="{Binding FinalScore, StringFormat='FINAL SCORE: {0}'}"
+                          FontSize="32"
+                          Foreground="White"
+                          HorizontalAlignment="Center"
+                          FontFamily="Consolas, Courier New"/>
+
+                <StackPanel Orientation="Horizontal"
+                           HorizontalAlignment="Center"
+                           Spacing="20">
+
+                    <Button Content="TRY AGAIN"
+                           Command="{Binding RestartGameCommand}"
+                           Classes="arcade"
+                           MinWidth="200"/>
+
+                    <Button Content="MAIN MENU"
+                           Command="{Binding ReturnToMenuCommand}"
+                           Classes="arcade"
+                           MinWidth="200"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Victory Dialog (hidden by default) -->
+        <Border x:Name="VictoryDialog"
+                Background="#CC000000"
+                IsVisible="{Binding IsVictory}"
+                ZIndex="100"
+                Grid.ColumnSpan="3">
+
+            <StackPanel VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Spacing="40">
+
+                <!-- Trophy Icon (large text trophy emoji or custom) -->
+                <TextBlock Text="🏆"
+                          FontSize="120"
+                          HorizontalAlignment="Center"/>
+
+                <TextBlock Text="CONGRATULATIONS!"
+                          FontSize="72"
+                          FontWeight="Bold"
+                          Foreground="#FFD700"
+                          HorizontalAlignment="Center"
+                          FontFamily="Consolas, Courier New"/>
+
+                <TextBlock Text="YOU COMPLETED ALL LEVELS!"
+                          FontSize="28"
+                          Foreground="White"
+                          HorizontalAlignment="Center"
+                          FontFamily="Consolas, Courier New"/>
+
+                <TextBlock Text="{Binding FinalScore, StringFormat='FINAL SCORE: {0}'}"
+                          FontSize="40"
+                          FontWeight="Bold"
+                          Foreground="#FFFF00"
+                          HorizontalAlignment="Center"
+                          FontFamily="Consolas, Courier New"
+                          Margin="0,20,0,0"/>
+
+                <StackPanel Orientation="Horizontal"
+                           HorizontalAlignment="Center"
+                           Spacing="20"
+                           Margin="0,20,0,0">
+
+                    <Button Content="PLAY AGAIN"
+                           Command="{Binding RestartGameCommand}"
+                           Classes="arcade"
+                           MinWidth="220"/>
+
+                    <Button Content="MAIN MENU"
+                           Command="{Binding ReturnToMenuCommand}"
+                           Classes="arcade"
+                           MinWidth="220"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</UserControl>

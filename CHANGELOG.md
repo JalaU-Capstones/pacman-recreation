@@ -5,17 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0] - 2026-02-12
+## [1.1.0] - 2026-02-15
 
 ### Added
-- Comprehensive unit test suite with 70%+ code coverage
-- xUnit, Moq, and FluentAssertions test infrastructure
-- Tests for GameEngine, CollisionDetector, MapLoader
-- Tests for all 4 Ghost AI implementations (Blinky, Pinky, Inky, Clyde)
-- Tests for A* pathfinding algorithm
-- Tests for Pac-Man and Ghost entity logic
-- Tests for ProfileManager and database operations
-- Coverage reports via coverlet
+- **Multiplayer System**: Up to 5 players + 5 spectators per room
+  - Public and private rooms with password protection
+  - Room admin can assign player roles (Pac-Man, Blinky, Pinky, Inky, Clyde)
+  - Real-time synchronized gameplay via relay server
+  - Spectator mode with independent pause
+  - Victory/defeat conditions for Pac-Man vs Ghosts
+- **Relay Server**: Authoritative server for multiplayer (PacmanGame.Server project)
+  - UDP networking with LiteNetLib
+  - Room management with SQLite persistence
+  - 20 FPS state broadcast, 60 FPS input processing
+  - Deployed on Oracle Cloud Free Tier
+- **New Views**: MultiplayerMenu, RoomList, CreateRoom, RoomLobby, MultiplayerGame
+- **Network Service**: Client-side networking with automatic reconnection
+- **Deployment Guide**: Complete Oracle Cloud setup instructions (docs/DEPLOYMENT.md)
 
 ## [1.0.0] - 2026-02-12
 
@@ -40,6 +46,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All visual bugs from previous versions
 - Ghost AI verified against original Pac-Man specifications
 - MVVM architecture compliance ensured throughout codebase
+
+## [0.5.0] - 2026-02-12
+
+### Added
+- Comprehensive unit test suite with 70%+ code coverage
+- xUnit, Moq, and FluentAssertions test infrastructure
+- Tests for GameEngine, CollisionDetector, MapLoader
+- Tests for all 4 Ghost AI implementations (Blinky, Pinky, Inky, Clyde)
+- Tests for A* pathfinding algorithm
+- Tests for Pac-Man and Ghost entity logic
+- Tests for ProfileManager and database operations
+- Coverage reports via coverlet
 
 ## [0.4.0] - 2026-02-08
 

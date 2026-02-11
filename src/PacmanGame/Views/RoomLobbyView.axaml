@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:PacmanGame.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="PacmanGame.Views.RoomLobbyView"
+             x:DataType="vm:RoomLobbyViewModel"
+             x:CompileBindings="False"
+             x:Name="Root">
+  <Design.DataContext>
+    <vm:RoomLobbyViewModel/>
+  </Design.DataContext>
+  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
+    <TextBlock Text="{Binding RoomName}" FontSize="24" />
+    <DataGrid ItemsSource="{Binding Players}">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Player Name" Binding="{Binding Name}" />
+        <DataGridTemplateColumn Header="Role">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:PlayerViewModel">
+              <ComboBox ItemsSource="{Binding $parent[DataGrid].DataContext.Roles}" SelectedItem="{Binding Role}" IsVisible="{Binding $parent[DataGrid].DataContext.IsAdmin}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn>
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:PlayerViewModel">
+              <Button Content="Kick" Command="{Binding $parent[DataGrid].DataContext.KickPlayerCommand}" CommandParameter="{Binding}" IsVisible="{Binding $parent[DataGrid].DataContext.IsAdmin}" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+      </DataGrid.Columns>
+    </DataGrid>
+    <Button Content="Start Game" Command="{Binding StartGameCommand}" IsVisible="{Binding IsAdmin}" />
+    <Button Content="Leave Room" Command="{Binding LeaveRoomCommand}" />
+  </StackPanel>
+</UserControl>

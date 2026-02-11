@@ -80,6 +80,18 @@
             </Button>
 
             <Button Classes="arcade"
+                    Command="{Binding ShowMultiplayerCommand}"
+                    HorizontalAlignment="Stretch">
+                <TextBlock Text="MULTIPLAYER"
+                           FontFamily="{Binding FontFamily, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
+                           FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextAlignment="Center"/>
+            </Button>
+
+            <Button Classes="arcade"
                     Command="{Binding ShowSettingsCommand}"
                     HorizontalAlignment="Stretch">
                 <TextBlock Text="SETTINGS"

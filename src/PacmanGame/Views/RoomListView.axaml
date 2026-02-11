@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:PacmanGame.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="896" d:DesignHeight="1024"
+             x:Class="PacmanGame.Views.RoomListView"
+             x:DataType="vm:RoomListViewModel"
+             x:CompileBindings="False"
+             Background="Black">
+
+    <UserControl.Styles>
+        <StyleInclude Source="/Styles/ButtonStyles.axaml" />
+        <Style Selector="DataGrid">
+            <Setter Property="Background" Value="#1A1A1A"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FFFF00"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="RowBackground" Value="#2C2C2C"/>
+        </Style>
+        <Style Selector="DataGridRow:nth-child(odd)">
+            <Setter Property="Background" Value="#3A3A3A"/>
+        </Style>
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="Background" Value="#2121FF"/>
+            <Setter Property="Foreground" Value="#FFFF00"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="10"/>
+        </Style>
+        <Style Selector="DataGridCell">
+            <Setter Property="Padding" Value="10"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="20"
+                    Width="700">
+
+            <TextBlock Text="JOIN ROOM"
+                       FontSize="60"
+                       FontWeight="Bold"
+                       Foreground="#FFFF00"
+                       HorizontalAlignment="Center"
+                       FontFamily="Consolas, Courier New"
+                       Margin="0,0,0,40">
+                <TextBlock.Effect>
+                    <DropShadowEffect Color="#2121FF" BlurRadius="15"/>
+                </TextBlock.Effect>
+            </TextBlock>
+
+            <DataGrid ItemsSource="{Binding Rooms}" AutoGenerateColumns="False" CanUserResizeColumns="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="ROOM NAME" Binding="{Binding Name}" Width="*" />
+                    <DataGridTextColumn Header="PLAYERS" Binding="{Binding PlayerCount}" Width="120" />
+                    <DataGridTemplateColumn Header="JOIN" Width="100">
+                        <DataTemplate>
+                            <Button Classes="arcade" Content="JOIN"
+                                    Command="{Binding $parent[DataGrid].DataContext.JoinRoomCommand}"
+                                    CommandParameter="{Binding}" FontSize="16" Padding="10,5"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <StackPanel Orientation="Horizontal" Spacing="20" HorizontalAlignment="Center" Margin="0,20,0,0">
+                <Button Classes="arcade" Content="REFRESH" Command="{Binding RefreshCommand}" />
+                <Button Classes="arcade" Content="BACK" Command="{Binding BackCommand}" />
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</UserControl>

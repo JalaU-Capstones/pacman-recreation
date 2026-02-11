@@ -19,10 +19,12 @@
 
 - [About](#about)
 - [Features](#features)
+- [Multiplayer Quick Start](#multiplayer-quick-start)
 - [Gameplay](#gameplay)
 - [User Interface](#user-interface)
 - [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
+- [Server Deployment](#server-deployment)
 - [Testing](#testing)
 - [Project Structure](#project-structure)
 - [Game Controls](#game-controls)
@@ -44,6 +46,7 @@ This project is an educational recreation of the iconic **Pac-Man** arcade game,
 - MVVM (Model-View-ViewModel) architectural pattern
 - Cross-platform desktop application development with Avalonia UI
 - Game development concepts (sprite management, collision detection, AI)
+- Real-time multiplayer networking
 - Audio integration and resource management
 - File I/O for score persistence
 
@@ -59,11 +62,19 @@ This project is an educational recreation of the iconic **Pac-Man** arcade game,
 
 ## Features
 
-### Complete Pac-Man Gameplay
-- **3 Progressive Levels**: Increasing difficulty with faster ghosts and shorter power-ups
-- **4 Unique Ghost AI**: Each ghost (Blinky, Pinky, Inky, Clyde) has distinct behavior
-- **Classic Mechanics**: Power pellets, score system, extra lives, death animation
-- **Victory Celebration**: Complete all 3 levels to see the victory screen
+### Multiplayer (NEW)
+- **Up to 5 Players**: Control Pac-Man or one of the 4 ghosts
+- **Spectator Mode**: Watch games with up to 5 spectators
+- **Public & Private Rooms**: Create public rooms or password-protected private rooms
+- **Role Assignment**: Room admin assigns characters to players
+- **Synchronized Gameplay**: Real-time updates via relay server
+- **Victory Conditions**: Pac-Man must complete 3 levels, Ghosts must eliminate Pac-Man
+
+### Gameplay (Single-Player & Multiplayer)
+- 3 Progressive Levels
+- 4 Unique Ghost AI
+- Classic Mechanics
+- Victory Celebration
 
 ### Technical Features
 - Cross-platform (Windows & Linux)
@@ -72,6 +83,23 @@ This project is an educational recreation of the iconic **Pac-Man** arcade game,
 - User profile management with persistent scores
 - Adjustable audio settings per profile
 - 60 FPS smooth gameplay
+
+---
+
+## Multiplayer Quick Start
+
+1. Launch game → Main Menu → Multiplayer
+2. Create Room:
+   - Enter room name
+   - Choose Public or Private (+ password)
+   - Wait for players to join
+   - Assign roles to players
+   - Click Start Game
+3. Join Room:
+   - Select room from list
+   - Click Join
+   - Wait for admin to assign role
+   - Game starts when admin clicks Start
 
 ---
 
@@ -113,6 +141,7 @@ The game features a clean, arcade-style interface with:
 - **UI Framework:** [Avalonia UI 11.x](https://avaloniaui.net/)
 - **Language:** C# 13
 - **Architecture:** MVVM (Model-View-ViewModel)
+- **Networking:** LiteNetLib (UDP)
 - **Database:** SQLite (Microsoft.Data.Sqlite)
 
 ### Development Tools
@@ -135,6 +164,8 @@ The game features a clean, arcade-style interface with:
 <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.8" />
 <PackageReference Include="SFML.Audio" Version="2.6.0" />
 <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
+<PackageReference Include="LiteNetLib" Version="1.2.0" />
+<PackageReference Include="MessagePack" Version="2.6.95" />
 ```
 
 ---
@@ -168,6 +199,18 @@ The game features a clean, arcade-style interface with:
 ```bash
 dotnet run --project src/PacmanGame/PacmanGame.csproj
 ```
+
+---
+
+## Server Deployment
+
+The relay server is designed to run on **AWS EC2 Free Tier**. See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for complete setup instructions.
+
+**Server Requirements:**
+- Ubuntu 24.04
+- .NET 9.0 Runtime
+- **Instance Type:** `t2.micro` (1 vCPU, 1 GB RAM)
+- Open UDP port 9050
 
 ---
 
@@ -237,7 +280,8 @@ The application logs all important events to a log file for troubleshooting:
 - [x] **v0.2.0:** User profiles, persistent scores & settings via SQLite.
 - [x] **v0.3.0:** Advanced ghost AI (Blinky, Pinky, Inky, Clyde) with pathfinding.
 - [x] **v0.4.0:** UI redesign, level progression, death animation, game over screen.
-- [x] **v1.0.0 (Final):** Power pellets, bonus fruits, multiple levels, polish.
+- [x] **v1.0.0:** Power pellets, bonus fruits, multiple levels, polish.
+- [ ] **v1.1.0 (Current):** Multiplayer implementation.
 
 ---
 
