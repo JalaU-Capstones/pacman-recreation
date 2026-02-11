@@ -1,4 +1,4 @@
-# 🤖 AGENTS.md - AI Assistant Context Document
+# AGENTS.md - AI Assistant Context Document
 
 **Project:** Pac-Man Educational Recreation  
 **Course:** Programming 3 (CSPR-231) - Universidad Jala  
@@ -8,7 +8,7 @@
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 1. [Project Overview](#project-overview)
 2. [Academic Requirements](#academic-requirements)
@@ -25,7 +25,7 @@
 
 ---
 
-## 🎯 Project Overview
+## Project Overview
 
 ### **Goal**
 Create a fully functional Pac-Man game clone as an educational project to demonstrate:
@@ -44,28 +44,28 @@ Create a fully functional Pac-Man game clone as an educational project to demons
   - **Final Delivery:** Week 8 (100% functionality)
 
 ### **Constraints & Considerations**
-- ✅ **Academic Project** - Focus on code quality over performance
-- ✅ **Cross-platform** - Must run on Windows and Linux (Ubuntu 22.04)
-- ✅ **Educational** - Code must be well-commented and documented
-- ✅ **Legal** - All assets created from scratch (no copyright infringement)
-- ✅ **Testable** - Architecture should support unit testing
+- **Academic Project** - Focus on code quality over performance
+- **Cross-platform** - Must run on Windows and Linux (Ubuntu 22.04)
+- **Educational** - Code must be well-commented and documented
+- **Legal** - All assets created from scratch (no copyright infringement)
+- **Testable** - Architecture should support unit testing
 
 ---
 
-## 📚 Academic Requirements
+## Academic Requirements
 
 ### **Midterm Delivery (Week 4) - 50% Grade**
 
 **Functional Requirements:**
-1. ✅ Main menu with navigation
-2. ✅ Basic Pac-Man movement (arrow keys)
-3. ✅ Simple maze rendering (static)
-4. ✅ 2-3 ghosts with **simple AI** (random or basic pattern movement)
-5. ✅ Collision detection (walls, dots, ghosts)
-6. ✅ Score system (collecting dots)
-7. ✅ Life system (3 lives)
-8. ✅ Game over screen with restart
-9. ✅ Sound effects for key actions
+1. Main menu with navigation
+2. Basic Pac-Man movement (arrow keys)
+3. Simple maze rendering (static)
+4. 2-3 ghosts with **simple AI** (random or basic pattern movement)
+5. Collision detection (walls, dots, ghosts)
+6. Score system (collecting dots)
+7. Life system (3 lives)
+8. Game over screen with restart
+9. Sound effects for key actions
 
 **Technical Requirements:**
 - Clean MVVM separation
@@ -74,28 +74,28 @@ Create a fully functional Pac-Man game clone as an educational project to demons
 - Code documentation (XML comments)
 
 **Deliverables:**
-- ✅ Source code (GitHub/GitLab)
-- ✅ README with instructions
-- ✅ Video demo (2-3 minutes)
-- ✅ Brief technical report (2-3 pages)
+- Source code (GitHub/GitLab)
+- README with instructions
+- Video demo (2-3 minutes)
+- Brief technical report (2-3 pages)
 
 ### **Final Delivery (Week 8) - 50% Grade**
 
 **Functional Requirements:**
-1. ✅ Complete Pac-Man gameplay
-2. ✅ 4 ghosts with **unique AI behaviors**:
+1. Complete Pac-Man gameplay
+2. 4 ghosts with **unique AI behaviors**:
    - **Blinky (Red):** Direct chase - Always targets Pac-Man's current position
    - **Pinky (Pink):** Ambush - Targets 4 tiles ahead of Pac-Man
    - **Inky (Cyan):** Flanking - Complex behavior based on Blinky and Pac-Man
    - **Clyde (Orange):** Shy - Chases when far, scatters when close
-3. ✅ Power pellet mechanic (ghosts become vulnerable)
-4. ✅ Bonus fruits with point values
-5. ✅ Multiple levels (at least 3)
-6. ✅ Background music + complete SFX
-7. ✅ Score persistence (saved to file)
-8. ✅ Settings menu (audio, controls)
-9. ✅ Smooth animations
-10. ✅ Progressive difficulty
+3. Power pellet mechanic (ghosts become vulnerable)
+4. Bonus fruits with point values
+5. Multiple levels (at least 3)
+6. Background music + complete SFX
+7. Score persistence (saved to file)
+8. Settings menu (audio, controls)
+9. Smooth animations
+10. Progressive difficulty
 
 **Technical Requirements:**
 - Complete unit test suite (>70% coverage)
@@ -104,15 +104,15 @@ Create a fully functional Pac-Man game clone as an educational project to demons
 - Settings persistence
 
 **Deliverables:**
-- ✅ Complete source code
-- ✅ User manual
-- ✅ Technical documentation
-- ✅ Video demo (5-7 minutes)
-- ✅ Final presentation (10 minutes)
+- Complete source code
+- User manual
+- Technical documentation
+- Video demo (5-7 minutes)
+- Final presentation (10 minutes)
 
 ---
 
-## 🛠️ Technical Stack
+## Technical Stack
 
 ### **Core Framework**
 ```
@@ -152,7 +152,7 @@ xUnit + Moq (planned)
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ### **Pattern: MVVM (Model-View-ViewModel)**
 
@@ -211,7 +211,7 @@ xUnit + Moq (planned)
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 pacman-recreation/
@@ -320,7 +320,7 @@ pacman-recreation/
 
 ---
 
-## 🎨 Assets Inventory
+## Assets Inventory
 
 ### **Sprites (All Generated - DO NOT MODIFY)**
 
@@ -339,13 +339,13 @@ pacman-recreation/
 
 **Naming Conventions:**
 ```
-pacman_right_0        → Pac-Man facing right, frame 0
-ghost_blinky_up_1     → Blinky facing up, frame 1
-ghost_vulnerable_0    → Vulnerable ghost (blue)
-ghost_eyes_left       → Eyes returning to base
-item_dot              → Small dot
-item_power_pellet_0   → Power pellet (animated)
-tile_wall_horizontal  → Wall tile
+pacman_right_0        -> Pac-Man facing right, frame 0
+ghost_blinky_up_1     -> Blinky facing up, frame 1
+ghost_vulnerable_0    -> Vulnerable ghost (blue)
+ghost_eyes_left       -> Eyes returning to base
+item_dot              -> Small dot
+item_power_pellet_0   -> Power pellet (animated)
+tile_wall_horizontal  -> Wall tile
 ```
 
 ### **Audio (All Generated - DO NOT MODIFY)**
@@ -390,49 +390,49 @@ tile_wall_horizontal  → Wall tile
 
 ---
 
-## 📊 Implementation Status
+## Implementation Status
 
-### **✅ Completed (Ready to Use)**
+### **Completed (Ready to Use)**
 
 | Component | Status | Lines | Description |
 |-----------|--------|-------|-------------|
-| **Project Structure** | ✅ | - | Complete file organization |
-| **Models** | ✅ | ~400 | All entities and enums |
-| **ViewModels** | ✅ | ~500 | All ViewModels |
-| **Views (AXAML)** | ✅ | ~400 | All views |
-| **Constants** | ✅ | ~200 | 100+ game constants |
-| **MapLoader** | ✅ | ~200 | Load maps from .txt |
-| **SpriteManager** | ✅ | ~250 | Load and crop sprites |
-| **CollisionDetector** | ✅ | ~150 | Collision detection |
-| **ButtonStyles** | ✅ | ~50 | Arcade UI styles |
-| **Documentation** | ✅ | - | README, ARCHITECTURE, etc. |
-| **GameEngine** | ✅ | ~300 | Game loop, entity updates |
-| **Rendering System** | ✅ | ~150 | Canvas rendering |
-| **Pac-Man Movement** | ✅ | ~100 | Player movement logic |
-| **AudioManager** | ✅ | ~200 | SFML.Audio integration |
-| **Score/Profile Persistence** | ✅ | ~250 | SQLite database management |
-| **Advanced Ghost AI** | ✅ | ~400 | Unique AI for all 4 ghosts |
+| **Project Structure** | Completed | - | Complete file organization |
+| **Models** | Completed | ~400 | All entities and enums |
+| **ViewModels** | Completed | ~500 | All ViewModels |
+| **Views (AXAML)** | Completed | ~400 | All views |
+| **Constants** | Completed | ~200 | 100+ game constants |
+| **MapLoader** | Completed | ~200 | Load maps from .txt |
+| **SpriteManager** | Completed | ~250 | Load and crop sprites |
+| **CollisionDetector** | Completed | ~150 | Collision detection |
+| **ButtonStyles** | Completed | ~50 | Arcade UI styles |
+| **Documentation** | Completed | - | README, ARCHITECTURE, etc. |
+| **GameEngine** | Completed | ~300 | Game loop, entity updates |
+| **Rendering System** | Completed | ~150 | Canvas rendering |
+| **Pac-Man Movement** | Completed | ~100 | Player movement logic |
+| **AudioManager** | Completed | ~200 | SFML.Audio integration |
+| **Score/Profile Persistence** | Completed | ~250 | SQLite database management |
+| **Advanced Ghost AI** | Completed | ~400 | Unique AI for all 4 ghosts |
 
 **Total Code:** ~3,500 lines
 
-### **⚠️ Partially Implemented**
+### **Partially Implemented**
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **Power Pellet Mechanics** | ⚠️ | Ghosts become vulnerable, but no scoring combo yet. |
-| **Fruit System** | ⚠️ | Fruit spawns but has no effect. |
+| **Power Pellet Mechanics** | Partial | Ghosts become vulnerable, but no scoring combo yet. |
+| **Fruit System** | Partial | Fruit spawns but has no effect. |
 
-### **❌ Not Implemented (TO DO)**
+### **Not Implemented (TO DO)**
 
 | Component | Priority | For |
 |-----------|----------|-----|
-| **Multiple Levels** | 🟡 Medium | Final |
-| **Progressive Difficulty** | 🟡 Medium | Final |
-| **Unit Tests** | 🟢 Low | Final |
+| **Multiple Levels** | Medium | Final |
+| **Progressive Difficulty** | Medium | Final |
+| **Unit Tests** | Low | Final |
 
 ---
 
-## 🎯 Midterm Requirements (Week 4)
+## Midterm Requirements (Week 4)
 
 ### **CRITICAL - Must Have:**
 
@@ -486,16 +486,16 @@ tile_wall_horizontal  → Wall tile
    - Game start/over
 
 ### **Technical Debt Allowed:**
-- ✅ Power pellets can be regular dots
-- ✅ Ghosts can have simple AI
-- ✅ No fruits needed
-- ✅ Only 1 level needed
-- ✅ No settings menu
-- ✅ No score persistence
+- Power pellets can be regular dots
+- Ghosts can have simple AI
+- No fruits needed
+- Only 1 level needed
+- No settings menu
+- No score persistence
 
 ---
 
-## 🏆 Final Requirements (Week 8)
+## Final Requirements (Week 8)
 
 ### **Ghost AI - Detailed Specifications**
 
@@ -536,7 +536,7 @@ Speed: 95% base speed
 ```
 Chase: 
   - If distance to Pac-Man > 8 tiles: target Pac-Man
-  - If distance ≤ 8 tiles: scatter
+  - If distance <= 8 tiles: scatter
 Scatter: Target = Bottom-left corner (30, 0)
 Speed: 90% base speed
 ```
@@ -578,7 +578,7 @@ Speed: 90% base speed
 
 ---
 
-## 💻 Development Guidelines
+## Development Guidelines
 
 ### **Code Style**
 
@@ -619,13 +619,13 @@ public int MethodName(int paramName)
 
 ### **MVVM Rules**
 
-**✅ DO:**
+**DO:**
 - ViewModels expose properties and commands
 - Views bind to ViewModel properties
 - Services contain business logic
 - Models are POCOs (Plain Old CLR Objects)
 
-**❌ DON'T:**
+**DON'T:**
 - ViewModels reference Views
 - Views contain business logic
 - Direct file I/O in ViewModels
@@ -634,16 +634,16 @@ public int MethodName(int paramName)
 ### **Testing Guidelines**
 
 **What to Test:**
-- ✅ Collision detection logic
-- ✅ Ghost AI path calculation
-- ✅ Score calculation
-- ✅ Map loading
-- ✅ Game state transitions
+- Collision detection logic
+- Ghost AI path calculation
+- Score calculation
+- Map loading
+- Game state transitions
 
 **What NOT to Test:**
-- ❌ Avalonia UI rendering
-- ❌ File I/O (use mocks)
-- ❌ Audio playback
+- Avalonia UI rendering
+- File I/O (use mocks)
+- Audio playback
 
 ### **Performance Targets**
 
@@ -665,7 +665,7 @@ public TileType[,] LoadMap(string fileName)
     }
     catch (FileNotFoundException ex)
     {
-        Console.WriteLine($"❌ Error: {ex.Message}");
+        Console.WriteLine($"Error: {ex.Message}");
         throw; // Re-throw for caller to handle
     }
 }
@@ -687,7 +687,7 @@ public void StartGame()
 
 ---
 
-## 🔢 Key Constants
+## Key Constants
 
 ### **Grid & Display**
 ```csharp
@@ -727,7 +727,7 @@ MapsPath = "Assets/Maps"
 
 ---
 
-## 🤖 Common Tasks & Prompts
+## Common Tasks & Prompts
 
 ### **For AI Assistants Working on This Project:**
 
@@ -835,7 +835,7 @@ Use CollisionDetector for valid moves.
 
 ---
 
-## 📝 Additional Context
+## Additional Context
 
 ### **Important Files to Never Modify**
 - All files in `Assets/` (generated once)
@@ -850,21 +850,21 @@ Use CollisionDetector for valid moves.
 ### **Common Pitfalls**
 
 1. **Sprite Loading:**
-   - ⚠️ Always use `avares://PacmanGame/...` URIs
-   - ⚠️ Crop requires unsafe code (already implemented)
+   - Always use `avares://PacmanGame/...` URIs
+   - Crop requires unsafe code (already implemented)
 
 2. **Collision Detection:**
-   - ⚠️ Remember: grid positions (Y, X) vs screen (X, Y)
-   - ⚠️ Threshold is 0.5 tiles for entity collisions
+   - Remember: grid positions (Y, X) vs screen (X, Y)
+   - Threshold is 0.5 tiles for entity collisions
 
 3. **MVVM:**
-   - ⚠️ Don't access Views from ViewModels
-   - ⚠️ Use Commands, not direct method calls
-   - ⚠️ Services are injected, not created in VMs
+   - Don't access Views from ViewModels
+   - Use Commands, not direct method calls
+   - Services are injected, not created in VMs
 
 4. **Avalonia:**
-   - ⚠️ Use `Dispatcher.UIThread.InvokeAsync()` for UI updates from background threads
-   - ⚠️ Canvas children must be added/removed on UI thread
+   - Use `Dispatcher.UIThread.InvokeAsync()` for UI updates from background threads
+   - Canvas children must be added/removed on UI thread
 
 ### **Useful Commands**
 
@@ -896,13 +896,13 @@ dotnet publish -c Release -r win-x64 --self-contained
 
 ---
 
-## 🎓 Academic Integrity
+## Academic Integrity
 
 This project is for educational purposes. While AI assistance is permitted:
-- ✅ Understand all generated code
-- ✅ Be able to explain design decisions
-- ✅ Write your own tests
-- ✅ Document your thought process
+- Understand all generated code
+- Be able to explain design decisions
+- Write your own tests
+- Document your thought process
 
 **During presentation, you may be asked:**
 - Why did you choose this approach?
@@ -912,7 +912,7 @@ This project is for educational purposes. While AI assistance is permitted:
 
 ---
 
-## 📚 Reference Documents
+## Reference Documents
 
 - **README.md** - Project overview and setup
 - **ARCHITECTURE.md** - Detailed architecture docs
@@ -922,15 +922,15 @@ This project is for educational purposes. While AI assistance is permitted:
 
 ---
 
-## 🚀 Current Priority (Next Steps)
+## Current Priority (Next Steps)
 
 **For Midterm (Week 4):**
-1. ✅ Implement GameEngine with 60 FPS loop
-2. ✅ Implement rendering system on Canvas
-3. ✅ Implement Pac-Man movement
-4. ✅ Implement simple ghost AI (random movement)
-5. ✅ Implement collision handling
-6. ✅ Test and debug
+1. Implement GameEngine with 60 FPS loop
+2. Implement rendering system on Canvas
+3. Implement Pac-Man movement
+4. Implement simple ghost AI (random movement)
+5. Implement collision handling
+6. Test and debug
 
 **Timeline:**
 - Days 1-2: GameEngine + Rendering
@@ -946,7 +946,7 @@ This project is for educational purposes. While AI assistance is permitted:
 
 ---
 
-## 💡 Quick Reference for AI Agents
+## Quick Reference for AI Agents
 
 **When asked to implement a feature:**
 1. Check if service/interface exists
@@ -974,4 +974,4 @@ This project is for educational purposes. While AI assistance is permitted:
 
 **Remember:** This is an educational project. Code quality and understanding are more important than clever optimizations. Write clean, readable, well-documented code that demonstrates mastery of OOP and MVVM principles.
 
-**Good luck! 🎮✨**
+**Good luck!**

@@ -56,6 +56,16 @@ public interface IGameEngine
     List<Collectible> Collectibles { get; }
 
     /// <summary>
+    /// Gets a value indicating whether the game is running
+    /// </summary>
+    bool IsRunning { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the game is paused
+    /// </summary>
+    bool IsPaused { get; }
+
+    /// <summary>
     /// Load a specific level
     /// </summary>
     /// <param name="level">Level number to load</param>

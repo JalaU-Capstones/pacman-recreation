@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-02-12
+
+### Added
+- Comprehensive unit test suite with 70%+ code coverage
+- xUnit, Moq, and FluentAssertions test infrastructure
+- Tests for GameEngine, CollisionDetector, MapLoader
+- Tests for all 4 Ghost AI implementations (Blinky, Pinky, Inky, Clyde)
+- Tests for A* pathfinding algorithm
+- Tests for Pac-Man and Ghost entity logic
+- Tests for ProfileManager and database operations
+- Coverage reports via coverlet
+
 ## [1.0.0] - 2026-02-12
 
 ### Added

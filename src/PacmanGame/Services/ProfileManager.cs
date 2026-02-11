@@ -16,15 +16,18 @@ public class ProfileManager : IProfileManager
     private readonly string _connectionString;
     private Profile? _activeProfile;
 
-    public ProfileManager(ILogger logger)
+    public ProfileManager(ILogger logger, string? dbPath = null)
     {
         _logger = logger;
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        var folder = Path.Combine(appData, "PacmanGame");
-        Directory.CreateDirectory(folder);
-        var dbPath = Path.Combine(folder, "profiles.db");
-        _connectionString = $"Data Source={dbPath}";
+        if (string.IsNullOrEmpty(dbPath))
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var folder = Path.Combine(appData, "PacmanGame");
+            Directory.CreateDirectory(folder);
+            dbPath = Path.Combine(folder, "profiles.db");
+        }
 
+        _connectionString = $"Data Source={dbPath}";
         InitializeDatabase();
     }
 

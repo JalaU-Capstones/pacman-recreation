@@ -16,7 +16,7 @@ Three levels with increasing difficulty ensure both accessibility for new player
 ### Why 3 Levels?
 - Academic project scope (4-week timeline)
 - Sufficient challenge progression
-- Complete gameplay loop (beginning → middle → end)
+- Complete gameplay loop (beginning -> middle -> end)
 - Allows for victory celebration without endless repetition
 
 ## Ghost AI Philosophy

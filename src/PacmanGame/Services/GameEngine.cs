@@ -44,7 +44,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
     // Ghost house release logic
     private float _ghostReleaseTimer = 0f;
-    private int _nextGhostToRelease = 0;
 
     // Death animation
     private float _deathAnimationTimer = 0f;
@@ -60,6 +59,8 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     public List<Ghost> Ghosts => _ghosts;
     public List<Collectible> Collectibles => _collectibles;
     public ISpriteManager SpriteManager => _spriteManager;
+    public bool IsRunning => _isRunning;
+    public bool IsPaused => _isPaused;
 
     /// <summary>
     /// Create a new GameEngine instance
@@ -343,6 +344,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     /// </summary>
     private void UpdateGhosts(float deltaTime)
     {
+        _ghostReleaseTimer += deltaTime;
         foreach (var ghost in _ghosts)
         {
             UpdateGhost(ghost, deltaTime);
@@ -357,8 +359,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         // Handle ghost house states
         if (ghost.State == GhostState.InHouse)
         {
-            ghost.ReleaseTimer -= deltaTime;
-            if (ghost.ReleaseTimer <= 0f)
+            if (_ghostReleaseTimer >= ghost.ReleaseTimer)
             {
                 ghost.State = GhostState.ExitingHouse;
                 ghost.CurrentDirection = Direction.Up; // Start moving up to exit
