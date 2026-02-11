@@ -165,5 +165,60 @@
             </StackPanel>
         </Border>
 
+        <!-- Victory Dialog (hidden by default) -->
+        <Border x:Name="VictoryDialog"
+                Background="#CC000000"
+                IsVisible="{Binding IsVictory}"
+                ZIndex="100"
+                Grid.ColumnSpan="3">
+
+            <StackPanel VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Spacing="40">
+
+                <!-- Trophy Icon (large text trophy emoji or custom) -->
+                <TextBlock Text="🏆"
+                          FontSize="120"
+                          HorizontalAlignment="Center"/>
+
+                <TextBlock Text="CONGRATULATIONS!"
+                          FontSize="72"
+                          FontWeight="Bold"
+                          Foreground="#FFD700"
+                          HorizontalAlignment="Center"
+                          FontFamily="Consolas, Courier New"/>
+
+                <TextBlock Text="YOU COMPLETED ALL LEVELS!"
+                          FontSize="28"
+                          Foreground="White"
+                          HorizontalAlignment="Center"
+                          FontFamily="Consolas, Courier New"/>
+
+                <TextBlock Text="{Binding FinalScore, StringFormat='FINAL SCORE: {0}'}"
+                          FontSize="40"
+                          FontWeight="Bold"
+                          Foreground="#FFFF00"
+                          HorizontalAlignment="Center"
+                          FontFamily="Consolas, Courier New"
+                          Margin="0,20,0,0"/>
+
+                <StackPanel Orientation="Horizontal"
+                           HorizontalAlignment="Center"
+                           Spacing="20"
+                           Margin="0,20,0,0">
+
+                    <Button Content="PLAY AGAIN"
+                           Command="{Binding RestartGameCommand}"
+                           Classes="arcade"
+                           MinWidth="220"/>
+
+                    <Button Content="MAIN MENU"
+                           Command="{Binding ReturnToMenuCommand}"
+                           Classes="arcade"
+                           MinWidth="220"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
     </Grid>
 </UserControl>

@@ -31,6 +31,11 @@ public interface IGameEngine
     event Action? GameOver;
 
     /// <summary>
+    /// Event raised when the player achieves victory
+    /// </summary>
+    event Action? Victory;
+
+    /// <summary>
     /// Get the current game map
     /// </summary>
     TileType[,] Map { get; }

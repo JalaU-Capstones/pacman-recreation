@@ -32,6 +32,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     private float _animationAccumulator;
     private int _ghostsEatenThisRound;
     private int _currentLevel;
+    private float _ghostRespawnTime;
 
     // AI specific fields
     private readonly Dictionary<GhostType, IGhostAI> _ghostAIs;
@@ -52,6 +53,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     public event Action? LifeLost;
     public event Action? LevelComplete;
     public event Action? GameOver;
+    public event Action? Victory;
 
     public TileType[,] Map => _map;
     public Pacman Pacman => _pacman;
@@ -85,6 +87,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         _animationAccumulator = 0f;
         _ghostsEatenThisRound = 0;
         _currentLevel = 1;
+        _ghostRespawnTime = Constants.Level1GhostRespawnTime;
 
         // Initialize AI
         _pathfinder = new AStarPathfinder();
@@ -159,6 +162,8 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         _pacman.PowerPelletDuration = Constants.Level1PowerPelletDuration;
         _chaseDuration = Constants.Level1ChaseDuration;
         _scatterDuration = Constants.Level1ScatterDuration;
+        _ghostRespawnTime = Constants.Level1GhostRespawnTime;
+        _pacman.Speed = Constants.PacmanSpeed;
 
         if (level == 2)
         {
@@ -166,6 +171,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             _pacman.PowerPelletDuration = Constants.Level2PowerPelletDuration;
             _chaseDuration = Constants.Level2ChaseDuration;
             _scatterDuration = Constants.Level2ScatterDuration;
+            _ghostRespawnTime = Constants.Level2GhostRespawnTime;
         }
         else if (level >= 3)
         {
@@ -173,6 +179,8 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             _pacman.PowerPelletDuration = Constants.Level3PowerPelletDuration;
             _chaseDuration = Constants.Level3ChaseDuration;
             _scatterDuration = Constants.Level3ScatterDuration;
+            _ghostRespawnTime = Constants.Level3GhostRespawnTime;
+            _pacman.Speed *= Constants.Level3PacmanSpeedMultiplier;
         }
 
         foreach (var ghost in _ghosts)
@@ -414,7 +422,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
                 nextMove = _pathfinder.FindPath(ghost.Y, ghost.X, ghost.SpawnY, ghost.SpawnX, _map, ghost, _logger);
                 if (ghost.X == ghost.SpawnX && ghost.Y == ghost.SpawnY && ghost.RespawnTimer <= 0f)
                 {
-                    ghost.RespawnTimer = Constants.GhostRespawnTime;
+                    ghost.RespawnTimer = _ghostRespawnTime;
                 }
                 break;
 
@@ -519,7 +527,14 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
             if (_collectibles.All(c => !c.IsActive))
             {
-                LevelComplete?.Invoke();
+                if (_currentLevel == 3)
+                {
+                    Victory?.Invoke();
+                }
+                else
+                {
+                    LevelComplete?.Invoke();
+                }
             }
         }
 

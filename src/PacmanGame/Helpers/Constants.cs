@@ -83,6 +83,12 @@ public static class Constants
     public const float Level2ScatterDuration = 15.0f;
     public const float Level3ScatterDuration = 10.0f;
 
+    public const float Level1GhostRespawnTime = 3.0f;
+    public const float Level2GhostRespawnTime = 2.0f;
+    public const float Level3GhostRespawnTime = 1.5f;
+
+    public const float Level3PacmanSpeedMultiplier = 0.95f;
+
     // File Paths
     public const string AssetsPath = "Assets";
     public const string SpritesPath = "Assets/Sprites";

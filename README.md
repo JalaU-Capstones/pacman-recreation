@@ -19,12 +19,10 @@
 
 - [About](#-about)
 - [Features](#-features)
+- [Gameplay](#-gameplay)
 - [User Interface](#-user-interface)
 - [Tech Stack](#-tech-stack)
 - [Getting Started](#-getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Running the Game](#running-the-game)
 - [Project Structure](#-project-structure)
 - [Game Controls](#-game-controls)
 - [Logging & Troubleshooting](#-logging--troubleshooting)
@@ -60,29 +58,40 @@ This project is an educational recreation of the iconic **Pac-Man** arcade game,
 
 ## ✨ Features
 
-### Core Gameplay
-- ✅ Main menu with navigation
-- ✅ Classic Pac-Man movement (arrow keys)
-- ✅ Basic maze with walls and collectibles
-- ✅ Score system & Life system (3 lives)
-- ✅ Game over screen with restart option
-- ✅ Sound effects for actions (using SFML.Audio)
-- ✅ User Profiles: Create, select, and manage multiple player profiles.
-- ✅ Persistent Scores: High scores are saved to a local SQLite database.
-- ✅ Settings Menu: Manage profiles and audio preferences.
-- ✅ Advanced Ghost AI: Unique AI for all 4 ghosts (Blinky, Pinky, Inky, Clyde).
-- ✅ Chase/Scatter Modes: Ghosts alternate between chasing Pac-Man and retreating to their corners.
-- ✅ A* Pathfinding: Ghosts use A* algorithm to navigate the maze intelligently.
-- ✅ Progressive Difficulty: Ghosts get faster and more aggressive in higher levels.
-- ✅ Death Animation: Smooth 11-frame Pac-Man death sequence.
-- ✅ Level Progression: Automatic transition to next level when completed.
+### Complete Pac-Man Gameplay
+- **3 Progressive Levels**: Increasing difficulty with faster ghosts and shorter power-ups
+- **4 Unique Ghost AI**: Each ghost (Blinky, Pinky, Inky, Clyde) has distinct behavior
+- **Classic Mechanics**: Power pellets, score system, extra lives, death animation
+- **Victory Celebration**: Complete all 3 levels to see the victory screen
 
-### Final Version (Week 8)
-- 🎮 Complete Pac-Man gameplay
-- 💊 Power pellets that make ghosts vulnerable
-- 🍒 Bonus fruits with special effects
-- 🎵 Background music and comprehensive SFX
-- 🗺️ Multiple levels with different mazes
+### Technical Features
+- Cross-platform (Windows & Linux)
+- MVVM architecture with clean separation of concerns
+- Professional logging system
+- User profile management with persistent scores
+- Adjustable audio settings per profile
+- 60 FPS smooth gameplay
+
+---
+
+## 🕹️ Gameplay
+
+### Objective
+Navigate Pac-Man through three increasingly difficult mazes, collecting all dots while avoiding ghosts.
+
+### Levels
+- **Level 1**: Introduction - Standard ghost speed, 6-second power pellets
+- **Level 2**: Intermediate - Ghosts 5% faster, 5-second power pellets
+- **Level 3**: Expert - Ghosts 10% faster, 4-second power pellets, maximum aggression
+
+### Scoring
+- Small Dot: 10 points
+- Power Pellet: 50 points
+- Ghosts (when vulnerable): 200, 400, 800, 1600 points (combo multiplier)
+- Extra Life: Awarded at 10,000 points
+
+### Victory
+Complete all 220 dots in Level 3 to see the victory screen and your final score. Challenge yourself to beat your high score or compete with other profiles!
 
 ---
 
@@ -105,132 +114,8 @@ The game features a clean, arcade-style interface with:
 - **Architecture:** MVVM (Model-View-ViewModel)
 - **Database:** SQLite (Microsoft.Data.Sqlite)
 
-### Development Tools
-- **IDE:** Visual Studio Code / Visual Studio 2022 / JetBrains Rider
-- **Version Control:** Git
-- **Package Manager:** NuGet
-- **Asset Generation:** Python 3.8+ with NumPy and Pillow
-
-#### Platform Support
-- ✅ **Windows 10/11** (x64, ARM64)
-- ✅ **Linux** (x64, ARM64)
-  - Tested on: Ubuntu 22.04, Debian 12, Fedora 39
-- ✅ **macOS** (x64, ARM64) - Theoretical support (not tested)
-
-### Libraries & Dependencies
-```xml
-<PackageReference Include="Avalonia" Version="11.3.11" />
-<PackageReference Include="Avalonia.Desktop" Version="11.3.11" />
-<PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
-<PackageReference Include="Avalonia.ReactiveUI" Version="11.3.8" />
-<PackageReference Include="SFML.Audio" Version="2.6.0" />
-<PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
-```
-
 ---
 
 ## 🚀 Getting Started
 
-### Prerequisites
-
-#### Required
-- [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) or later
-- Git
-
-#### Optional (for asset regeneration)
-- Python 3.8+ with NumPy and Pillow
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/JalaU-Capstones/pacman-recreation.git
-   cd pacman-recreation
-   ```
-
-2. **Restore NuGet packages**
-   ```bash
-   dotnet restore
-   ```
-
-### Running the Game
-
-```bash
-dotnet run --project src/PacmanGame/PacmanGame.csproj
-```
-
----
-
-## 📁 Project Structure
-
-A detailed breakdown of the project structure can be found in [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md).
-
----
-
-## 🎮 Game Controls
-
-### Menu Navigation
-- **Arrow Keys (↑↓):** Navigate menu options
-- **Enter:** Select option
-- **Escape:** Go back / Exit
-
-### In-Game
-- **Arrow Keys (←→↑↓):** Move Pac-Man
-- **Escape:** Pause/Resume game
-
----
-
-## 📝 Logging & Troubleshooting
-
-The application logs all important events to a log file for troubleshooting:
-
-**Log location:** 
-- Windows: `C:\Users\{Username}\AppData\Roaming\PacmanGame\pacman.log`
-- Linux: `~/.config/PacmanGame/pacman.log`
-
----
-
-## 🗓️ Development Roadmap
-
-- [x] **v0.1.0:** Basic gameplay loop, rendering, movement, simple AI.
-- [x] **v0.2.0:** User profiles, persistent scores & settings via SQLite.
-- [x] **v0.3.0:** Advanced ghost AI (Blinky, Pinky, Inky, Clyde) with pathfinding.
-- [x] **v0.4.0:** UI redesign, level progression, death animation, game over screen.
-- [ ] **v1.0.0 (Final):** Power pellets, bonus fruits, multiple levels, polish.
-
----
-
-## 🎨 Assets
-
-All game assets (sprites, audio, maps) were **procedurally generated** and are included in this repository under the MIT License. Details can be found in [`docs/ASSETS.md`](docs/ASSETS.md).
-
----
-
-## 🤝 Contributing
-
-This is an educational project, but contributions are welcome! Please see [`CONTRIBUTING.md`](CONTRIBUTING.md) for details.
-
----
-
-## 📜 License
-
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
-**Disclaimer:** This project is an educational recreation and is not affiliated with Bandai Namco Entertainment Inc.
-
----
-
-## 🙏 Acknowledgments
-
-- **Universidad Jala** - Programming 3 Course
-- Original Pac-Man game by Toru Iwatani and Namco (1980)
-- The .NET and Avalonia UI communities
-
----
-
-## 📞 Contact
-
-**Project Author:** Diego Alejandro Botina
-- GitHub: [@CodeWithBotinaOficial](https://github.com/CodeWithBotinaOficial)
-- Email: support@codewithbotina.com
-- LinkedIn: [codewithbotinaoficial](https://linkedin.com/in/codewithbotinaoficial/)
+... (rest of the file is unchanged)

@@ -32,6 +32,7 @@ public class GameViewModel : ViewModelBase
     private bool _isGameOver;
     private int _finalScore;
     private bool _isLevelComplete;
+    private bool _isVictory;
 
     /// <summary>
     /// Current player score
@@ -106,6 +107,15 @@ public class GameViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Is the victory screen showing
+    /// </summary>
+    public bool IsVictory
+    {
+        get => _isVictory;
+        set => this.RaiseAndSetIfChanged(ref _isVictory, value);
+    }
+
+    /// <summary>
     /// Get the game engine
     /// </summary>
     public IGameEngine Engine => _engine;
@@ -133,6 +143,7 @@ public class GameViewModel : ViewModelBase
         _isPaused = false;
         _isGameOver = false;
         _isLevelComplete = false;
+        _isVictory = false;
         _extraLifeThreshold = Constants.ExtraLifeScore;
 
         // Create engine with required services
@@ -148,6 +159,7 @@ public class GameViewModel : ViewModelBase
         _engine.LifeLost += OnLifeLost;
         _engine.LevelComplete += OnLevelComplete;
         _engine.GameOver += OnGameOver;
+        _engine.Victory += OnVictory;
 
         // Initialize commands
         PauseGameCommand = ReactiveCommand.Create(PauseGame);
@@ -172,6 +184,7 @@ public class GameViewModel : ViewModelBase
             IsGameRunning = true;
             IsPaused = false;
             IsGameOver = false;
+            IsVictory = false;
         }
         catch (Exception ex)
         {
@@ -245,11 +258,12 @@ public class GameViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Restart the game after a game over
+    /// Restart the game after a game over or victory
     /// </summary>
     private void RestartGame()
     {
         IsGameOver = false;
+        IsVictory = false;
         Score = 0;
         Lives = Constants.StartingLives;
         Level = 1;
@@ -333,5 +347,27 @@ public class GameViewModel : ViewModelBase
     private void OnGameOver()
     {
         GameOver();
+    }
+
+    /// <summary>
+    /// Handle victory event
+    /// </summary>
+    private void OnVictory()
+    {
+        IsGameRunning = false;
+        _engine.Stop();
+        _audioManager.StopMusic();
+        _audioManager.PlaySoundEffect("level-complete"); // Or a dedicated victory sound
+        _logger.Info($"Victory! Final Score: {Score}");
+
+        FinalScore = Score;
+        IsVictory = true;
+
+        // Save score to profile
+        var activeProfile = _profileManager.GetActiveProfile();
+        if (activeProfile != null)
+        {
+            _profileManager.SaveScore(activeProfile.Id, Score, Level);
+        }
     }
 }
