@@ -12,17 +12,20 @@ public enum MessageType
     JoinRoomRequest,
     JoinRoomResponse,
     LeaveRoomRequest,
-    RoomStateUpdate, // Full state sync for the lobby
+    LeaveRoomConfirmation, // Server -> Client
+    RoomStateUpdate,
+    GetRoomListRequest,
+    GetRoomListResponse,
 
     // Player Actions
     KickPlayerRequest,
-    Kicked, // Event sent to the kicked player
+    Kicked,
 
     // Game Logic
     AssignRoleRequest,
-    RoleAssigned, // Event confirming role change
+    RoleAssigned,
     StartGameRequest,
-    GameStartEvent, // Broadcast to all players to start the game
+    GameStartEvent,
     PlayerInput,
     GameState,
     GameEvent,

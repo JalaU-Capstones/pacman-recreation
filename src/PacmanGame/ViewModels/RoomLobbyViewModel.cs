@@ -8,6 +8,7 @@ using PacmanGame.Shared;
 using ReactiveUI;
 using System.Reactive.Linq;
 using System.Collections.Generic;
+using Avalonia.Threading;
 
 namespace PacmanGame.ViewModels;
 
@@ -103,47 +104,61 @@ public class RoomLobbyViewModel : ViewModelBase
 
     private void UpdatePlayers(List<PlayerState> playerStates)
     {
-        Players.Clear();
-        foreach (var state in playerStates)
+        Dispatcher.UIThread.Post(() =>
         {
-            var playerVM = new PlayerViewModel
+            // Remove players who are no longer in the room
+            var playersToRemove = Players.Where(p => !playerStates.Any(s => s.PlayerId == p.PlayerId)).ToList();
+            foreach (var player in playersToRemove)
             {
-                PlayerId = state.PlayerId,
-                Name = state.Name,
-                Role = state.Role,
-                IsAdmin = state.IsAdmin,
-                IsYou = state.PlayerId == _myPlayerId
-            };
-
-            // Subscribe to role changes if the current user is an admin
-            if (IsAdmin && !playerVM.IsYou)
-            {
-                playerVM.WhenAnyValue(x => x.Role)
-                    .Skip(1) // Skip the initial value set
-                    .Subscribe(newRole => AssignRole(playerVM.PlayerId, newRole));
+                Players.Remove(player);
             }
 
-            Players.Add(playerVM);
-        }
+            // Update existing players and add new ones
+            foreach (var state in playerStates)
+            {
+                var existingPlayer = Players.FirstOrDefault(p => p.PlayerId == state.PlayerId);
+                if (existingPlayer != null)
+                {
+                    existingPlayer.Role = state.Role;
+                    existingPlayer.IsAdmin = state.IsAdmin;
+                }
+                else
+                {
+                    var newPlayer = new PlayerViewModel
+                    {
+                        PlayerId = state.PlayerId,
+                        Name = state.Name,
+                        Role = state.Role,
+                        IsAdmin = state.IsAdmin,
+                        IsYou = state.PlayerId == _myPlayerId
+                    };
 
-        // Update spectator count and CanStartGame logic
-        SpectatorCount = Players.Count(p => p.Role == PlayerRole.None);
-        var assignedRoles = Players.Count(p => p.Role != PlayerRole.None);
+                    if (IsAdmin && !newPlayer.IsYou)
+                    {
+                        newPlayer.WhenAnyValue(x => x.Role)
+                            .Skip(1)
+                            .Subscribe(newRole => AssignRole(newPlayer.PlayerId, newRole));
+                    }
+                    Players.Add(newPlayer);
+                }
+            }
 
-        _logger.Info($"Room state updated: {Players.Count} players, {SpectatorCount} spectators.");
+            var playersWithRoles = Players.Count(p => p.Role != PlayerRole.None);
+            SpectatorCount = Players.Count - playersWithRoles;
 
-        CanStartGame = IsAdmin && assignedRoles > 0;
+            _logger.Info($"Room state updated: {playersWithRoles} players with roles, {SpectatorCount} spectators.");
+
+            CanStartGame = IsAdmin && playersWithRoles > 0;
+        });
     }
 
     private void AssignRole(int playerId, PlayerRole role)
     {
-        // Prevent assigning a role that is already taken by another player
         if (role != PlayerRole.None && Players.Any(p => p.PlayerId != playerId && p.Role == role))
         {
             _logger.Warning($"Role '{role}' is already taken. Cannot assign to player {playerId}.");
-            // Revert UI change (optional, server will have final say)
             var player = Players.FirstOrDefault(p => p.PlayerId == playerId);
-            if (player != null) player.Role = PlayerRole.None; // Revert
+            if (player != null) player.Role = PlayerRole.None;
             return;
         }
 
@@ -161,7 +176,6 @@ public class RoomLobbyViewModel : ViewModelBase
     {
         _logger.Info("Leaving room...");
         _networkService.SendLeaveRoomRequest();
-        NavigateToMultiplayerMenu();
     }
 
     private void KickPlayer(PlayerViewModel player)
@@ -174,7 +188,6 @@ public class RoomLobbyViewModel : ViewModelBase
     private void HandleKicked(string reason)
     {
         _logger.Warning($"Kicked from room. Reason: {reason}");
-        // Here you would show a dialog to the user.
         NavigateToMultiplayerMenu();
     }
 
@@ -182,8 +195,6 @@ public class RoomLobbyViewModel : ViewModelBase
     {
         _logger.Info("Game start signal received. Loading assets and navigating to game view...");
         _audioManager.StopMusic();
-        // Here you would load all necessary assets
-        // e.g., _mapLoader.LoadAllMaps(); _spriteManager.LoadAllSprites();
         _mainWindowViewModel.NavigateTo(new MultiplayerGameViewModel(_networkService));
     }
 
@@ -195,10 +206,12 @@ public class RoomLobbyViewModel : ViewModelBase
 
     private void NavigateToMultiplayerMenu()
     {
-        _mainWindowViewModel.NavigateTo(new MultiplayerMenuViewModel(_mainWindowViewModel, _networkService, _audioManager, _logger, _profileManager));
+        Dispatcher.UIThread.Post(() =>
+        {
+            _mainWindowViewModel.NavigateTo(new MultiplayerMenuViewModel(_mainWindowViewModel, _networkService, _audioManager, _logger, _profileManager));
+        });
     }
 
-    // Destructor to unsubscribe from events
     ~RoomLobbyViewModel()
     {
         _logger.Debug("Disposing RoomLobbyViewModel and unsubscribing from network events.");

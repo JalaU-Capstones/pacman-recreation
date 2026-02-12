@@ -1,5 +1,4 @@
 using MessagePack;
-using System.Collections.Generic;
 
 namespace PacmanGame.Shared;
 
@@ -20,6 +19,9 @@ namespace PacmanGame.Shared;
 [Union(13, typeof(KickPlayerRequest))]
 [Union(14, typeof(KickedEvent))]
 [Union(15, typeof(RoleAssignedEvent))]
+[Union(16, typeof(GetRoomListRequest))]
+[Union(17, typeof(GetRoomListResponse))]
+[Union(18, typeof(LeaveRoomConfirmation))]
 public abstract class NetworkMessageBase
 {
     [Key(0)]
@@ -97,11 +99,48 @@ public class LeaveRoomRequest : NetworkMessageBase
 }
 
 [MessagePackObject]
+public class LeaveRoomConfirmation : NetworkMessageBase
+{
+    public override MessageType Type => MessageType.LeaveRoomConfirmation;
+}
+
+[MessagePackObject]
 public class RoomStateUpdateMessage : NetworkMessageBase
 {
     public override MessageType Type => MessageType.RoomStateUpdate;
     [Key(1)]
     public List<PlayerState> Players { get; set; } = new();
+}
+
+#endregion
+
+#region Room Discovery
+
+[MessagePackObject]
+public class RoomInfo
+{
+    [Key(0)]
+    public int RoomId { get; set; }
+    [Key(1)]
+    public string Name { get; set; } = string.Empty;
+    [Key(2)]
+    public int PlayerCount { get; set; }
+    [Key(3)]
+    public int MaxPlayers { get; set; }
+}
+
+[MessagePackObject]
+public class GetRoomListRequest : NetworkMessageBase
+{
+    public override MessageType Type => MessageType.GetRoomListRequest;
+}
+
+[MessagePackObject]
+public class GetRoomListResponse : NetworkMessageBase
+{
+    public override MessageType Type => MessageType.GetRoomListResponse;
+    [Key(1)]
+    public List<RoomInfo> Rooms { get; set; } = new();
 }
 
 #endregion

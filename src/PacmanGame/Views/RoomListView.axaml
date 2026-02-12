@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:PacmanGame.ViewModels"
+             xmlns:shared="using:PacmanGame.Shared"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:Class="PacmanGame.Views.RoomListView"
              x:DataType="vm:RoomListViewModel"
@@ -12,24 +13,24 @@
         <TextBlock Text="PUBLIC ROOMS" FontSize="36" Foreground="#FFFF00" HorizontalAlignment="Center"/>
 
         <Border BorderBrush="#FFFF00" BorderThickness="2" CornerRadius="8" Padding="10" MinWidth="600">
-            <DataGrid ItemsSource="{Binding Rooms}" AutoGenerateColumns="False" CanUserSortColumns="False"
-                      HeadersVisibility="Column" Background="#1A1A1A" RowBackground="Transparent" Foreground="White"
-                      BorderThickness="0">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Room Name" Binding="{Binding Name}" Width="*" Foreground="White"/>
-                    <DataGridTextColumn Header="Players" Binding="{Binding PlayerCount}" Width="100" Foreground="White"/>
-                    <DataGridTemplateColumn Header="Join" Width="120">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate x:DataType="vm:RoomViewModel" x:CompileBindings="False">
-                                <Button Content="JOIN"
-                                        Command="{Binding $parent[DataGrid].DataContext.JoinPublicRoomCommand}"
+            <Panel>
+                <TextBlock Text="No public rooms available." IsVisible="{Binding !Rooms.Count}"
+                           Foreground="Gray" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <ListBox ItemsSource="{Binding Rooms}" Background="Transparent" IsVisible="{Binding Rooms.Count}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="shared:RoomInfo" x:CompileBindings="False">
+                            <Grid ColumnDefinitions="*,Auto,Auto" Margin="5">
+                                <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="White" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding PlayerCount, StringFormat='{}{0}/5 Players'}" Foreground="Gray" VerticalAlignment="Center" Margin="20,0"/>
+                                <Button Grid.Column="2" Content="JOIN"
+                                        Command="{Binding $parent[ListBox].DataContext.JoinPublicRoomCommand}"
                                         CommandParameter="{Binding}"
                                         Classes="arcade"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                </DataGrid.Columns>
-            </DataGrid>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Panel>
         </Border>
 
         <Button Content="REFRESH" Command="{Binding RefreshCommand}" Classes="arcade" HorizontalAlignment="Center"/>

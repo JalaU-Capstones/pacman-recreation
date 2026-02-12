@@ -23,6 +23,11 @@ public class RoomManager
         return null;
     }
 
+    public void RemoveRoom(string name)
+    {
+        _rooms.TryRemove(name, out _);
+    }
+
     public Room? GetRoom(string name)
     {
         _rooms.TryGetValue(name, out var room);

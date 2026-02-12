@@ -6,6 +6,8 @@ using PacmanGame.Shared;
 using ReactiveUI;
 using System.Reactive;
 using System.Collections.Generic;
+using System.Linq;
+using Avalonia.Threading;
 
 namespace PacmanGame.ViewModels;
 
@@ -17,7 +19,7 @@ public class RoomListViewModel : ViewModelBase
     private readonly ILogger _logger;
     private readonly IProfileManager _profileManager;
 
-    public ObservableCollection<RoomViewModel> Rooms { get; } = new();
+    public ObservableCollection<RoomInfo> Rooms { get; } = new();
 
     private bool _isPrivateJoinFormVisible;
     public bool IsPrivateJoinFormVisible
@@ -64,8 +66,9 @@ public class RoomListViewModel : ViewModelBase
 
         _networkService.OnJoinedRoom += HandleJoinedRoom;
         _networkService.OnJoinRoomFailed += HandleJoinRoomFailed;
+        _networkService.OnRoomListReceived += HandleRoomListReceived;
 
-        JoinPublicRoomCommand = ReactiveCommand.Create<RoomViewModel>(JoinPublicRoom);
+        JoinPublicRoomCommand = ReactiveCommand.Create<RoomInfo>(JoinPublicRoom);
         RefreshCommand = ReactiveCommand.Create(RefreshRooms);
         ShowPrivateJoinFormCommand = ReactiveCommand.Create(() => IsPrivateJoinFormVisible = true);
         CancelPrivateJoinCommand = ReactiveCommand.Create(() => IsPrivateJoinFormVisible = false);
@@ -75,7 +78,7 @@ public class RoomListViewModel : ViewModelBase
         RefreshRooms();
     }
 
-    private void JoinPublicRoom(RoomViewModel? room)
+    private void JoinPublicRoom(RoomInfo? room)
     {
         if (room == null) return;
         _audioManager.PlaySoundEffect("menu-select");
@@ -108,22 +111,40 @@ public class RoomListViewModel : ViewModelBase
 
     private void RefreshRooms()
     {
+        _logger.Info("Requesting room list from server...");
         _audioManager.PlaySoundEffect("menu-navigate");
-        Rooms.Clear();
-        // In a real implementation, we would request the room list from the server here.
-        Rooms.Add(new RoomViewModel { Name = "Public Room 1", PlayerCount = "2/5" });
-        Rooms.Add(new RoomViewModel { Name = "Public Room 2", PlayerCount = "4/5" });
+        _networkService.SendGetRoomListRequest();
+    }
+
+    private void HandleRoomListReceived(List<RoomInfo> rooms)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            Rooms.Clear();
+            foreach (var room in rooms)
+            {
+                Rooms.Add(room);
+            }
+            _logger.Info($"[DEBUG] RoomList UI updated with {Rooms.Count} items.");
+        });
     }
 
     private void HandleJoinedRoom(int roomId, string roomName, RoomVisibility visibility, List<PlayerState> players)
     {
-        _mainWindowViewModel.NavigateToRoomLobby(roomId, roomName, visibility, players);
+        Dispatcher.UIThread.Post(() =>
+        {
+            _logger.Info($"Successfully joined room '{roomName}'. Navigating to lobby.");
+            _mainWindowViewModel.NavigateToRoomLobby(roomId, roomName, visibility, players);
+        });
     }
 
     private void HandleJoinRoomFailed(string message)
     {
-        ErrorMessage = $"Failed to join room: {message}";
-        _logger.Error(ErrorMessage);
+        Dispatcher.UIThread.Post(() =>
+        {
+            ErrorMessage = $"Failed to join room: {message}";
+            _logger.Error(ErrorMessage);
+        });
     }
 
     private void Back()
@@ -136,12 +157,6 @@ public class RoomListViewModel : ViewModelBase
     {
         _networkService.OnJoinedRoom -= HandleJoinedRoom;
         _networkService.OnJoinRoomFailed -= HandleJoinRoomFailed;
+        _networkService.OnRoomListReceived -= HandleRoomListReceived;
     }
-}
-
-public class RoomViewModel : ViewModelBase
-{
-    public string Name { get; set; } = string.Empty;
-    public string PlayerCount { get; set; } = string.Empty;
-    public string SpectatorCount { get; set; } = string.Empty;
 }

@@ -5,12 +5,6 @@ using PacmanGame.Server.Models;
 using PacmanGame.Shared;
 using MessagePack;
 using System.Collections.Concurrent;
-using System.Threading;
-using System;
-using System.Threading.Tasks;
-using MessagePack.Resolvers;
-using System.Linq;
-using System.Collections.Generic;
 
 namespace PacmanGame.Server;
 
@@ -32,8 +26,16 @@ public class RelayServer : INetEventListener
 
     public void Start()
     {
-        _netManager.Start(9050);
-        _logger.LogInfo("Server listening on port 9050");
+        if (_netManager.Start(IPAddress.Any, IPAddress.IPv6Any, 9050))
+        {
+            _logger.LogInfo($"Server listening on all interfaces, port 9050");
+        }
+        else
+        {
+            _logger.LogError("Failed to start server. Is the port already in use?");
+            return;
+        }
+
         Task.Run(() =>
         {
             while (true)
@@ -62,13 +64,7 @@ public class RelayServer : INetEventListener
         _logger.LogInfo($"Peer disconnected: {peer.Address}, reason: {disconnectInfo.Reason}");
         if (_connectedPlayers.TryRemove(peer, out var player))
         {
-            var room = _roomManager.GetRoomForPlayer(player);
-            if (room != null)
-            {
-                room.RemovePlayer(player);
-                BroadcastRoomState(room);
-                _logger.LogInfo($"Player {player.Id} removed from room {room.Name}");
-            }
+            HandleLeaveRoomRequest(player);
         }
     }
 
@@ -105,6 +101,7 @@ public class RelayServer : INetEventListener
             case AssignRoleRequest req: HandleAssignRoleRequest(player, req); break;
             case KickPlayerRequest req: HandleKickPlayerRequest(player, req); break;
             case StartGameRequest _: HandleStartGameRequest(player); break;
+            case GetRoomListRequest _: HandleGetRoomListRequest(player); break;
             default: _logger.LogWarning($"Unknown message type: {message.Type} from {player.Peer.Address}"); break;
         }
     }
@@ -121,6 +118,7 @@ public class RelayServer : INetEventListener
         {
             player.Name = request.PlayerName;
             player.IsAdmin = true;
+            player.Role = PlayerRole.Pacman; // Creator is Pacman by default
             var room = _roomManager.CreateRoom(request.RoomName, request.Password, request.Visibility);
             if (room != null)
             {
@@ -134,7 +132,7 @@ public class RelayServer : INetEventListener
                 response.Visibility = room.Visibility;
                 response.Players = room.GetPlayerStates();
 
-                _logger.LogInfo($"✓ Player {player.Id} ({player.Name}) created room '{room.Name}'.");
+                _logger.LogInfo($"✓ Player {player.Id} ({player.Name}) created room '{room.Name}' as Pacman.");
             }
             else
             {
@@ -165,6 +163,11 @@ public class RelayServer : INetEventListener
             response.Success = false;
             response.Message = "Incorrect password.";
         }
+        else if (room.Players.Any(p => p.Name.Equals(request.PlayerName, StringComparison.OrdinalIgnoreCase)))
+        {
+            response.Success = false;
+            response.Message = "Player name is already taken in this room.";
+        }
         else if (!room.AddPlayer(player))
         {
             response.Success = false;
@@ -193,8 +196,30 @@ public class RelayServer : INetEventListener
         if (room != null)
         {
             room.RemovePlayer(player);
-            _logger.LogInfo($"Player {player.Id} left room '{room.Name}'");
-            BroadcastRoomState(room);
+            player.CurrentRoom = null;
+            player.IsAdmin = false;
+            _logger.LogInfo($"Player {player.Id} ({player.Name}) has been fully disconnected from room '{room.Name}'.");
+
+            SendMessageToPlayer(player, new LeaveRoomConfirmation());
+
+            if (room.Players.Count == 0)
+            {
+                _roomManager.RemoveRoom(room.Name);
+                _logger.LogInfo($"Room '{room.Name}' is empty and has been removed.");
+            }
+            else
+            {
+                if (!room.Players.Any(p => p.IsAdmin))
+                {
+                    var newAdmin = room.Players.FirstOrDefault();
+                    if (newAdmin != null)
+                    {
+                        newAdmin.IsAdmin = true;
+                        _logger.LogInfo($"Admin left. New admin is Player {newAdmin.Id} ({newAdmin.Name}).");
+                    }
+                }
+                BroadcastRoomState(room);
+            }
         }
     }
 
@@ -222,6 +247,7 @@ public class RelayServer : INetEventListener
             if (playerToKick != null)
             {
                 room.RemovePlayer(playerToKick);
+                playerToKick.CurrentRoom = null;
                 _logger.LogInfo($"Admin {player.Id} kicked player {playerToKick.Id}");
                 SendMessageToPlayer(playerToKick, new KickedEvent { Reason = "Kicked by admin." });
                 BroadcastRoomState(room);
@@ -237,6 +263,22 @@ public class RelayServer : INetEventListener
             _logger.LogInfo($"Admin {player.Id} is starting game in room '{room.Name}'");
             BroadcastToRoom(room, new GameStartEvent());
         }
+    }
+
+    private void HandleGetRoomListRequest(Player player)
+    {
+        _logger.LogInfo($"Received GetRoomListRequest from Player {player.Id} ({player.Peer.Address}).");
+        var publicRooms = _roomManager.GetPublicRooms().Select(r => new RoomInfo
+        {
+            RoomId = r.Id,
+            Name = r.Name,
+            PlayerCount = r.Players.Count(p => p.Role != PlayerRole.None),
+            MaxPlayers = 5
+        }).ToList();
+
+        var response = new GetRoomListResponse { Rooms = publicRooms };
+        SendMessageToPlayer(player, response);
+        _logger.LogInfo($"Sent GetRoomListResponse to Player {player.Id} with {publicRooms.Count} rooms.");
     }
 
     private void BroadcastRoomState(Room room)

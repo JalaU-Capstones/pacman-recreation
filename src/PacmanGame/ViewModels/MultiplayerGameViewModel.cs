@@ -118,9 +118,16 @@ public class MultiplayerGameViewModel : ViewModelBase
 
     private void OnGameStateUpdate(GameStateMessage message)
     {
+        if (message.PlayerStates == null) return;
+
         Score = message.Score;
         Level = message.Level;
         Lives = message.Lives;
         // Update player positions and other state from message.PlayerStates
+    }
+
+    ~MultiplayerGameViewModel()
+    {
+        _networkService.OnGameStateUpdate -= OnGameStateUpdate;
     }
 }

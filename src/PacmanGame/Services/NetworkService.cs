@@ -24,6 +24,7 @@ public class NetworkService : INetEventListener
     private bool _isConnected = false;
     private readonly object _connectionLock = new();
     private bool _isStarted = false;
+    private int? _currentRoomId;
 
     // Room events
     public event Action<int, string, RoomVisibility, List<PlayerState>>? OnJoinedRoom;
@@ -31,6 +32,7 @@ public class NetworkService : INetEventListener
     public event Action? OnLeftRoom;
     public event Action<List<PlayerState>>? OnRoomStateUpdate;
     public event Action<string>? OnKicked;
+    public event Action<List<RoomInfo>>? OnRoomListReceived;
 
     // Game events
     public event Action? OnGameStart;
@@ -98,6 +100,7 @@ public class NetworkService : INetEventListener
     public void SendKickPlayerRequest(int playerId) => SendMessage(new KickPlayerRequest { PlayerIdToKick = playerId });
     public void SendStartGameRequest() => SendMessage(new StartGameRequest());
     public void SendPlayerInput(PlayerInputMessage input) => SendMessage(input);
+    public void SendGetRoomListRequest() => SendMessage(new GetRoomListRequest());
 
     public void OnPeerConnected(NetPeer peer)
     {
@@ -109,6 +112,7 @@ public class NetworkService : INetEventListener
     {
         _logger.Warning($"Disconnected from server: {disconnectInfo.Reason}");
         _isConnected = false;
+        _currentRoomId = null;
         Dispatcher.UIThread.Post(() => OnLeftRoom?.Invoke());
     }
 
@@ -117,10 +121,21 @@ public class NetworkService : INetEventListener
     public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliveryMethod)
     {
         var bytes = reader.GetRemainingBytes();
+        _logger.Debug($"Raw data received. Length: {bytes.Length}");
         try
         {
             var baseMessage = MessagePackSerializer.Deserialize<NetworkMessageBase>(bytes, MessagePackSerializerOptions.Standard);
-            Dispatcher.UIThread.Post(() => HandleMessage(baseMessage));
+            Dispatcher.UIThread.Post(() =>
+            {
+                try
+                {
+                    HandleMessage(baseMessage);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Error handling message {baseMessage?.Type}: {ex}");
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -130,6 +145,12 @@ public class NetworkService : INetEventListener
 
     private void HandleMessage(NetworkMessageBase message)
     {
+        if (message == null)
+        {
+            _logger.Warning("Received null message in HandleMessage");
+            return;
+        }
+
         _logger.Debug($"Received message type: {message.Type}");
         switch (message)
         {
@@ -137,6 +158,7 @@ public class NetworkService : INetEventListener
                 if (createResponse.Success)
                 {
                     _logger.Info($"Successfully created and joined room '{createResponse.RoomName}'");
+                    _currentRoomId = createResponse.RoomId;
                     OnJoinedRoom?.Invoke(createResponse.RoomId, createResponse.RoomName!, createResponse.Visibility, createResponse.Players);
                 }
                 else
@@ -149,6 +171,7 @@ public class NetworkService : INetEventListener
                 if (joinResponse.Success)
                 {
                     _logger.Info($"Successfully joined room '{joinResponse.RoomName}'");
+                    _currentRoomId = joinResponse.RoomId;
                     OnJoinedRoom?.Invoke(joinResponse.RoomId, joinResponse.RoomName!, joinResponse.Visibility, joinResponse.Players);
                 }
                 else
@@ -157,12 +180,22 @@ public class NetworkService : INetEventListener
                     OnJoinRoomFailed?.Invoke(joinResponse.Message ?? "Unknown error");
                 }
                 break;
+            case GetRoomListResponse roomListResponse:
+                _logger.Info($"Received room list with {roomListResponse.Rooms.Count} rooms.");
+                OnRoomListReceived?.Invoke(roomListResponse.Rooms);
+                break;
             case RoomStateUpdateMessage roomUpdate:
                 _logger.Info("Received room state update.");
                 OnRoomStateUpdate?.Invoke(roomUpdate.Players);
                 break;
+            case LeaveRoomConfirmation _:
+                _logger.Info("Leave room confirmation received. Session state cleared.");
+                _currentRoomId = null;
+                OnLeftRoom?.Invoke();
+                break;
             case KickedEvent kickedEvent:
                 _logger.Warning($"Kicked from room: {kickedEvent.Reason}");
+                _currentRoomId = null;
                 OnKicked?.Invoke(kickedEvent.Reason);
                 break;
             case GameStartEvent _:
