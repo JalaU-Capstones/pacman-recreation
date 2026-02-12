@@ -24,6 +24,7 @@ namespace PacmanGame.Shared;
 [Union(17, typeof(GetRoomListResponse))]
 [Union(18, typeof(LeaveRoomConfirmation))]
 [Union(19, typeof(GameStartEvent))]
+[Union(20, typeof(GamePausedEvent))]
 public abstract class NetworkMessageBase
 {
     [Key(0)]
@@ -208,6 +209,20 @@ public enum GameEventType
     Victory
 }
 
+public enum CollectibleType
+{
+    SmallDot,
+    PowerPellet,
+    Cherry,
+    Strawberry,
+    Orange,
+    Apple,
+    Melon,
+    Galaxian,
+    Bell,
+    Key
+}
+
 [MessagePackObject]
 public class EntityPosition
 {
@@ -271,7 +286,7 @@ public class GameStateMessage : NetworkMessageBase
 {
     public override MessageType Type => MessageType.GameState;
     [Key(1)]
-    public EntityPosition PacmanPosition { get; set; }
+    public EntityPosition? PacmanPosition { get; set; }
     [Key(2)]
     public List<GhostState> Ghosts { get; set; } = new();
     [Key(3)]
@@ -302,6 +317,14 @@ public class PauseGameRequest : NetworkMessageBase
 public class ResumeGameRequest : NetworkMessageBase
 {
     public override MessageType Type => MessageType.ResumeGameRequest;
+}
+
+[MessagePackObject]
+public class GamePausedEvent : NetworkMessageBase
+{
+    public override MessageType Type => MessageType.GamePausedEvent;
+    [Key(1)]
+    public bool IsPaused { get; set; }
 }
 
 #endregion

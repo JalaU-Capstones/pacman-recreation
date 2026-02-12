@@ -33,6 +33,7 @@ public class NetworkService : INetEventListener
     public event Action<GameStartEvent>? OnGameStart;
     public event Action<GameStateMessage>? OnGameStateUpdate;
     public event Action<GameEventMessage>? OnGameEvent;
+    public event Action<bool>? OnGamePaused;
 
     public NetworkService(ILogger<NetworkService> logger)
     {
@@ -114,6 +115,7 @@ public class NetworkService : INetEventListener
     public void SendStartGameRequest() => SendMessage(new StartGameRequest());
     public void SendPlayerInput(PlayerInputMessage input) => SendMessage(input);
     public void SendGetRoomListRequest() => SendMessage(new GetRoomListRequest());
+    public void SendPauseGameRequest() => SendMessage(new PauseGameRequest());
 
     public void OnPeerConnected(NetPeer peer)
     {
@@ -209,6 +211,9 @@ public class NetworkService : INetEventListener
                 break;
             case GameEventMessage gameEvent:
                 OnGameEvent?.Invoke(gameEvent);
+                break;
+            case GamePausedEvent gamePausedEvent:
+                OnGamePaused?.Invoke(gamePausedEvent.IsPaused);
                 break;
         }
     }

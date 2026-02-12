@@ -6,6 +6,7 @@ namespace PacmanGame.Server.Models
     {
         public GhostType Type { get; }
         public GhostStateEnum State { get; set; }
+        public float RespawnTimer { get; set; }
 
         public Ghost(GhostType type, int row, int col)
         {
@@ -13,6 +14,7 @@ namespace PacmanGame.Server.Models
             Y = row;
             X = col;
             State = GhostStateEnum.Normal;
+            RespawnTimer = 0f;
         }
     }
 }

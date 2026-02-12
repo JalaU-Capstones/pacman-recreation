@@ -26,7 +26,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     private bool _isRunning;
     private bool _isPaused;
     private TileType[,] _map;
-    private Pacman _pacman;
+    private Pacman? _pacman;
     private List<Ghost> _ghosts;
     private List<Collectible> _collectibles;
     private float _animationAccumulator;
@@ -52,7 +52,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     public event Action? Victory;
 
     public TileType[,] Map => _map;
-    public Pacman Pacman => _pacman;
+    public Pacman? Pacman { get => _pacman; set => _pacman = value; }
     public List<Ghost> Ghosts => _ghosts;
     public List<Collectible> Collectibles => _collectibles;
     public ISpriteManager SpriteManager => _spriteManager;
@@ -111,7 +111,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             _pacman = new Pacman(pacmanSpawn.Col, pacmanSpawn.Row, _loggerFactory.CreateLogger<Pacman>());
             _logger.LogInformation($"Pac-Man spawned at ({pacmanSpawn.Col}, {pacmanSpawn.Row})");
 
-            if (_map[Pacman.Y, Pacman.X] == TileType.Wall)
+            if (_pacman != null && _map[Pacman.Y, Pacman.X] == TileType.Wall)
             {
                 _logger.LogError("[GAMEENGINE] CRITICAL: Pacman spawned inside a WALL!");
             }
@@ -151,16 +151,19 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     private void ApplyDifficultySettings(int level)
     {
         float speedMultiplier = Constants.Level1GhostSpeedMultiplier;
-        _pacman.PowerPelletDuration = Constants.Level1PowerPelletDuration;
+        if (_pacman != null)
+        {
+            _pacman.PowerPelletDuration = Constants.Level1PowerPelletDuration;
+            _pacman.Speed = Constants.PacmanSpeed;
+        }
         _chaseDuration = Constants.Level1ChaseDuration;
         _scatterDuration = Constants.Level1ScatterDuration;
         _ghostRespawnTime = Constants.Level1GhostRespawnTime;
-        _pacman.Speed = Constants.PacmanSpeed;
 
         if (level == 2)
         {
             speedMultiplier = Constants.Level2GhostSpeedMultiplier;
-            _pacman.PowerPelletDuration = Constants.Level2PowerPelletDuration;
+            if (_pacman != null) _pacman.PowerPelletDuration = Constants.Level2PowerPelletDuration;
             _chaseDuration = Constants.Level2ChaseDuration;
             _scatterDuration = Constants.Level2ScatterDuration;
             _ghostRespawnTime = Constants.Level2GhostRespawnTime;
@@ -168,11 +171,14 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         else if (level >= 3)
         {
             speedMultiplier = Constants.Level3GhostSpeedMultiplier;
-            _pacman.PowerPelletDuration = Constants.Level3PowerPelletDuration;
+            if (_pacman != null)
+            {
+                _pacman.PowerPelletDuration = Constants.Level3PowerPelletDuration;
+                _pacman.Speed *= Constants.Level3PacmanSpeedMultiplier;
+            }
             _chaseDuration = Constants.Level3ChaseDuration;
             _scatterDuration = Constants.Level3ScatterDuration;
             _ghostRespawnTime = Constants.Level3GhostRespawnTime;
-            _pacman.Speed *= Constants.Level3PacmanSpeedMultiplier;
         }
 
         foreach (var ghost in _ghosts)
@@ -217,7 +223,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     {
         if (Pacman == null)
         {
-            _logger.LogError("[GAMEENGINE] Pacman is NULL!");
+            // _logger.LogError("[GAMEENGINE] Pacman is NULL!");
             return;
         }
 
@@ -229,7 +235,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         if (!_isRunning || _isPaused)
             return;
 
-        if (_pacman.IsDying)
+        if (_pacman != null && _pacman.IsDying)
         {
             UpdateDeathAnimation(deltaTime);
             return;
@@ -243,6 +249,8 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
     private void UpdateDeathAnimation(float deltaTime)
     {
+        if (_pacman == null) return;
+
         _deathAnimationTimer += deltaTime;
         if (_deathAnimationTimer >= 0.1f)
         {
@@ -257,8 +265,11 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
     private void FinishDeathSequence()
     {
-        _pacman.IsDying = false;
-        _pacman.AnimationFrame = 0;
+        if (_pacman != null)
+        {
+            _pacman.IsDying = false;
+            _pacman.AnimationFrame = 0;
+        }
         LifeLost?.Invoke();
         if (_isRunning)
         {
@@ -270,7 +281,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     {
         if (Pacman == null)
         {
-            _logger.LogError("[GAMEENGINE] Pacman is NULL in UpdatePacman!");
+            // _logger.LogError("[GAMEENGINE] Pacman is NULL in UpdatePacman!");
             return;
         }
 
@@ -410,6 +421,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
             case GhostState.Vulnerable:
             case GhostState.Warning:
+                if (_pacman == null) break;
                 var fleeMoves = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
                     .Where(d => ghost.CanMove(d, _map))
                     .ToList();
@@ -454,7 +466,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
                 break;
 
             case GhostState.Normal:
-                if (_ghostAIs.TryGetValue(ghost.Type, out var ai))
+                if (_pacman != null && _ghostAIs.TryGetValue(ghost.Type, out var ai))
                 {
                     nextMove = ai.GetNextMove(ghost, _pacman, _map, _ghosts, _isChaseMode, _loggerFactory.CreateLogger(ai.GetType()));
                 }
@@ -486,6 +498,8 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
     private void UpdateCollisions()
     {
+        if (_pacman == null) return;
+
         var collected = _collisionDetector.CheckPacmanCollectibleCollision(_pacman, _collectibles);
         if (collected != null)
         {
@@ -545,14 +559,17 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     {
         _logger.LogInformation("Resetting entity positions after life lost");
         var pacmanSpawn = _mapLoader.GetPacmanSpawn($"level{_currentLevel}.txt");
-        _pacman.X = pacmanSpawn.Col;
-        _pacman.Y = pacmanSpawn.Row;
-        _pacman.ExactX = pacmanSpawn.Col;
-        _pacman.ExactY = pacmanSpawn.Row;
-        _pacman.CurrentDirection = Direction.None;
-        _pacman.NextDirection = Direction.None;
-        _pacman.IsInvulnerable = false;
-        _pacman.InvulnerabilityTime = 0f;
+        if (_pacman != null)
+        {
+            _pacman.X = pacmanSpawn.Col;
+            _pacman.Y = pacmanSpawn.Row;
+            _pacman.ExactX = pacmanSpawn.Col;
+            _pacman.ExactY = pacmanSpawn.Row;
+            _pacman.CurrentDirection = Direction.None;
+            _pacman.NextDirection = Direction.None;
+            _pacman.IsInvulnerable = false;
+            _pacman.InvulnerabilityTime = 0f;
+        }
 
         foreach (var ghost in _ghosts)
         {
@@ -577,7 +594,10 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         _animationAccumulator += deltaTime;
         if (_animationAccumulator >= Constants.AnimationSpeed)
         {
-            _pacman.AnimationFrame = (_pacman.AnimationFrame + 1) % Constants.PacmanAnimationFrames;
+            if (_pacman != null)
+            {
+                _pacman.AnimationFrame = (_pacman.AnimationFrame + 1) % Constants.PacmanAnimationFrames;
+            }
             foreach (var ghost in _ghosts)
             {
                 ghost.AnimationFrame = (ghost.AnimationFrame + 1) % Constants.GhostAnimationFrames;
@@ -652,31 +672,34 @@ public class GameEngine : IGameEngine, IGameEngineInternal
                 CollectibleType.Strawberry => "strawberry",
                 _ => collectible.Type.ToString().ToLower()
             };
-            var sprite = _spriteManager.GetItemSprite(itemTypeKey, Pacman.AnimationFrame % 2);
+            var sprite = _spriteManager.GetItemSprite(itemTypeKey, Pacman != null ? Pacman.AnimationFrame % 2 : 0);
             if (sprite != null)
                 DrawImage(canvas, sprite, collectible.X * Constants.TileSize, collectible.Y * Constants.TileSize, 1);
         }
 
         // Draw Pac-Man
-        if (Pacman.IsDying)
+        if (Pacman != null)
         {
-            var sprite = _spriteManager.GetDeathSprite(Pacman.AnimationFrame);
-            if (sprite != null)
-                DrawImage(canvas, sprite, (int)(Pacman.ExactX * Constants.TileSize), (int)(Pacman.ExactY * Constants.TileSize), 2);
-        }
-        else
-        {
-            string direction = Pacman.CurrentDirection switch
+            if (Pacman.IsDying)
             {
-                Direction.Up => "down",
-                Direction.Down => "up",
-                Direction.Left => "left",
-                Direction.Right => "right",
-                _ => "right"
-            };
-            var sprite = _spriteManager.GetPacmanSprite(direction, Pacman.AnimationFrame);
-            if (sprite != null)
-                DrawImage(canvas, sprite, (int)(Pacman.ExactX * Constants.TileSize), (int)(Pacman.ExactY * Constants.TileSize), 2);
+                var sprite = _spriteManager.GetDeathSprite(Pacman.AnimationFrame);
+                if (sprite != null)
+                    DrawImage(canvas, sprite, (int)(Pacman.ExactX * Constants.TileSize), (int)(Pacman.ExactY * Constants.TileSize), 2);
+            }
+            else
+            {
+                string direction = Pacman.CurrentDirection switch
+                {
+                    Direction.Up => "down",
+                    Direction.Down => "up",
+                    Direction.Left => "left",
+                    Direction.Right => "right",
+                    _ => "right"
+                };
+                var sprite = _spriteManager.GetPacmanSprite(direction, Pacman.AnimationFrame);
+                if (sprite != null)
+                    DrawImage(canvas, sprite, (int)(Pacman.ExactX * Constants.TileSize), (int)(Pacman.ExactY * Constants.TileSize), 2);
+            }
         }
 
         // Draw ghosts

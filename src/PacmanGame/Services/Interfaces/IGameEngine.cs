@@ -42,9 +42,9 @@ public interface IGameEngine
     TileType[,] Map { get; }
 
     /// <summary>
-    /// Get Pac-Man instance
+    /// Get or set Pac-Man instance
     /// </summary>
-    Pacman Pacman { get; }
+    Pacman? Pacman { get; set; }
 
     /// <summary>
     /// Get the list of ghosts

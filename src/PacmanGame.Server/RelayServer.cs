@@ -5,12 +5,7 @@ using PacmanGame.Server.Models;
 using PacmanGame.Shared;
 using MessagePack;
 using System.Collections.Concurrent;
-using System.Threading;
-using System;
-using System.Threading.Tasks;
 using PacmanGame.Server.Services;
-using System.Linq;
-using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Server;
@@ -60,10 +55,11 @@ public class RelayServer : INetEventListener
                 _netManager.PollEvents();
                 foreach (var room in _roomManager.GetPublicRooms().Where(r => r.State == RoomState.Playing))
                 {
-                    room.Game?.Update(1f / 20f); // 20 FPS
-                    if (room.Game != null)
+                    if (room.Game != null && !room.IsPaused)
                     {
-                        BroadcastToRoom(room, room.Game.GetState());
+                        room.Game.Update(1f / 20f); // 20 FPS
+                        var state = room.Game.GetState();
+                        BroadcastToRoom(room, state);
                     }
                 }
                 Thread.Sleep(1000 / 20); // 20 FPS
@@ -108,7 +104,6 @@ public class RelayServer : INetEventListener
         try
         {
             var baseMessage = MessagePackSerializer.Deserialize<NetworkMessageBase>(bytes, _serializerOptions);
-            _logger.LogInformation($"Server received message type: {baseMessage.Type} from player {player.Id} ({peer.Address})");
             HandleMessage(player, baseMessage);
         }
         catch (Exception ex)
@@ -129,7 +124,18 @@ public class RelayServer : INetEventListener
             case StartGameRequest _: HandleStartGameRequest(player); break;
             case GetRoomListRequest _: HandleGetRoomListRequest(player); break;
             case PlayerInputMessage input: HandlePlayerInput(player, input); break;
+            case PauseGameRequest req: HandlePauseGameRequest(player, req); break;
             default: _logger.LogWarning($"Unknown message type: {message.Type} from {player.Peer.Address}"); break;
+        }
+    }
+
+    private void HandlePauseGameRequest(Player player, PauseGameRequest request)
+    {
+        var room = player.CurrentRoom;
+        if (room != null && player.IsAdmin)
+        {
+            room.IsPaused = !room.IsPaused;
+            BroadcastToRoom(room, new GamePausedEvent { IsPaused = room.IsPaused });
         }
     }
 
@@ -202,7 +208,7 @@ public class RelayServer : INetEventListener
         else if (room.Players.Any(p => p.Name.Equals(request.PlayerName, StringComparison.OrdinalIgnoreCase)))
         {
             response.Success = false;
-            response.Message = "Player name is already taken in this room.";
+            response.Message = "Name already taken. Join as Spectator or return to list?";
         }
         else if (!room.AddPlayer(player))
         {
@@ -294,12 +300,15 @@ public class RelayServer : INetEventListener
     private void HandleStartGameRequest(Player player)
     {
         var room = player.CurrentRoom;
-        if (room != null && player.IsAdmin && room.Players.Any(p => p.Role != PlayerRole.None))
+        if (room != null && player.IsAdmin)
         {
             _logger.LogInformation($"Admin {player.Id} is starting game in room '{room.Name}'");
             room.State = RoomState.Playing;
             room.Game = new GameSimulation(_mapLoader, _collisionDetector, _loggerFactory.CreateLogger<GameSimulation>());
-            room.Game.Initialize(room.Id, room.Players.Select(p => p.Role).ToList());
+
+            // Get all assigned roles
+            var assignedRoles = room.Players.Select(p => p.Role).Where(r => r != PlayerRole.None && r != PlayerRole.Spectator).ToList();
+            room.Game.Initialize(room.Id, assignedRoles);
 
             var gameStartEvent = new GameStartEvent
             {
@@ -334,17 +343,31 @@ public class RelayServer : INetEventListener
 
     private void BroadcastToRoom(Room room, NetworkMessageBase message)
     {
-        var bytes = MessagePackSerializer.Serialize(message, _serializerOptions);
-        foreach (var p in room.Players)
+        try
         {
-            p.Peer.Send(bytes, DeliveryMethod.ReliableOrdered);
+            var bytes = MessagePackSerializer.Serialize(message, _serializerOptions);
+            foreach (var p in room.Players)
+            {
+                p.Peer.Send(bytes, DeliveryMethod.ReliableOrdered);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error broadcasting message: {ex.Message}");
         }
     }
 
     private void SendMessageToPlayer(Player player, NetworkMessageBase message)
     {
-        var bytes = MessagePackSerializer.Serialize(message, _serializerOptions);
-        player.Peer.Send(bytes, DeliveryMethod.ReliableOrdered);
+        try
+        {
+            var bytes = MessagePackSerializer.Serialize(message, _serializerOptions);
+            player.Peer.Send(bytes, DeliveryMethod.ReliableOrdered);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error sending message to player {player.Id}: {ex.Message}");
+        }
     }
 
     public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType) { }

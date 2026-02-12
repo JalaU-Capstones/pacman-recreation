@@ -30,5 +30,6 @@ public enum MessageType
     GameState,
     GameEvent,
     PauseGameRequest,
-    ResumeGameRequest
+    ResumeGameRequest,
+    GamePausedEvent
 }

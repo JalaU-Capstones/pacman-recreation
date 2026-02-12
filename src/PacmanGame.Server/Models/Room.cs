@@ -12,6 +12,7 @@ public class Room
     public RoomVisibility Visibility { get; }
     public RoomState State { get; set; }
     public GameSimulation? Game { get; set; }
+    public bool IsPaused { get; set; }
 
     private readonly List<Player> _players = new();
     public IReadOnlyCollection<Player> Players => _players.AsReadOnly();
@@ -23,6 +24,7 @@ public class Room
         Password = password;
         Visibility = visibility;
         State = RoomState.Lobby;
+        IsPaused = false;
     }
 
     public bool AddPlayer(Player player)

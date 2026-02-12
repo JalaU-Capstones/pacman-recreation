@@ -6,7 +6,7 @@ namespace PacmanGame.Helpers;
 public static class Constants
 {
     // Multiplayer
-    public const string MultiplayerServerIP = "127.0.0.1"; // Replace with your server IP
+    public const string MultiplayerServerIP = "192.168.101.77"; // Replace with your server IP
     public const int MultiplayerServerPort = 9050;
 
     // Grid/Map Constants
