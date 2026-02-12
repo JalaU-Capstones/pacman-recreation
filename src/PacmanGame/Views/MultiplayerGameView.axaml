@@ -120,12 +120,14 @@
 
                 <Button Content="PAUSE"
                        Command="{Binding PauseGameCommand}"
+                       IsVisible="{Binding !IsPaused}"
                        IsEnabled="{Binding IsGameRunning}"
                        Classes="arcade"
                        HorizontalAlignment="Stretch"/>
 
                 <Button Content="RESUME"
                        Command="{Binding ResumeGameCommand}"
+                       IsVisible="{Binding IsPaused}"
                        IsEnabled="{Binding IsPaused}"
                        Classes="arcade"
                        HorizontalAlignment="Stretch"/>
@@ -138,7 +140,7 @@
         </Border>
 
         <Border Grid.Column="1" Background="#AA000000" IsVisible="{Binding IsPausedByHost}" ZIndex="98">
-            <TextBlock Text="PAUSED BY HOST" FontSize="60" FontWeight="Bold" Foreground="Yellow" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <TextBlock Text="GAME PAUSED" FontSize="60" FontWeight="Bold" Foreground="Yellow" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Border>
 
         <Border Grid.Column="1" Background="#AA000000" IsVisible="{Binding IsSpectating}" ZIndex="98">

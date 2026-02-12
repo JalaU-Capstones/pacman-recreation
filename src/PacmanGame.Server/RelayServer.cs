@@ -219,6 +219,31 @@ public class RelayServer : INetEventListener
         {
             player.Name = request.PlayerName;
             player.CurrentRoom = room;
+
+            // Handle mid-game join
+            if (room.State == RoomState.Playing)
+            {
+                // Try to assign an available role
+                var assignedRoles = room.Players.Select(p => p.Role).ToList();
+                var availableRoles = new List<PlayerRole> { PlayerRole.Pacman, PlayerRole.Blinky, PlayerRole.Pinky, PlayerRole.Inky, PlayerRole.Clyde }
+                    .Except(assignedRoles)
+                    .ToList();
+
+                if (availableRoles.Any())
+                {
+                    player.Role = availableRoles.First();
+                    _logger.LogInformation($"[INFO] Player {player.Name} re-joined mid-game. Assigning role {player.Role}.");
+
+                    // Update simulation with new role
+                    room.Game?.UpdateAssignedRoles(room.Players.Select(p => p.Role).ToList());
+                }
+                else
+                {
+                    player.Role = PlayerRole.Spectator;
+                    _logger.LogInformation($"[INFO] Player {player.Name} joined mid-game as Spectator (Room full).");
+                }
+            }
+
             response.Success = true;
             response.Message = $"Joined room '{room.Name}' successfully.";
             response.RoomId = room.Id;
@@ -228,6 +253,17 @@ public class RelayServer : INetEventListener
 
             _logger.LogInformation($"Player {player.Id} ({player.Name}) joined room '{room.Name}'");
             BroadcastRoomState(room);
+
+            // If game is running, send game start event to the new player so they load the map
+            if (room.State == RoomState.Playing)
+            {
+                var gameStartEvent = new GameStartEvent
+                {
+                    PlayerStates = room.GetPlayerStates(),
+                    MapName = "level1.txt"
+                };
+                SendMessageToPlayer(player, gameStartEvent);
+            }
         }
         SendMessageToPlayer(player, response);
     }
@@ -238,9 +274,10 @@ public class RelayServer : INetEventListener
         if (room != null)
         {
             room.RemovePlayer(player);
+            _logger.LogWarning($"[WARNING] Player {player.Name} lost connection. Removing entity {player.Role}.");
+
             player.CurrentRoom = null;
             player.IsAdmin = false;
-            _logger.LogInformation($"Player {player.Id} ({player.Name}) has been fully disconnected from room '{room.Name}'.");
 
             SendMessageToPlayer(player, new LeaveRoomConfirmation());
 
@@ -260,6 +297,13 @@ public class RelayServer : INetEventListener
                         _logger.LogInformation($"Admin left. New admin is Player {newAdmin.Id} ({newAdmin.Name}).");
                     }
                 }
+
+                // Update simulation to remove entity
+                if (room.State == RoomState.Playing && room.Game != null)
+                {
+                    room.Game.UpdateAssignedRoles(room.Players.Select(p => p.Role).ToList());
+                }
+
                 BroadcastRoomState(room);
             }
         }

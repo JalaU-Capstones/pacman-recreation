@@ -42,6 +42,53 @@ public class GameSimulation
         _logger.LogInformation($"[SIMULATION] Game initialized with {assignedRoles.Count} players. Roles: {string.Join(", ", assignedRoles)}");
     }
 
+    public void UpdateAssignedRoles(List<PlayerRole> roles)
+    {
+        _assignedRoles = roles;
+        _logger.LogInformation($"[SIMULATION] Updated assigned roles: {string.Join(", ", roles)}");
+
+        // Add ghosts if they are now assigned but weren't before
+        var ghostSpawns = _mapLoader.GetGhostSpawns($"level{_currentLevel}.txt");
+
+        if (_assignedRoles.Contains(PlayerRole.Blinky) && !_ghosts.Any(g => g.Type == GhostType.Blinky))
+            _ghosts.Add(new Ghost(GhostType.Blinky, ghostSpawns[0].Row, ghostSpawns[0].Col));
+
+        if (_assignedRoles.Contains(PlayerRole.Pinky) && !_ghosts.Any(g => g.Type == GhostType.Pinky))
+            _ghosts.Add(new Ghost(GhostType.Pinky, ghostSpawns[1].Row, ghostSpawns[1].Col));
+
+        if (_assignedRoles.Contains(PlayerRole.Inky) && !_ghosts.Any(g => g.Type == GhostType.Inky))
+            _ghosts.Add(new Ghost(GhostType.Inky, ghostSpawns[2].Row, ghostSpawns[2].Col));
+
+        if (_assignedRoles.Contains(PlayerRole.Clyde) && !_ghosts.Any(g => g.Type == GhostType.Clyde))
+            _ghosts.Add(new Ghost(GhostType.Clyde, ghostSpawns[3].Row, ghostSpawns[3].Col));
+
+        // Remove ghosts if they are no longer assigned
+        _ghosts.RemoveAll(g => !IsGhostAssigned(g.Type));
+
+        // Handle Pac-Man
+        if (_assignedRoles.Contains(PlayerRole.Pacman) && _pacman == null)
+        {
+            var pacmanSpawn = _mapLoader.GetPacmanSpawn($"level{_currentLevel}.txt");
+            _pacman = new Pacman(pacmanSpawn.Row, pacmanSpawn.Col);
+        }
+        else if (!_assignedRoles.Contains(PlayerRole.Pacman))
+        {
+            _pacman = null;
+        }
+    }
+
+    private bool IsGhostAssigned(GhostType type)
+    {
+        return type switch
+        {
+            GhostType.Blinky => _assignedRoles.Contains(PlayerRole.Blinky),
+            GhostType.Pinky => _assignedRoles.Contains(PlayerRole.Pinky),
+            GhostType.Inky => _assignedRoles.Contains(PlayerRole.Inky),
+            GhostType.Clyde => _assignedRoles.Contains(PlayerRole.Clyde),
+            _ => false
+        };
+    }
+
     private void LoadLevel(int level)
     {
         _map = _mapLoader.LoadMap($"level{level}.txt");
