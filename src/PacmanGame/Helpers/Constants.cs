@@ -21,14 +21,14 @@ public static class Constants
     public const int TotalWindowHeight = WindowHeight + HudHeight;
 
     // Game Speed
-    public const float TargetFps = 60.0f;
+    public const float TargetFps = 75.0f;
     public const float FixedDeltaTime = 1.0f / TargetFps;
 
     // Entity Speeds (tiles per second)
-    public const float PacmanSpeed = 4.0f;
-    public const float GhostNormalSpeed = 3.7f;
-    public const float GhostVulnerableSpeed = 2.0f;
-    public const float GhostEatenSpeed = 6.0f;
+    public const float PacmanSpeed = 5.0f;
+    public const float GhostNormalSpeed = 4.7f;
+    public const float GhostVulnerableSpeed = 2.5f;
+    public const float GhostEatenSpeed = 7.5f;
 
     // Power Pellet
     public const float PowerPelletDuration = 6.0f;  // seconds

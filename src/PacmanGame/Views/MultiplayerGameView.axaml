@@ -7,9 +7,9 @@
              x:Class="PacmanGame.Views.MultiplayerGameView"
              x:DataType="vm:MultiplayerGameViewModel"
              Background="Black"
-             Focusable="True">
+             KeyboardNavigation.TabNavigation="None">
 
-    <Grid ColumnDefinitions="Auto,*,Auto" PointerPressed="OnPointerPressed">
+    <Grid ColumnDefinitions="Auto,*,Auto">
 
         <!-- Left Sidebar - HUD -->
         <Border Grid.Column="0"
@@ -17,9 +17,7 @@
                 BorderBrush="#FFFF00"
                 BorderThickness="0,0,2,0"
                 MinWidth="120"
-                Padding="15"
-                Focusable="True"
-                IsTabStop="False">
+                Padding="15">
 
             <StackPanel VerticalAlignment="Center"
                         Spacing="40">
@@ -81,8 +79,7 @@
                     Width="896"
                     Height="992"
                     Background="Black"
-                    ClipToBounds="True"
-                    Focusable="True">
+                    ClipToBounds="True">
 
                 <!-- Role Indicator (Top Left) -->
                 <TextBlock Text="{Binding MyRoleText, FallbackValue=''}"
@@ -111,9 +108,7 @@
                 BorderBrush="#FFFF00"
                 BorderThickness="2,0,0,0"
                 MinWidth="120"
-                Padding="15"
-                Focusable="True"
-                IsTabStop="False">
+                Padding="15">
 
             <StackPanel VerticalAlignment="Center"
                         Spacing="20">

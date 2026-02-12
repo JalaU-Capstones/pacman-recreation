@@ -278,6 +278,8 @@ public class PlayerInputMessage : NetworkMessageBase
     [Key(2)]
     public Direction Direction { get; set; }
     [Key(3)]
+    public PlayerRole Role { get; set; }
+    [Key(4)]
     public long Timestamp { get; set; }
 }
 

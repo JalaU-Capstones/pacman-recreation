@@ -14,6 +14,7 @@ namespace PacmanGame.Server.Models
             Y = row;
             X = col;
             State = GhostStateEnum.Normal;
+            CurrentDirection = Direction.None;
             RespawnTimer = 0f;
         }
     }

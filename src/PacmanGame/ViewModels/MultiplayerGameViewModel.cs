@@ -9,7 +9,7 @@ using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
 using PacmanGame.Shared;
 using ReactiveUI;
-using Direction = PacmanGame.Models.Enums.Direction;
+using Direction = PacmanGame.Shared.Direction;
 
 namespace PacmanGame.ViewModels;
 
@@ -110,7 +110,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         TogglePauseCommand = ReactiveCommand.Create(TogglePause);
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
         RestartGameCommand = ReactiveCommand.Create(() => { /* TODO: Implement restart for host */ });
-        SetDirectionCommand = ReactiveCommand.Create<Direction>(SetPacmanDirection);
+        SetDirectionCommand = ReactiveCommand.Create<Direction>(SendEntityDirection);
 
         Initialize();
     }
@@ -165,16 +165,17 @@ public class MultiplayerGameViewModel : ViewModelBase
         }
     }
 
-    private void SetPacmanDirection(Direction direction)
+    private void SendEntityDirection(Direction direction)
     {
-        if (_myRole == PlayerRole.Spectator) return;
+        if (_myRole == PlayerRole.Spectator || _myRole == PlayerRole.None) return;
 
-        _logger.LogDebug("Direction set to: {Direction}", direction);
+        _logger.LogDebug("Sending input for {Role}: {Direction}", _myRole, direction);
 
         var inputMessage = new PlayerInputMessage
         {
             RoomId = _roomId,
-            Direction = (PacmanGame.Shared.Direction)direction,
+            Role = _myRole,
+            Direction = direction,
             Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
         _networkService.SendPlayerInput(inputMessage);
@@ -211,9 +212,9 @@ public class MultiplayerGameViewModel : ViewModelBase
             if (_gameEngine.Pacman != null)
             {
                 // Simple Lerp for smoothing
-                _gameEngine.Pacman.X = (int)(_gameEngine.Pacman.X * 0.5f + state.PacmanPosition.X * 0.5f);
-                _gameEngine.Pacman.Y = (int)(_gameEngine.Pacman.Y * 0.5f + state.PacmanPosition.Y * 0.5f);
-                _gameEngine.Pacman.CurrentDirection = (Direction)state.PacmanPosition.Direction;
+                _gameEngine.Pacman.X = (int)Math.Round(_gameEngine.Pacman.X * 0.5f + state.PacmanPosition.X * 0.5f);
+                _gameEngine.Pacman.Y = (int)Math.Round(_gameEngine.Pacman.Y * 0.5f + state.PacmanPosition.Y * 0.5f);
+                _gameEngine.Pacman.CurrentDirection = (Models.Enums.Direction)state.PacmanPosition.Direction;
             }
         }
         else if (_gameEngine.Pacman != null)
@@ -227,9 +228,9 @@ public class MultiplayerGameViewModel : ViewModelBase
             var ghost = _gameEngine.Ghosts.FirstOrDefault(g => g.Type.ToString() == ghostState.Type);
             if (ghost != null)
             {
-                ghost.X = (int)(ghost.X * 0.5f + ghostState.Position.X * 0.5f);
-                ghost.Y = (int)(ghost.Y * 0.5f + ghostState.Position.Y * 0.5f);
-                ghost.CurrentDirection = (Direction)ghostState.Position.Direction;
+                ghost.X = (int)Math.Round(ghost.X * 0.5f + ghostState.Position.X * 0.5f);
+                ghost.Y = (int)Math.Round(ghost.Y * 0.5f + ghostState.Position.Y * 0.5f);
+                ghost.CurrentDirection = (Models.Enums.Direction)ghostState.Position.Direction;
                 ghost.State = (Models.Enums.GhostState)ghostState.State;
             }
         }

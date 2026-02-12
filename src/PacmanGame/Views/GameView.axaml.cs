@@ -2,10 +2,11 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
 using PacmanGame.Helpers;
-using PacmanGame.Models.Enums;
 using PacmanGame.Services.Interfaces;
 using PacmanGame.ViewModels;
 using System;
+using LocalDirection = PacmanGame.Models.Enums.Direction;
+using SharedDirection = PacmanGame.Shared.Direction;
 
 namespace PacmanGame.Views;
 
@@ -83,35 +84,45 @@ public partial class GameView : UserControl
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        var direction = e.Key switch
+        if (DataContext is GameViewModel gvm)
         {
-            Key.Up => Direction.Up,
-            Key.Down => Direction.Down,
-            Key.Left => Direction.Left,
-            Key.Right => Direction.Right,
-            _ => Direction.None
-        };
+            var direction = e.Key switch
+            {
+                Key.Up => LocalDirection.Up,
+                Key.Down => LocalDirection.Down,
+                Key.Left => LocalDirection.Left,
+                Key.Right => LocalDirection.Right,
+                _ => LocalDirection.None
+            };
 
-        if (direction != Direction.None)
-        {
-            if (DataContext is GameViewModel gvm)
+            if (direction != LocalDirection.None)
             {
                 gvm.SetDirectionCommand.Execute(direction).Subscribe();
+                e.Handled = true;
             }
-            else if (DataContext is MultiplayerGameViewModel mgvm)
-            {
-                mgvm.SetDirectionCommand.Execute(direction).Subscribe();
-            }
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Escape)
-        {
-            if (DataContext is GameViewModel gvm)
+            else if (e.Key == Key.Escape)
             {
                 if (gvm.IsPaused)
                     gvm.ResumeGameCommand.Execute(null);
                 else
                     gvm.PauseGameCommand.Execute(null);
+                e.Handled = true;
+            }
+        }
+        else if (DataContext is MultiplayerGameViewModel mgvm)
+        {
+            var direction = e.Key switch
+            {
+                Key.Up => SharedDirection.Up,
+                Key.Down => SharedDirection.Down,
+                Key.Left => SharedDirection.Left,
+                Key.Right => SharedDirection.Right,
+                _ => SharedDirection.None
+            };
+
+            if (direction != SharedDirection.None)
+            {
+                mgvm.SetDirectionCommand.Execute(direction).Subscribe();
                 e.Handled = true;
             }
         }

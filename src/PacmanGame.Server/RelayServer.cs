@@ -19,7 +19,6 @@ public class RelayServer : INetEventListener
     private readonly ILoggerFactory _loggerFactory;
     private readonly MessagePackSerializerOptions _serializerOptions;
     private readonly IMapLoader _mapLoader;
-    private readonly ICollisionDetector _collisionDetector;
     private CancellationTokenSource? _cancellationTokenSource;
 
     public RelayServer(ILogger<RelayServer> logger, ILoggerFactory loggerFactory)
@@ -30,7 +29,6 @@ public class RelayServer : INetEventListener
         _loggerFactory = loggerFactory;
         _serializerOptions = MessagePack.MessagePackSerializer.DefaultOptions.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance);
         _mapLoader = new MapLoader(_loggerFactory.CreateLogger<MapLoader>());
-        _collisionDetector = new CollisionDetector();
     }
 
     public Task StartAsync()
@@ -144,7 +142,15 @@ public class RelayServer : INetEventListener
         var room = player.CurrentRoom;
         if (room?.Game != null)
         {
-            room.Game.SetPlayerInput(player.Role, input.Direction);
+            // Verify that the player sending the input actually owns the role specified in the message
+            if (player.Role == input.Role)
+            {
+                room.Game.SetPlayerInput(player.Role, input.Direction);
+            }
+            else
+            {
+                _logger.LogWarning($"Player {player.Id} ({player.Name}) tried to send input for role {input.Role}, but is assigned role {player.Role}. Input ignored.");
+            }
         }
     }
 
@@ -279,8 +285,9 @@ public class RelayServer : INetEventListener
         var room = player.CurrentRoom;
         if (room != null)
         {
+            var role = player.Role;
             room.RemovePlayer(player);
-            _logger.LogWarning($"[WARNING] Player {player.Name} lost connection. Removing entity {player.Role}.");
+            _logger.LogWarning($"[WARNING] Player {player.Name} left or lost connection. Removing entity {role}.");
 
             player.CurrentRoom = null;
             player.IsAdmin = false;
@@ -304,10 +311,9 @@ public class RelayServer : INetEventListener
                     }
                 }
 
-                // Update simulation to remove entity
                 if (room.State == RoomState.Playing && room.Game != null)
                 {
-                    room.Game.UpdateAssignedRoles(room.Players.Select(p => p.Role).ToList());
+                    room.Game.RemovePlayerRole(role);
                 }
 
                 BroadcastRoomState(room);
@@ -354,7 +360,7 @@ public class RelayServer : INetEventListener
         {
             _logger.LogInformation($"Admin {player.Id} is starting game in room '{room.Name}'");
             room.State = RoomState.Playing;
-            room.Game = new GameSimulation(_mapLoader, _collisionDetector, _loggerFactory.CreateLogger<GameSimulation>());
+            room.Game = new GameSimulation(_mapLoader, _loggerFactory.CreateLogger<GameSimulation>());
 
             // Get all assigned roles
             var assignedRoles = room.Players.Select(p => p.Role).Where(r => r != PlayerRole.None && r != PlayerRole.Spectator).ToList();

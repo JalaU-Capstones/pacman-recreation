@@ -14,14 +14,19 @@ public partial class MultiplayerGameView : UserControl
     public MultiplayerGameView()
     {
         InitializeComponent();
-        this.KeyDown += OnKeyDown;
-        this.Loaded += (s, e) => Dispatcher.UIThread.InvokeAsync(() => this.Focus(), DispatcherPriority.Render);
-        this.PointerPressed += OnPointerPressed;
+        // Replicate the working single-player formula:
+        this.Focusable = true;
+        this.Loaded += (s, e) => this.Focus();
     }
 
-    private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    protected override void OnKeyDown(KeyEventArgs e)
     {
-        Dispatcher.UIThread.InvokeAsync(() => this.Focus());
+        base.OnKeyDown(e);
+        // Send the key directly to the ViewModel just like in normal mode
+        if (DataContext is MultiplayerGameViewModel vm)
+        {
+            vm.HandleKeyPress(e.Key);
+        }
     }
 
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
@@ -36,9 +41,6 @@ public partial class MultiplayerGameView : UserControl
             };
             _renderTimer.Tick += (s, e) => RenderFrame(vm);
             _renderTimer.Start();
-
-            // Give focus to this UserControl so KeyDown events are captured
-            Dispatcher.UIThread.InvokeAsync(() => this.Focus(), DispatcherPriority.Render);
         }
     }
 
@@ -54,13 +56,5 @@ public partial class MultiplayerGameView : UserControl
         vm.Engine.Update(Constants.FixedDeltaTime);
         GameCanvas.Children.Clear();
         vm.Render(GameCanvas);
-    }
-
-    private void OnKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (DataContext is not MultiplayerGameViewModel vm) return;
-
-        vm.HandleKeyPress(e.Key);
-        e.Handled = true;
     }
 }
