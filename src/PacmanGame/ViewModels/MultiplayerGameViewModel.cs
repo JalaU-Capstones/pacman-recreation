@@ -96,6 +96,7 @@ public class MultiplayerGameViewModel : ViewModelBase
     {
         _logger.LogInformation("[MULTIPLAYER] Initializing game for Room {RoomId} as {MyRole}", _roomId, _myRole);
         _gameEngine.LoadLevel(1);
+        _gameEngine.Start();
         _audioManager.PlayMusic("background-theme.wav", loop: true);
         _networkService.OnGameStateUpdate += HandleGameStateUpdate;
         _networkService.OnGameEvent += HandleGameEvent;

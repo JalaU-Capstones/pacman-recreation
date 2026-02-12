@@ -15,6 +15,6 @@
         WindowStartupLocation="CenterScreen"
         Background="Black">
 
-    <ContentControl Content="{Binding CurrentViewModel}" />
+    <ContentControl x:Name="ContentHost" Content="{Binding CurrentViewModel}" />
 
 </Window>

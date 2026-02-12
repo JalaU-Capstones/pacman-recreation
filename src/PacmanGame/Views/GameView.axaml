@@ -9,7 +9,7 @@
              Background="Black"
              Focusable="True">
 
-    <Grid ColumnDefinitions="Auto,*,Auto" PointerPressed="OnPointerPressed">
+    <Grid ColumnDefinitions="Auto,*,Auto" PointerPressed="OnPointerPressed" Focusable="True">
 
         <!-- Left Sidebar - HUD -->
         <Border Grid.Column="0"

@@ -1,6 +1,5 @@
+using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Input;
-using PacmanGame.Models.Enums;
 using PacmanGame.ViewModels;
 
 namespace PacmanGame.Views;
@@ -10,34 +9,18 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        this.KeyDown += OnKeyDown;
+        this.ContentHost.PropertyChanged += OnContentChanged;
     }
 
-    private void OnKeyDown(object? sender, KeyEventArgs e)
+    private void OnContentChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
-        if (DataContext is not MainWindowViewModel mainVm) return;
-
-        var direction = e.Key switch
+        if (e.Property == ContentControl.ContentProperty && e.NewValue is GameView gameView)
         {
-            Key.Up => Direction.Up,
-            Key.Down => Direction.Down,
-            Key.Left => Direction.Left,
-            Key.Right => Direction.Right,
-            _ => Direction.None
-        };
-
-        if (direction != Direction.None)
-        {
-            if (mainVm.CurrentViewModel is GameViewModel gvm)
+            // Use a delayed action to ensure the view is fully loaded and visible
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
-                gvm.SetDirectionCommand.Execute(direction);
-                e.Handled = true;
-            }
-            else if (mainVm.CurrentViewModel is MultiplayerGameViewModel mgvm)
-            {
-                mgvm.SetDirectionCommand.Execute(direction);
-                e.Handled = true;
-            }
+                gameView.Focus();
+            }, Avalonia.Threading.DispatcherPriority.Loaded);
         }
     }
 }

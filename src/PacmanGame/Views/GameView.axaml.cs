@@ -30,7 +30,6 @@ public partial class GameView : UserControl
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        Dispatcher.UIThread.InvokeAsync(() => this.Focus(), DispatcherPriority.Render);
 
         if (DataContext is not (GameViewModel or MultiplayerGameViewModel)) return;
 
@@ -55,6 +54,9 @@ public partial class GameView : UserControl
         };
         _gameLoopTimer.Tick += (s, e) => GameLoop_Tick(vm, engine);
         _gameLoopTimer.Start();
+
+        // Give focus to this UserControl so KeyDown events are captured
+        Dispatcher.UIThread.InvokeAsync(() => this.Focus(), DispatcherPriority.Render);
     }
 
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)

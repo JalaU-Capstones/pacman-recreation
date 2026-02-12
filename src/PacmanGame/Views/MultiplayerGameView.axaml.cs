@@ -27,7 +27,6 @@ public partial class MultiplayerGameView : UserControl
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        Dispatcher.UIThread.InvokeAsync(() => this.Focus(), DispatcherPriority.Render);
 
         if (DataContext is MultiplayerGameViewModel vm)
         {
@@ -37,6 +36,9 @@ public partial class MultiplayerGameView : UserControl
             };
             _renderTimer.Tick += (s, e) => RenderFrame(vm);
             _renderTimer.Start();
+
+            // Give focus to this UserControl so KeyDown events are captured
+            Dispatcher.UIThread.InvokeAsync(() => this.Focus(), DispatcherPriority.Render);
         }
     }
 
@@ -49,6 +51,7 @@ public partial class MultiplayerGameView : UserControl
 
     private void RenderFrame(MultiplayerGameViewModel vm)
     {
+        vm.Engine.Update(Constants.FixedDeltaTime);
         GameCanvas.Children.Clear();
         vm.Render(GameCanvas);
     }
