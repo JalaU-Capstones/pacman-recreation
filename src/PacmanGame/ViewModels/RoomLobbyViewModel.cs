@@ -208,6 +208,7 @@ public class RoomLobbyViewModel : ViewModelBase
             _mainWindowViewModel,
             _roomId,
             _myRole,
+            IsAdmin,
             _serviceProvider.GetRequiredService<IGameEngine>(),
             _audioManager,
             _serviceProvider.GetRequiredService<ILogger<MultiplayerGameViewModel>>(),

@@ -27,10 +27,8 @@ namespace PacmanGame.Server.Services
         public MapLoader(ILogger<MapLoader> logger)
         {
             _logger = logger;
-            // Assuming maps are in the same relative location as client, or copied to output
-            // For server, we might need to adjust this path depending on deployment
-            // For now, let's try to find them in Assets/Maps relative to execution
-            _mapsPath = Path.Combine(AppContext.BaseDirectory, "Assets", "Maps");
+            // Use AppDomain.CurrentDomain.BaseDirectory to ensure we look in the output directory
+            _mapsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Maps");
             _logger.LogInformation($"MapLoader initialized. Maps path: {_mapsPath}");
         }
 

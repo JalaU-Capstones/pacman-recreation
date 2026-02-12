@@ -407,6 +407,8 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
     private Direction GetNextGhostMove(Ghost ghost)
     {
+        if (!ghost.IsAIControlled) return ghost.CurrentDirection;
+
         Direction nextMove = Direction.None;
 
         switch (ghost.State)

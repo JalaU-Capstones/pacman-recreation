@@ -24,7 +24,7 @@ public class RelayServer : INetEventListener
 
     public RelayServer(ILogger<RelayServer> logger, ILoggerFactory loggerFactory)
     {
-        _netManager = new NetManager(this) { DisconnectTimeout = 10000 };
+        _netManager = new NetManager(this) { DisconnectTimeout = 30000 }; // Increased timeout
         _roomManager = new RoomManager();
         _logger = logger;
         _loggerFactory = loggerFactory;
@@ -57,12 +57,12 @@ public class RelayServer : INetEventListener
                 {
                     if (room.Game != null && !room.IsPaused)
                     {
-                        room.Game.Update(1f / 20f); // 20 FPS
+                        room.Game.Update(1f / 30f); // 30 FPS
                         var state = room.Game.GetState();
                         BroadcastToRoom(room, state);
                     }
                 }
-                Thread.Sleep(1000 / 20); // 20 FPS
+                Thread.Sleep(1000 / 30); // 30 FPS
             }
         }, token);
     }
@@ -210,6 +210,12 @@ public class RelayServer : INetEventListener
             response.Success = false;
             response.Message = "Name already taken. Join as Spectator or return to list?";
         }
+        else if (room.State == RoomState.Playing && room.Players.Count(p => p.Role != PlayerRole.Spectator) >= 5)
+        {
+            // Room is full, offer spectator
+            response.Success = false;
+            response.Message = "Game in Progress. Join as Spectator or Return to Menu?";
+        }
         else if (!room.AddPlayer(player))
         {
             response.Success = false;
@@ -225,7 +231,7 @@ public class RelayServer : INetEventListener
             {
                 // Try to assign an available role
                 var assignedRoles = room.Players.Select(p => p.Role).ToList();
-                var availableRoles = new List<PlayerRole> { PlayerRole.Pacman, PlayerRole.Blinky, PlayerRole.Pinky, PlayerRole.Inky, PlayerRole.Clyde }
+                var availableRoles = new List<PlayerRole> { PlayerRole.Blinky, PlayerRole.Pinky, PlayerRole.Inky, PlayerRole.Clyde }
                     .Except(assignedRoles)
                     .ToList();
 

@@ -118,17 +118,10 @@
             <StackPanel VerticalAlignment="Center"
                         Spacing="20">
 
-                <Button Content="PAUSE"
-                       Command="{Binding PauseGameCommand}"
-                       IsVisible="{Binding !IsPaused}"
+                <Button Content="{Binding PauseButtonText}"
+                       Command="{Binding TogglePauseCommand}"
+                       IsVisible="{Binding IsAdmin}"
                        IsEnabled="{Binding IsGameRunning}"
-                       Classes="arcade"
-                       HorizontalAlignment="Stretch"/>
-
-                <Button Content="RESUME"
-                       Command="{Binding ResumeGameCommand}"
-                       IsVisible="{Binding IsPaused}"
-                       IsEnabled="{Binding IsPaused}"
                        Classes="arcade"
                        HorizontalAlignment="Stretch"/>
 

@@ -23,6 +23,7 @@ public class MultiplayerGameViewModel : ViewModelBase
 
     private readonly int _roomId;
     private readonly PlayerRole _myRole;
+    private bool _isAdmin;
 
     private int _score;
     public int Score { get => _score; set => this.RaiseAndSetIfChanged(ref _score, value); }
@@ -57,6 +58,9 @@ public class MultiplayerGameViewModel : ViewModelBase
     private bool _isVictory;
     public bool IsVictory { get => _isVictory; set => this.RaiseAndSetIfChanged(ref _isVictory, value); }
 
+    public bool IsAdmin { get => _isAdmin; set => this.RaiseAndSetIfChanged(ref _isAdmin, value); }
+    public string PauseButtonText => IsPaused ? "RESUME" : "PAUSE";
+
     public string MyRoleText => _myRole switch
     {
         PlayerRole.Pacman => "YOU ARE: PAC-MAN",
@@ -77,8 +81,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         _ => ""
     };
 
-    public ICommand PauseGameCommand { get; }
-    public ICommand ResumeGameCommand { get; }
+    public ICommand TogglePauseCommand { get; }
     public ICommand ReturnToMenuCommand { get; }
     public ICommand RestartGameCommand { get; }
     public ReactiveCommand<Direction, Unit> SetDirectionCommand { get; }
@@ -89,6 +92,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         MainWindowViewModel mainWindowViewModel,
         int roomId,
         PlayerRole myRole,
+        bool isAdmin,
         IGameEngine gameEngine,
         IAudioManager audioManager,
         ILogger<MultiplayerGameViewModel> logger,
@@ -97,13 +101,13 @@ public class MultiplayerGameViewModel : ViewModelBase
         _mainWindowViewModel = mainWindowViewModel;
         _roomId = roomId;
         _myRole = myRole;
+        _isAdmin = isAdmin;
         _gameEngine = gameEngine;
         _audioManager = audioManager;
         _logger = logger;
         _networkService = networkService;
 
-        PauseGameCommand = ReactiveCommand.Create(PauseGame);
-        ResumeGameCommand = ReactiveCommand.Create(PauseGame); // Same command toggles
+        TogglePauseCommand = ReactiveCommand.Create(TogglePause);
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
         RestartGameCommand = ReactiveCommand.Create(() => { /* TODO: Implement restart for host */ });
         SetDirectionCommand = ReactiveCommand.Create<Direction>(SetPacmanDirection);
@@ -115,6 +119,13 @@ public class MultiplayerGameViewModel : ViewModelBase
     {
         _logger.LogInformation("[MULTIPLAYER] Initializing game for Room {RoomId} as {MyRole}", _roomId, _myRole);
         _gameEngine.LoadLevel(1);
+
+        // Disable local AI for all ghosts in multiplayer
+        foreach (var ghost in _gameEngine.Ghosts)
+        {
+            ghost.IsAIControlled = false;
+        }
+
         _gameEngine.Start();
         _audioManager.PlayMusic("background-theme.wav", loop: true);
         _networkService.OnGameStateUpdate += HandleGameStateUpdate;
@@ -126,6 +137,13 @@ public class MultiplayerGameViewModel : ViewModelBase
 
     public void Render(Canvas canvas)
     {
+        if (IsPausedByHost) return;
+
+        // Simple interpolation for smoother movement
+        foreach (var ghost in _gameEngine.Ghosts)
+        {
+            // Lerp logic can be added here if needed, for now direct update
+        }
         _gameEngine.Render(canvas);
     }
 
@@ -149,19 +167,10 @@ public class MultiplayerGameViewModel : ViewModelBase
 
     private void SetPacmanDirection(Direction direction)
     {
+        if (_myRole == PlayerRole.Spectator) return;
+
         _logger.LogDebug("Direction set to: {Direction}", direction);
 
-        // Only apply client-side prediction if we are controlling the character
-        // For Pac-Man, we control Pac-Man
-        // For Ghosts, we control our specific ghost
-        // However, GameEngine.SetPacmanDirection only controls Pac-Man
-        // So we should only call it if we are Pac-Man
-        if (_myRole == PlayerRole.Pacman)
-        {
-            _gameEngine.SetPacmanDirection(direction);
-        }
-
-        // Send input to server regardless of role (server decides what to do with it)
         var inputMessage = new PlayerInputMessage
         {
             RoomId = _roomId,
@@ -171,11 +180,12 @@ public class MultiplayerGameViewModel : ViewModelBase
         _networkService.SendPlayerInput(inputMessage);
     }
 
-    private void PauseGame()
+    private void TogglePause()
     {
-        // Only admin can pause (we assume admin check is done on server or UI visibility)
-        // But for now, let's just send the request
-        _networkService.SendPauseGameRequest();
+        if (IsAdmin)
+        {
+            _networkService.SendPauseGameRequest();
+        }
     }
 
     private void ReturnToMenu()
@@ -189,44 +199,36 @@ public class MultiplayerGameViewModel : ViewModelBase
 
     private void HandleGameStateUpdate(GameStateMessage state)
     {
+        // Auto-navigate to game view if we are in lobby but game has started
+        if (_mainWindowViewModel.CurrentViewModel is not MultiplayerGameViewModel)
+        {
+            _mainWindowViewModel.NavigateTo(this);
+        }
+
         // Update Pac-Man (if it exists in the game)
         if (state.PacmanPosition != null)
         {
-            // Ensure Pac-Man exists locally if server says it exists
-            if (_gameEngine.Pacman == null)
-            {
-                // We need to re-initialize Pac-Man if it was null but now exists
-                // This might happen if we joined late or something
-                // For now, let's just assume LoadLevel created it, but if we set it to null earlier, we might need to recreate
-                // But since we don't have easy access to spawn point here without reloading level,
-                // we'll rely on the fact that LoadLevel creates it.
-                // If we set it to null below, we might need a way to restore it.
-                // However, usually if Pac-Man exists on server, he exists for the whole game.
-            }
-
             if (_gameEngine.Pacman != null)
             {
-                _gameEngine.Pacman.X = (int)state.PacmanPosition.X;
-                _gameEngine.Pacman.Y = (int)state.PacmanPosition.Y;
+                // Simple Lerp for smoothing
+                _gameEngine.Pacman.X = (int)(_gameEngine.Pacman.X * 0.5f + state.PacmanPosition.X * 0.5f);
+                _gameEngine.Pacman.Y = (int)(_gameEngine.Pacman.Y * 0.5f + state.PacmanPosition.Y * 0.5f);
                 _gameEngine.Pacman.CurrentDirection = (Direction)state.PacmanPosition.Direction;
             }
         }
         else if (_gameEngine.Pacman != null)
         {
-            // Pac-Man role not assigned - remove entity
             _gameEngine.Pacman = null;
         }
 
-        // Update Ghosts (only the ones that exist in the game)
+        // Update Ghosts
         foreach (var ghostState in state.Ghosts)
         {
             var ghost = _gameEngine.Ghosts.FirstOrDefault(g => g.Type.ToString() == ghostState.Type);
-
             if (ghost != null)
             {
-                // Update existing ghost
-                ghost.X = (int)ghostState.Position.X;
-                ghost.Y = (int)ghostState.Position.Y;
+                ghost.X = (int)(ghost.X * 0.5f + ghostState.Position.X * 0.5f);
+                ghost.Y = (int)(ghost.Y * 0.5f + ghostState.Position.Y * 0.5f);
                 ghost.CurrentDirection = (Direction)ghostState.Position.Direction;
                 ghost.State = (Models.Enums.GhostState)ghostState.State;
             }
@@ -259,7 +261,6 @@ public class MultiplayerGameViewModel : ViewModelBase
         if (state.CurrentLevel != _gameEngine.CurrentLevel)
         {
             _gameEngine.LoadLevel(state.CurrentLevel);
-            _logger.LogInformation("[MULTIPLAYER] Level changed to {CurrentLevel}", state.CurrentLevel);
         }
     }
 
@@ -296,14 +297,14 @@ public class MultiplayerGameViewModel : ViewModelBase
     private void HandleGamePaused(bool isPaused)
     {
         IsPausedByHost = isPaused;
+        IsPaused = isPaused;
+        this.RaisePropertyChanged(nameof(PauseButtonText));
         if (isPaused)
         {
-            _gameEngine.Pause();
             _audioManager.PauseMusic();
         }
         else
         {
-            _gameEngine.Resume();
             _audioManager.ResumeMusic();
         }
     }

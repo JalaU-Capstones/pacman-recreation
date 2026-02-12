@@ -56,6 +56,11 @@ public class Ghost : Entity
     /// </summary>
     public float SpeedMultiplier { get; set; }
 
+    /// <summary>
+    /// Determines if the ghost is controlled by local AI (true) or network/manual input (false).
+    /// </summary>
+    public bool IsAIControlled { get; set; } = true;
+
     public Ghost(int x, int y) : base(x, y)
     {
         Type = GhostType.Blinky; // Default, will be set by GameEngine

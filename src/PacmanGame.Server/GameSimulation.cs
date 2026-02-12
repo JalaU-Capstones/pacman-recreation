@@ -26,6 +26,8 @@ public class GameSimulation
     private Dictionary<PlayerRole, Direction> _playerInputs = new();
     private List<PlayerRole> _assignedRoles = new();
 
+    public event Action<GameEventMessage>? OnGameEvent;
+
     public GameSimulation(IMapLoader mapLoader, ICollisionDetector collisionDetector, ILogger<GameSimulation> logger)
     {
         _mapLoader = mapLoader;
@@ -146,6 +148,11 @@ public class GameSimulation
         {
             MovePacman(pacmanDir, deltaTime);
         }
+        else if (_pacman != null)
+        {
+            // Continue moving in current direction if no new input
+            MovePacman(_pacman.CurrentDirection, deltaTime);
+        }
 
         // Update Ghosts
         foreach (var ghost in _ghosts)
@@ -190,7 +197,17 @@ public class GameSimulation
             return; // Don't move while eaten/respawning
         }
 
-        // Determine movement source
+        // Handle Vulnerable Timer
+        if (ghost.State == GhostStateEnum.Vulnerable)
+        {
+            ghost.RespawnTimer -= deltaTime; // Reusing RespawnTimer for Vulnerable duration
+            if (ghost.RespawnTimer <= 0)
+            {
+                ghost.State = GhostStateEnum.Normal;
+            }
+        }
+
+        // Determine movement source - NO AI
         Direction moveDirection = Direction.None;
         PlayerRole ghostRole = GetRoleForGhost(ghost.Type);
 
@@ -201,25 +218,16 @@ public class GameSimulation
             {
                 moveDirection = inputDir;
             }
+            else
+            {
+                // Continue moving in current direction if no new input
+                moveDirection = ghost.CurrentDirection;
+            }
         }
         else
         {
-            // AI controlled (Simple random movement for now if not assigned)
-            // In a real implementation, this would call an AI service
-            // For now, we'll just keep moving in current direction or pick random valid
-            moveDirection = ghost.CurrentDirection;
-            if (moveDirection == Direction.None || !_collisionDetector.CanMove(ghost, moveDirection, _map))
-            {
-                // Pick random valid direction
-                var validMoves = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
-                    .Where(d => _collisionDetector.CanMove(ghost, d, _map))
-                    .ToList();
-
-                if (validMoves.Any())
-                {
-                    moveDirection = validMoves[new Random().Next(validMoves.Count)];
-                }
-            }
+            // Ghosts without players do not move
+            moveDirection = Direction.None;
         }
 
         // Apply movement
@@ -245,65 +253,62 @@ public class GameSimulation
     {
         if (_pacman == null) return;
 
-        // Try to move
-        if (direction != Direction.None)
+        // Try to change direction if a new one is provided
+        if (direction != Direction.None && direction != _pacman.CurrentDirection)
         {
-            _pacman.CurrentDirection = direction;
+            if (_collisionDetector.CanMove(_pacman, direction, _map))
+            {
+                 _pacman.CurrentDirection = direction;
+            }
         }
 
+        // Move in current direction
         if (_pacman.CurrentDirection != Direction.None)
         {
-            var (dx, dy) = GetDirectionDeltas(_pacman.CurrentDirection);
-            float newX = _pacman.X + dx * 4.0f * deltaTime;
-            float newY = _pacman.Y + dy * 4.0f * deltaTime;
-
-            // Check collision at new position (simplified)
-            // We need to check grid coordinates
-            int gridX = (int)Math.Round(newX);
-            int gridY = (int)Math.Round(newY);
-
-            if (CanMoveTo(gridX, gridY))
+            if (_collisionDetector.CanMove(_pacman, _pacman.CurrentDirection, _map))
             {
-                _pacman.X = newX;
-                _pacman.Y = newY;
+                var (dx, dy) = GetDirectionDeltas(_pacman.CurrentDirection);
+                _pacman.X += dx * 4.0f * deltaTime;
+                _pacman.Y += dy * 4.0f * deltaTime;
+            }
+            else
+            {
+                // Hit a wall, stop moving
+                _pacman.X = (float)Math.Round(_pacman.X);
+                _pacman.Y = (float)Math.Round(_pacman.Y);
             }
         }
     }
 
     private void MoveGhost(Ghost ghost, Direction direction, float deltaTime)
     {
-        // Only allow movement if in Normal state (player controlled)
-        // If Vulnerable or Eaten, server AI should take over (not implemented yet for this step)
+        // Only allow movement if in Normal or Vulnerable state (player controlled)
         if (ghost.State != GhostStateEnum.Normal && ghost.State != GhostStateEnum.Vulnerable) return;
 
-        if (direction != Direction.None)
+        float speed = ghost.State == GhostStateEnum.Vulnerable ? 2.0f : 3.7f;
+
+        if (direction != Direction.None && direction != ghost.CurrentDirection)
         {
-            ghost.CurrentDirection = direction;
+            if (_collisionDetector.CanMove(ghost, direction, _map))
+            {
+                ghost.CurrentDirection = direction;
+            }
         }
 
         if (ghost.CurrentDirection != Direction.None)
         {
-            var (dx, dy) = GetDirectionDeltas(ghost.CurrentDirection);
-            float newX = ghost.X + dx * 3.7f * deltaTime;
-            float newY = ghost.Y + dy * 3.7f * deltaTime;
-
-            int gridX = (int)Math.Round(newX);
-            int gridY = (int)Math.Round(newY);
-
-            if (CanMoveTo(gridX, gridY))
+            if (_collisionDetector.CanMove(ghost, ghost.CurrentDirection, _map))
             {
-                ghost.X = newX;
-                ghost.Y = newY;
+                var (dx, dy) = GetDirectionDeltas(ghost.CurrentDirection);
+                ghost.X += dx * speed * deltaTime;
+                ghost.Y += dy * speed * deltaTime;
+            }
+            else
+            {
+                ghost.X = (float)Math.Round(ghost.X);
+                ghost.Y = (float)Math.Round(ghost.Y);
             }
         }
-    }
-
-    private bool CanMoveTo(int x, int y)
-    {
-        if (x < 0 || x >= _map.GetLength(1) || y < 0 || y >= _map.GetLength(0))
-            return false;
-
-        return _map[y, x] != TileType.Wall;
     }
 
     private (int dx, int dy) GetDirectionDeltas(Direction direction)
@@ -339,9 +344,14 @@ public class GameSimulation
                     if (ghost.State == GhostStateEnum.Normal)
                     {
                         ghost.State = GhostStateEnum.Vulnerable;
-                        // TODO: Set timer to revert state
+                        ghost.RespawnTimer = 6.0f; // 6 seconds vulnerable
                     }
                 }
+                OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.PowerPelletCollected });
+            }
+            else
+            {
+                OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.DotCollected });
             }
         }
 
@@ -354,6 +364,7 @@ public class GameSimulation
                 {
                     // Pac-Man dies
                     _lives--;
+                    OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.PacmanDied });
                     ResetPositions();
                 }
                 else if (ghost.State == GhostStateEnum.Vulnerable)
@@ -362,12 +373,7 @@ public class GameSimulation
                     ghost.State = GhostStateEnum.Eaten;
                     ghost.RespawnTimer = 3.0f; // 3 seconds respawn
                     _score += 200;
-
-                    // Move to spawn immediately (visual effect handled by state)
-                    var ghostSpawns = _mapLoader.GetGhostSpawns($"level{_currentLevel}.txt");
-                    // We don't move it yet, let it stay "eyes" for a bit or move it to house
-                    // For simplicity, let's move it to house immediately but keep state Eaten
-                    // In a real game, eyes travel back. Here we just wait.
+                    OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.GhostEaten });
                 }
             }
         }
@@ -412,12 +418,12 @@ public class GameSimulation
     {
         if (_lives <= 0)
         {
-            // Game Over
+            OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.GameOver });
         }
 
         if (_collectibles.All(c => !c.IsActive))
         {
-            // Level Complete
+            OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.LevelComplete });
         }
     }
 

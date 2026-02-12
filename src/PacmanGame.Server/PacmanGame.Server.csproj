@@ -16,4 +16,11 @@
     <ProjectReference Include="..\PacmanGame.Shared\PacmanGame.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\PacmanGame\Assets\Maps\*.txt">
+      <Link>Assets\Maps\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
