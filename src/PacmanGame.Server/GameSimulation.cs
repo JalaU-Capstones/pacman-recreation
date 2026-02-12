@@ -143,6 +143,12 @@ public class GameSimulation
 
     public void Update(float deltaTime)
     {
+        if (_map == null)
+        {
+            _logger.LogError("FATAL: Server physics running without map data!");
+            return;
+        }
+
         // Update Pac-Man
         if (_playerInputs.TryGetValue(PlayerRole.Pacman, out var pacmanDir))
         {
@@ -256,7 +262,7 @@ public class GameSimulation
         // Try to change direction if a new one is provided
         if (direction != Direction.None && direction != _pacman.CurrentDirection)
         {
-            if (_collisionDetector.CanMove(_pacman, direction, _map))
+            if (!_collisionDetector.IsWall(_pacman.X, _pacman.Y, _map))
             {
                  _pacman.CurrentDirection = direction;
             }
@@ -265,17 +271,21 @@ public class GameSimulation
         // Move in current direction
         if (_pacman.CurrentDirection != Direction.None)
         {
-            if (_collisionDetector.CanMove(_pacman, _pacman.CurrentDirection, _map))
+            var (dx, dy) = GetDirectionDeltas(_pacman.CurrentDirection);
+            float newX = _pacman.X + dx * 4.0f * deltaTime;
+            float newY = _pacman.Y + dy * 4.0f * deltaTime;
+
+            if (!_collisionDetector.IsWall(newX, newY, _map))
             {
-                var (dx, dy) = GetDirectionDeltas(_pacman.CurrentDirection);
-                _pacman.X += dx * 4.0f * deltaTime;
-                _pacman.Y += dy * 4.0f * deltaTime;
+                _pacman.X = newX;
+                _pacman.Y = newY;
             }
             else
             {
                 // Hit a wall, stop moving
                 _pacman.X = (float)Math.Round(_pacman.X);
                 _pacman.Y = (float)Math.Round(_pacman.Y);
+                _pacman.CurrentDirection = Direction.None;
             }
         }
     }
@@ -289,7 +299,7 @@ public class GameSimulation
 
         if (direction != Direction.None && direction != ghost.CurrentDirection)
         {
-            if (_collisionDetector.CanMove(ghost, direction, _map))
+            if (!_collisionDetector.IsWall(ghost.X, ghost.Y, _map))
             {
                 ghost.CurrentDirection = direction;
             }
@@ -297,16 +307,20 @@ public class GameSimulation
 
         if (ghost.CurrentDirection != Direction.None)
         {
-            if (_collisionDetector.CanMove(ghost, ghost.CurrentDirection, _map))
+            var (dx, dy) = GetDirectionDeltas(ghost.CurrentDirection);
+            float newX = ghost.X + dx * speed * deltaTime;
+            float newY = ghost.Y + dy * speed * deltaTime;
+
+            if (!_collisionDetector.IsWall(newX, newY, _map))
             {
-                var (dx, dy) = GetDirectionDeltas(ghost.CurrentDirection);
-                ghost.X += dx * speed * deltaTime;
-                ghost.Y += dy * speed * deltaTime;
+                ghost.X = newX;
+                ghost.Y = newY;
             }
             else
             {
                 ghost.X = (float)Math.Round(ghost.X);
                 ghost.Y = (float)Math.Round(ghost.Y);
+                ghost.CurrentDirection = Direction.None;
             }
         }
     }

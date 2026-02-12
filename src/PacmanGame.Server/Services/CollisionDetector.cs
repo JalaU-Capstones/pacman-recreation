@@ -38,5 +38,16 @@ namespace PacmanGame.Server.Services
             TileType tile = map[nextY, nextX];
             return tile != TileType.Wall && tile != TileType.GhostDoor;
         }
+
+        public bool IsWall(float x, float y, TileType[,] map)
+        {
+            int gridX = (int)Math.Round(x);
+            int gridY = (int)Math.Round(y);
+
+            if (gridY < 0 || gridY >= map.GetLength(0) || gridX < 0 || gridX >= map.GetLength(1))
+                return true; // Out of bounds is a wall
+
+            return map[gridY, gridX] == TileType.Wall;
+        }
     }
 }
