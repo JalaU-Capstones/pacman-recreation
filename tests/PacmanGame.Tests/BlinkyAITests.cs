@@ -7,6 +7,7 @@ using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using System.Collections.Generic;
 using PacmanGame.Helpers;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Tests;
 
@@ -14,18 +15,20 @@ public class BlinkyAITests
 {
     private readonly Mock<ILogger> _mockLogger;
     private readonly BlinkyAI _sut;
+    private readonly Mock<ILogger<Pacman>> _mockPacmanLogger;
 
     public BlinkyAITests()
     {
         _mockLogger = new Mock<ILogger>();
         _sut = new BlinkyAI();
+        _mockPacmanLogger = new Mock<ILogger<Pacman>>();
     }
 
     [Fact]
     public void GetNextMove_ChaseMode_ShouldTargetPacman()
     {
         // Arrange
-        var pacman = new Pacman(15, 20);
+        var pacman = new Pacman(15, 20, _mockPacmanLogger.Object);
         var blinky = new Ghost(10, 10, GhostType.Blinky);
         var map = new TileType[31, 28]; // Empty map
 
@@ -41,7 +44,7 @@ public class BlinkyAITests
     public void GetNextMove_ScatterMode_ShouldTargetTopRightCorner()
     {
         // Arrange
-        var pacman = new Pacman(15, 20);
+        var pacman = new Pacman(15, 20, _mockPacmanLogger.Object);
         var blinky = new Ghost(10, 10, GhostType.Blinky);
         var map = new TileType[31, 28];
 

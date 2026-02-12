@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="LiteNetLib" />
     <PackageReference Include="MessagePack" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 
 </Project>

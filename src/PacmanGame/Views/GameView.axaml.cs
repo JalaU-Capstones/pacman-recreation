@@ -16,14 +16,21 @@ public partial class GameView : UserControl
     public GameView()
     {
         InitializeComponent();
+        Focusable = true;
         this.KeyDown += OnKeyDown;
-        this.Focusable = true;
+        this.Loaded += (s, e) => Dispatcher.UIThread.InvokeAsync(() => this.Focus(), DispatcherPriority.Render);
+        this.PointerPressed += OnPointerPressed;
+    }
+
+    private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        Dispatcher.UIThread.InvokeAsync(() => this.Focus());
     }
 
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        this.Focus();
+        Dispatcher.UIThread.InvokeAsync(() => this.Focus(), DispatcherPriority.Render);
 
         if (DataContext is not (GameViewModel or MultiplayerGameViewModel)) return;
 

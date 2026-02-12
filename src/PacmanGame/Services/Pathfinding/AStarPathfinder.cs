@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using PacmanGame.Helpers;
@@ -48,15 +49,15 @@ public class AStarPathfinder
         targetY = Math.Clamp(targetY, 0, mapHeight - 1);
         targetX = Math.Clamp(targetX, 0, mapWidth - 1);
 
-        logger.Debug($"FindPath start=({startY},{startX}) target=({targetY},{targetX}) ghost={ghost.GetName()} state={ghost.State}");
+        logger.LogDebug($"FindPath start=({startY},{startX}) target=({targetY},{targetX}) ghost={ghost.GetName()} state={ghost.State}");
 
         if (map[startY, startX] == TileType.Wall || map[targetY, targetX] == TileType.Wall)
         {
-            logger.Debug($"start or target is a Wall; finding closest non-wall to target ({targetY},{targetX})");
+            logger.LogDebug($"start or target is a Wall; finding closest non-wall to target ({targetY},{targetX})");
             (targetY, targetX) = FindClosestNonWall(targetY, targetX, map);
-            logger.Debug($"Adjusted target to ({targetY},{targetX})");
+            logger.LogDebug($"Adjusted target to ({targetY},{targetX})");
             if (map[targetY, targetX] == TileType.Wall) {
-                logger.Warning($"Adjusted target still a Wall - returning None");
+                logger.LogWarning($"Adjusted target still a Wall - returning None");
                 return Direction.None;
             }
         }
@@ -133,7 +134,7 @@ public class AStarPathfinder
             }
         }
 
-        logger.Warning($"No path found from ({startY},{startX}) to ({targetY},{targetX}) for ghost {ghost.GetName()}");
+        logger.LogWarning($"No path found from ({startY},{startX}) to ({targetY},{targetX}) for ghost {ghost.GetName()}");
         // Fallback: choose a greedy neighbor that is legal and reduces Manhattan distance
         Direction best = Direction.None;
         double bestDist = double.MaxValue;
@@ -174,7 +175,7 @@ public class AStarPathfinder
 
         if (best != Direction.None)
         {
-            logger.Debug($"Fallback greedy direction {best} chosen for ghost {ghost.GetName()}");
+            logger.LogDebug($"Fallback greedy direction {best} chosen for ghost {ghost.GetName()}");
             return best;
         }
 

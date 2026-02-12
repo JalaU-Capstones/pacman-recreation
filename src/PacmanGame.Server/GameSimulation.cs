@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 using PacmanGame.Server.Models;
 using PacmanGame.Server.Services;
 using PacmanGame.Shared;
@@ -10,7 +11,7 @@ public class GameSimulation
 {
     private readonly IMapLoader _mapLoader;
     private readonly ICollisionDetector _collisionDetector;
-    private readonly ILogger _logger;
+    private readonly ILogger<GameSimulation> _logger;
 
     private Pacman _pacman;
     private List<Ghost> _ghosts = new();
@@ -23,18 +24,20 @@ public class GameSimulation
 
     private Dictionary<PlayerRole, Direction> _playerInputs = new();
 
-    public GameSimulation(IMapLoader mapLoader, ICollisionDetector collisionDetector, ILogger logger)
+    public GameSimulation(IMapLoader mapLoader, ICollisionDetector collisionDetector, ILogger<GameSimulation> logger)
     {
         _mapLoader = mapLoader;
         _collisionDetector = collisionDetector;
         _logger = logger;
+        _pacman = new Pacman(0, 0);
+        _map = new TileType[0, 0];
     }
 
     public void Initialize(int roomId, List<PlayerRole> assignedRoles)
     {
-        _logger.LogInfo($"[SIMULATION] Initializing game for Room {roomId}");
+        _logger.LogInformation($"[SIMULATION] Initializing game for Room {roomId}");
         LoadLevel(1);
-        _logger.LogInfo($"[SIMULATION] Game initialized with {assignedRoles.Count} players");
+        _logger.LogInformation($"[SIMULATION] Game initialized with {assignedRoles.Count} players");
     }
 
     private void LoadLevel(int level)
@@ -77,6 +80,7 @@ public class GameSimulation
 
     private void MovePacman(Direction direction, float deltaTime)
     {
+        _logger.LogInformation($"[GAMESIMULATION] MovePacman called with direction: {direction}");
         if (_collisionDetector.CanMove(_pacman, direction, _map))
         {
             _pacman.CurrentDirection = direction;

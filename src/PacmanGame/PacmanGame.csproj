@@ -25,11 +25,14 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
     <PackageReference Include="System.Windows.Extensions" />
     <PackageReference Include="SFML.Audio" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="LiteNetLib" />
     <PackageReference Include="MessagePack" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PacmanGame.Shared\PacmanGame.Shared.csproj" />

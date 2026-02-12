@@ -9,22 +9,17 @@ using LiteNetLib;
 using MessagePack;
 using PacmanGame.Helpers;
 using PacmanGame.Shared;
-using PacmanGame.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Services;
 
 public class NetworkService : INetEventListener
 {
-    private static readonly Lazy<NetworkService> _lazyInstance = new(() => new NetworkService());
-    public static NetworkService Instance => _lazyInstance.Value;
-
     private readonly NetManager _netManager;
-    private readonly ILogger _logger;
+    private readonly ILogger<NetworkService> _logger;
     private NetPeer? _server;
-    private bool _isConnected = false;
-    private readonly object _connectionLock = new();
-    private bool _isStarted = false;
-    private int? _currentRoomId;
+    private bool _isConnected;
+    private bool _isStarted;
 
     // Room events
     public event Action<int, string, RoomVisibility, List<PlayerState>>? OnJoinedRoom;
@@ -39,9 +34,9 @@ public class NetworkService : INetEventListener
     public event Action<GameStateMessage>? OnGameStateUpdate;
     public event Action<GameEventMessage>? OnGameEvent;
 
-    private NetworkService()
+    public NetworkService(ILogger<NetworkService> logger)
     {
-        _logger = new Logger();
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _netManager = new NetManager(this);
     }
 
@@ -49,18 +44,35 @@ public class NetworkService : INetEventListener
     {
         if (_isStarted) return;
         _isStarted = true;
+        Console.WriteLine("DEBUG: NetworkService.Start() called");
         _netManager.Start();
-        _logger.Info("Starting connection to server...");
+        _logger.LogInformation("Starting connection to server...");
+        Console.WriteLine($"DEBUG: Connecting to server at {Constants.MultiplayerServerIP}:{Constants.MultiplayerServerPort}");
         _server = _netManager.Connect(Constants.MultiplayerServerIP, Constants.MultiplayerServerPort, "PacmanGame");
+        Console.WriteLine("DEBUG: Server connection initiated, starting PollEventsLoop");
         Task.Run(PollEventsLoop);
+        Console.WriteLine("DEBUG: NetworkService.Start() completed");
     }
 
     private void PollEventsLoop()
     {
-        while (_isStarted)
+        Console.WriteLine("DEBUG: PollEventsLoop started");
+        try
         {
-            _netManager.PollEvents();
-            Thread.Sleep(15);
+            while (_isStarted)
+            {
+                _netManager.PollEvents();
+                Thread.Sleep(15);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"DEBUG: PollEventsLoop exception: {ex}");
+            _logger.LogError(ex, "Error in PollEventsLoop");
+        }
+        finally
+        {
+            Console.WriteLine("DEBUG: PollEventsLoop ended");
         }
     }
 
@@ -71,26 +83,26 @@ public class NetworkService : INetEventListener
         if (!_isStarted) return;
         _isStarted = false;
         _netManager.Stop();
-        _logger.Info("Network service stopped.");
+        _logger.LogInformation("Network service stopped.");
     }
 
     private void SendMessage(NetworkMessageBase message)
     {
         if (_server == null || _server.ConnectionState != ConnectionState.Connected)
         {
-            _logger.Error("Cannot send message: not connected to server.");
+            _logger.LogError("Cannot send message: not connected to server.");
             return;
         }
 
         try
         {
             var bytes = MessagePackSerializer.Serialize(message, MessagePackSerializerOptions.Standard);
-            _logger.Debug($"Sending message type: {message.Type}");
+            _logger.LogDebug($"Sending message type: {message.Type}");
             _server.Send(bytes, DeliveryMethod.ReliableOrdered);
         }
         catch (Exception ex)
         {
-            _logger.Error($"Error serializing message: {ex.Message}");
+            _logger.LogError("Error serializing message: {Exception}", ex);
         }
     }
 
@@ -105,24 +117,23 @@ public class NetworkService : INetEventListener
 
     public void OnPeerConnected(NetPeer peer)
     {
-        _logger.Info($"Connected to server: {peer.Address}");
+        _logger.LogInformation($"Connected to server: {peer.Address}");
         _isConnected = true;
     }
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
     {
-        _logger.Warning($"Disconnected from server: {disconnectInfo.Reason}");
+        _logger.LogWarning("Disconnected from server: {Reason}", disconnectInfo.Reason);
         _isConnected = false;
-        _currentRoomId = null;
         Dispatcher.UIThread.Post(() => OnLeftRoom?.Invoke());
     }
 
-    public void OnNetworkError(IPEndPoint endPoint, SocketError socketError) => _logger.Error($"Network error: {socketError}");
+    public void OnNetworkError(IPEndPoint endPoint, SocketError socketError) => _logger.LogError("Network error: {SocketError}", socketError);
 
     public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliveryMethod)
     {
         var bytes = reader.GetRemainingBytes();
-        _logger.Debug($"Raw data received. Length: {bytes.Length}");
+        _logger.LogDebug("Raw data received. Length: {Length}", bytes.Length);
         try
         {
             var baseMessage = MessagePackSerializer.Deserialize<NetworkMessageBase>(bytes, MessagePackSerializerOptions.Standard);
@@ -134,73 +145,63 @@ public class NetworkService : INetEventListener
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error($"Error handling message {baseMessage?.Type}: {ex}");
+                    _logger.LogError("Error handling message {MessageType}: {Exception}", baseMessage.Type, ex);
                 }
             });
         }
         catch (Exception ex)
         {
-            _logger.Error($"[FATAL] Failed to deserialize message. Length: {bytes.Length}. Exception: {ex}");
+            _logger.LogError("[FATAL] Failed to deserialize message. Length: {Length}. Exception: {Exception}", bytes.Length, ex);
         }
     }
 
     private void HandleMessage(NetworkMessageBase message)
     {
-        if (message == null)
-        {
-            _logger.Warning("Received null message in HandleMessage");
-            return;
-        }
-
-        _logger.Debug($"Received message type: {message.Type}");
+        _logger.LogDebug("Received message type: {MessageType}", message.Type);
         switch (message)
         {
             case CreateRoomResponse createResponse:
                 if (createResponse.Success)
                 {
-                    _logger.Info($"Successfully created and joined room '{createResponse.RoomName}'");
-                    _currentRoomId = createResponse.RoomId;
+                    _logger.LogInformation("Successfully created and joined room '{RoomName}'", createResponse.RoomName);
                     OnJoinedRoom?.Invoke(createResponse.RoomId, createResponse.RoomName!, createResponse.Visibility, createResponse.Players);
                 }
                 else
                 {
-                    _logger.Error($"Failed to create room: {createResponse.Message}");
+                    _logger.LogError("Failed to create room: {Message}", createResponse.Message);
                     OnJoinRoomFailed?.Invoke(createResponse.Message ?? "Unknown error");
                 }
                 break;
             case JoinRoomResponse joinResponse:
                 if (joinResponse.Success)
                 {
-                    _logger.Info($"Successfully joined room '{joinResponse.RoomName}'");
-                    _currentRoomId = joinResponse.RoomId;
+                    _logger.LogInformation("Successfully joined room '{RoomName}'", joinResponse.RoomName);
                     OnJoinedRoom?.Invoke(joinResponse.RoomId, joinResponse.RoomName!, joinResponse.Visibility, joinResponse.Players);
                 }
                 else
                 {
-                    _logger.Error($"Failed to join room: {joinResponse.Message}");
+                    _logger.LogError("Failed to join room: {Message}", joinResponse.Message);
                     OnJoinRoomFailed?.Invoke(joinResponse.Message ?? "Unknown error");
                 }
                 break;
             case GetRoomListResponse roomListResponse:
-                _logger.Info($"Received room list with {roomListResponse.Rooms.Count} rooms.");
+                _logger.LogInformation("Received room list with {RoomCount} rooms.", roomListResponse.Rooms.Count);
                 OnRoomListReceived?.Invoke(roomListResponse.Rooms);
                 break;
             case RoomStateUpdateMessage roomUpdate:
-                _logger.Info("Received room state update.");
+                _logger.LogInformation("Received room state update.");
                 OnRoomStateUpdate?.Invoke(roomUpdate.Players);
                 break;
             case LeaveRoomConfirmation _:
-                _logger.Info("Leave room confirmation received. Session state cleared.");
-                _currentRoomId = null;
+                _logger.LogInformation("Leave room confirmation received. Session state cleared.");
                 OnLeftRoom?.Invoke();
                 break;
             case KickedEvent kickedEvent:
-                _logger.Warning($"Kicked from room: {kickedEvent.Reason}");
-                _currentRoomId = null;
+                _logger.LogWarning("Kicked from room: {Reason}", kickedEvent.Reason);
                 OnKicked?.Invoke(kickedEvent.Reason);
                 break;
             case GameStartEvent gameStartEvent:
-                _logger.Info("Game is starting!");
+                _logger.LogInformation("Game is starting!");
                 OnGameStart?.Invoke(gameStartEvent);
                 break;
             case GameStateMessage gameState:

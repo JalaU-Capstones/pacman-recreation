@@ -8,6 +8,7 @@ using System.Reactive;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Threading;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.ViewModels;
 
@@ -16,7 +17,7 @@ public class RoomListViewModel : ViewModelBase
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly NetworkService _networkService;
     private readonly IAudioManager _audioManager;
-    private readonly ILogger _logger;
+    private readonly ILogger<RoomListViewModel> _logger;
     private readonly IProfileManager _profileManager;
 
     public ObservableCollection<RoomInfo> Rooms { get; } = new();
@@ -56,7 +57,7 @@ public class RoomListViewModel : ViewModelBase
     public ICommand JoinPrivateRoomCommand { get; }
     public ICommand BackCommand { get; }
 
-    public RoomListViewModel(MainWindowViewModel mainWindowViewModel, NetworkService networkService, IAudioManager audioManager, ILogger logger, IProfileManager profileManager)
+    public RoomListViewModel(MainWindowViewModel mainWindowViewModel, NetworkService networkService, IAudioManager audioManager, ILogger<RoomListViewModel> logger, IProfileManager profileManager)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _networkService = networkService;
@@ -111,7 +112,7 @@ public class RoomListViewModel : ViewModelBase
 
     private void RefreshRooms()
     {
-        _logger.Info("Requesting room list from server...");
+        _logger.LogInformation("Requesting room list from server...");
         _audioManager.PlaySoundEffect("menu-navigate");
         _networkService.SendGetRoomListRequest();
     }
@@ -125,7 +126,7 @@ public class RoomListViewModel : ViewModelBase
             {
                 Rooms.Add(room);
             }
-            _logger.Info($"[DEBUG] RoomList UI updated with {Rooms.Count} items.");
+            _logger.LogInformation($"[DEBUG] RoomList UI updated with {Rooms.Count} items.");
         });
     }
 
@@ -133,7 +134,7 @@ public class RoomListViewModel : ViewModelBase
     {
         Dispatcher.UIThread.Post(() =>
         {
-            _logger.Info($"Successfully joined room '{roomName}'. Navigating to lobby.");
+            _logger.LogInformation($"Successfully joined room '{roomName}'. Navigating to lobby.");
             _mainWindowViewModel.NavigateToRoomLobby(roomId, roomName, visibility, players);
         });
     }
@@ -143,14 +144,14 @@ public class RoomListViewModel : ViewModelBase
         Dispatcher.UIThread.Post(() =>
         {
             ErrorMessage = $"Failed to join room: {message}";
-            _logger.Error(ErrorMessage);
+            _logger.LogError(ErrorMessage);
         });
     }
 
     private void Back()
     {
         _audioManager.PlaySoundEffect("menu-select");
-        _mainWindowViewModel.NavigateTo(new MultiplayerMenuViewModel(_mainWindowViewModel, _networkService, _audioManager, _logger, _profileManager));
+        _mainWindowViewModel.NavigateTo<MultiplayerMenuViewModel>();
     }
 
     ~RoomListViewModel()

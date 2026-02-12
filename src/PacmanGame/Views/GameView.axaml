@@ -6,9 +6,10 @@
              mc:Ignorable="d" d:DesignWidth="1156" d:DesignHeight="1020"
              x:Class="PacmanGame.Views.GameView"
              x:DataType="vm:GameViewModel"
-             Background="Black">
+             Background="Black"
+             Focusable="True">
 
-    <Grid ColumnDefinitions="Auto,*,Auto">
+    <Grid ColumnDefinitions="Auto,*,Auto" PointerPressed="OnPointerPressed">
 
         <!-- Left Sidebar - HUD -->
         <Border Grid.Column="0"
@@ -16,7 +17,9 @@
                 BorderBrush="#FFFF00"
                 BorderThickness="0,0,2,0"
                 MinWidth="120"
-                Padding="15">
+                Padding="15"
+                Focusable="True"
+                IsTabStop="False">
 
             <StackPanel VerticalAlignment="Center"
                         Spacing="40">
@@ -78,7 +81,8 @@
                     Width="896"
                     Height="992"
                     Background="Black"
-                    ClipToBounds="True"/>
+                    ClipToBounds="True"
+                    Focusable="True"/>
         </Border>
 
         <!-- Right Sidebar - Controls -->
@@ -87,7 +91,9 @@
                 BorderBrush="#FFFF00"
                 BorderThickness="2,0,0,0"
                 MinWidth="120"
-                Padding="15">
+                Padding="15"
+                Focusable="True"
+                IsTabStop="False">
 
             <StackPanel VerticalAlignment="Center"
                         Spacing="20">

@@ -5,6 +5,7 @@ using PacmanGame.Services.Pathfinding;
 using PacmanGame.Services.Interfaces;
 using PacmanGame.Models.Enums;
 using PacmanGame.Models.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Tests;
 

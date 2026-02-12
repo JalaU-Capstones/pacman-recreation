@@ -8,6 +8,7 @@ using Avalonia.Platform;
 using PacmanGame.Helpers;
 using PacmanGame.Services.Interfaces;
 using PacmanGame.Services.Models;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Services;
 
@@ -17,12 +18,12 @@ namespace PacmanGame.Services;
 /// </summary>
 public class SpriteManager : ISpriteManager
 {
-    private readonly ILogger _logger;
+    private readonly ILogger<SpriteManager> _logger;
     private readonly Dictionary<string, Bitmap> _spriteSheets = new();
     private readonly Dictionary<string, (string SheetName, SpriteInfo Info)> _flattenedSprites = new();
     private bool _isInitialized;
 
-    public SpriteManager(ILogger logger)
+    public SpriteManager(ILogger<SpriteManager> logger)
     {
         _logger = logger;
     }
@@ -43,11 +44,11 @@ public class SpriteManager : ISpriteManager
             LoadSpriteSheet("tiles", Constants.TilesSpriteSheet, Constants.TilesSpriteMap);
 
             _isInitialized = true;
-            _logger.Info("SpriteManager initialized successfully");
+            _logger.LogInformation("SpriteManager initialized successfully");
         }
         catch (Exception ex)
         {
-            _logger.Error("Error initializing SpriteManager", ex);
+            _logger.LogError(ex, "Error initializing SpriteManager");
             throw;
         }
     }
@@ -77,11 +78,11 @@ public class SpriteManager : ISpriteManager
                 FlattenSpriteObject(name, spritesObj, spriteSize, "");
             }
 
-            _logger.Info($"Loaded sprite sheet '{name}' with {_flattenedSprites.Count} sprites");
+            _logger.LogInformation("Loaded sprite sheet '{Name}' with {Count} sprites", name, _flattenedSprites.Count);
         }
         catch (Exception ex)
         {
-            _logger.Error($"Error loading sprite sheet {name}", ex);
+            _logger.LogError(ex, "Error loading sprite sheet {Name}", name);
             throw;
         }
     }
@@ -148,7 +149,7 @@ public class SpriteManager : ISpriteManager
 
         if (!_flattenedSprites.TryGetValue(flatKey, out var entry))
         {
-            _logger.Warning($"Sprite not found: {flatKey}");
+            _logger.LogWarning("Sprite not found: {FlatKey}", flatKey);
             return null;
         }
 
@@ -156,7 +157,7 @@ public class SpriteManager : ISpriteManager
 
         if (!_spriteSheets.TryGetValue(sheetName, out var sheet))
         {
-            _logger.Warning($"Sheet not loaded: {sheetName} for key={flatKey}");
+            _logger.LogWarning("Sheet not loaded: {SheetName} for key={FlatKey}", sheetName, flatKey);
             return null;
         }
 
@@ -167,7 +168,7 @@ public class SpriteManager : ISpriteManager
         }
         catch (Exception ex)
         {
-            _logger.Error($"Error cropping sprite key={flatKey}", ex);
+            _logger.LogError(ex, "Error cropping sprite key={FlatKey}", flatKey);
             return null;
         }
     }

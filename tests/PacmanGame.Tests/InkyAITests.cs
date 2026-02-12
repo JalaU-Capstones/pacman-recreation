@@ -6,6 +6,7 @@ using PacmanGame.Services.Interfaces;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Tests;
 
@@ -13,18 +14,20 @@ public class InkyAITests
 {
     private readonly Mock<ILogger> _mockLogger;
     private readonly InkyAI _sut;
+    private readonly Mock<ILogger<Pacman>> _mockPacmanLogger;
 
     public InkyAITests()
     {
         _mockLogger = new Mock<ILogger>();
         _sut = new InkyAI();
+        _mockPacmanLogger = new Mock<ILogger<Pacman>>();
     }
 
     [Fact]
     public void GetNextMove_ChaseMode_ShouldUseBlinkyPosition()
     {
         // Arrange
-        var pacman = new Pacman(15, 20) { CurrentDirection = Direction.Right };
+        var pacman = new Pacman(15, 20, _mockPacmanLogger.Object) { CurrentDirection = Direction.Right };
         var inky = new Ghost(10, 10, GhostType.Inky);
         var blinky = new Ghost(5, 5, GhostType.Blinky);
         var map = new TileType[31, 28];

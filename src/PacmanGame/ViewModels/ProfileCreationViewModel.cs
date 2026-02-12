@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using PacmanGame.Services.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -12,7 +13,7 @@ public class ProfileCreationViewModel : ViewModelBase
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly IProfileManager _profileManager;
     private readonly IAudioManager _audioManager;
-    private readonly ILogger _logger;
+    private readonly ILogger<ProfileCreationViewModel> _logger;
 
     private string _name = string.Empty;
     public string Name
@@ -51,16 +52,12 @@ public class ProfileCreationViewModel : ViewModelBase
     public ReactiveCommand<string?, Unit> SelectColorCommand { get; }
     public ICommand CancelCommand { get; }
 
-    public ProfileCreationViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, ILogger logger, IAudioManager? audioManager = null)
+    public ProfileCreationViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger<ProfileCreationViewModel> logger)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _profileManager = profileManager;
+        _audioManager = audioManager;
         _logger = logger;
-        _audioManager = audioManager ?? new PacmanGame.Services.AudioManager(_logger);
-        if (audioManager == null)
-        {
-            _audioManager.Initialize();
-        }
 
         CreateProfileCommand = ReactiveCommand.Create(CreateProfile);
         SelectColorCommand = ReactiveCommand.Create<string?>(color =>
@@ -109,12 +106,12 @@ public class ProfileCreationViewModel : ViewModelBase
             _audioManager.SetSfxVolume((float)settings.SfxVolume);
             _audioManager.SetMuted(settings.IsMuted);
 
-            _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager, _logger));
+            _mainWindowViewModel.NavigateTo<MainMenuViewModel>();
         }
         catch (Exception ex)
         {
             ErrorMessage = $"Error creating profile: {ex.Message}";
-            _logger.Error("Error creating profile", ex);
+            _logger.LogError(ex, "Error creating profile");
         }
     }
 
@@ -123,7 +120,7 @@ public class ProfileCreationViewModel : ViewModelBase
         var profiles = _profileManager.GetAllProfiles();
         if (profiles.Count > 0)
         {
-            _mainWindowViewModel.NavigateTo(new ProfileSelectionViewModel(_mainWindowViewModel, _profileManager, _logger, _audioManager));
+            _mainWindowViewModel.NavigateTo<ProfileSelectionViewModel>();
         }
         else
         {

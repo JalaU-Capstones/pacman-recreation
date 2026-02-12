@@ -9,6 +9,8 @@ using ReactiveUI;
 using System.Reactive.Linq;
 using System.Collections.Generic;
 using Avalonia.Threading;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace PacmanGame.ViewModels;
 
@@ -17,8 +19,9 @@ public class RoomLobbyViewModel : ViewModelBase
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly NetworkService _networkService;
     private readonly IAudioManager _audioManager;
-    private readonly ILogger _logger;
+    private readonly ILogger<RoomLobbyViewModel> _logger;
     private readonly IProfileManager _profileManager;
+    private readonly IServiceProvider _serviceProvider;
 
     private readonly int _roomId;
     private readonly int _myPlayerId;
@@ -29,25 +32,13 @@ public class RoomLobbyViewModel : ViewModelBase
     public bool IsAdmin { get; }
 
     private bool _canStartGame;
-    public bool CanStartGame
-    {
-        get => _canStartGame;
-        set => this.RaiseAndSetIfChanged(ref _canStartGame, value);
-    }
+    public bool CanStartGame { get => _canStartGame; set => this.RaiseAndSetIfChanged(ref _canStartGame, value); }
 
     private string _statusText = "Waiting for admin to start...";
-    public string StatusText
-    {
-        get => _statusText;
-        set => this.RaiseAndSetIfChanged(ref _statusText, value);
-    }
+    public string StatusText { get => _statusText; set => this.RaiseAndSetIfChanged(ref _statusText, value); }
 
     private int _spectatorCount;
-    public int SpectatorCount
-    {
-        get => _spectatorCount;
-        set => this.RaiseAndSetIfChanged(ref _spectatorCount, value);
-    }
+    public int SpectatorCount { get => _spectatorCount; set => this.RaiseAndSetIfChanged(ref _spectatorCount, value); }
 
     public ObservableCollection<PlayerViewModel> Players { get; } = new();
     public ReadOnlyObservableCollection<PlayerRole> Roles { get; }
@@ -62,16 +53,19 @@ public class RoomLobbyViewModel : ViewModelBase
         RoomVisibility visibility,
         List<PlayerState> initialPlayers,
         MainWindowViewModel mainWindowViewModel,
+        NetworkService networkService,
         IAudioManager audioManager,
-        ILogger logger,
-        IProfileManager profileManager)
+        ILogger<RoomLobbyViewModel> logger,
+        IProfileManager profileManager,
+        IServiceProvider serviceProvider)
     {
         _roomId = roomId;
         _mainWindowViewModel = mainWindowViewModel;
-        _networkService = NetworkService.Instance;
+        _networkService = networkService;
         _audioManager = audioManager;
         _logger = logger;
         _profileManager = profileManager;
+        _serviceProvider = serviceProvider;
 
         RoomName = roomName;
         RoomVisibility = visibility.ToString().ToUpper();
@@ -89,18 +83,16 @@ public class RoomLobbyViewModel : ViewModelBase
 
         UpdatePlayers(initialPlayers);
 
-        // Subscribe to network events
         _networkService.OnRoomStateUpdate += UpdatePlayers;
         _networkService.OnKicked += HandleKicked;
         _networkService.OnGameStart += HandleGameStart;
         _networkService.OnLeftRoom += HandleLeftRoom;
 
-        // Command implementations
         LeaveRoomCommand = ReactiveCommand.Create(LeaveRoom);
         StartGameCommand = ReactiveCommand.Create(StartGame, this.WhenAnyValue(x => x.CanStartGame));
         KickPlayerCommand = ReactiveCommand.Create<PlayerViewModel>(KickPlayer);
 
-        _logger.Info($"Entered lobby for room '{RoomName}' (ID: {_roomId}). Admin: {IsAdmin}");
+        _logger.LogInformation("Entered lobby for room '{RoomName}' (ID: {RoomId}). Admin: {IsAdmin}", RoomName, _roomId, IsAdmin);
     }
 
     private void UpdatePlayers(List<PlayerState> playerStates)
@@ -108,16 +100,10 @@ public class RoomLobbyViewModel : ViewModelBase
         Dispatcher.UIThread.Post(() =>
         {
             var myPlayerState = playerStates.FirstOrDefault(p => p.PlayerId == _myPlayerId);
-            if (myPlayerState != null)
-            {
-                _myRole = myPlayerState.Role;
-            }
+            if (myPlayerState != null) _myRole = myPlayerState.Role;
 
             var playersToRemove = Players.Where(p => !playerStates.Any(s => s.PlayerId == p.PlayerId)).ToList();
-            foreach (var player in playersToRemove)
-            {
-                Players.Remove(player);
-            }
+            foreach (var player in playersToRemove) Players.Remove(player);
 
             foreach (var state in playerStates)
             {
@@ -140,9 +126,7 @@ public class RoomLobbyViewModel : ViewModelBase
 
                     if (IsAdmin && !newPlayer.IsYou)
                     {
-                        newPlayer.WhenAnyValue(x => x.Role)
-                            .Skip(1)
-                            .Subscribe(newRole => AssignRole(newPlayer.PlayerId, newRole));
+                        newPlayer.WhenAnyValue(x => x.Role).Skip(1).Subscribe(newRole => AssignRole(newPlayer.PlayerId, newRole));
                     }
                     Players.Add(newPlayer);
                 }
@@ -151,7 +135,7 @@ public class RoomLobbyViewModel : ViewModelBase
             var playersWithRoles = Players.Count(p => p.Role != PlayerRole.None);
             SpectatorCount = Players.Count - playersWithRoles;
 
-            _logger.Info($"Room state updated: {playersWithRoles} players with roles, {SpectatorCount} spectators.");
+            _logger.LogInformation("Room state updated: {PlayersWithRoles} players with roles, {SpectatorCount} spectators.", playersWithRoles, SpectatorCount);
 
             CanStartGame = IsAdmin && playersWithRoles > 0;
         });
@@ -161,64 +145,63 @@ public class RoomLobbyViewModel : ViewModelBase
     {
         if (role != PlayerRole.None && Players.Any(p => p.PlayerId != playerId && p.Role == role))
         {
-            _logger.Warning($"Role '{role}' is already taken. Cannot assign to player {playerId}.");
+            _logger.LogWarning("Role '{Role}' is already taken. Cannot assign to player {PlayerId}.", role, playerId);
             var player = Players.FirstOrDefault(p => p.PlayerId == playerId);
             if (player != null) player.Role = PlayerRole.None;
             return;
         }
 
-        _logger.Info($"Admin assigning role '{role}' to player {playerId}.");
+        _logger.LogInformation("Admin assigning role '{Role}' to player {PlayerId}.", role, playerId);
         _networkService.SendAssignRoleRequest(playerId, role);
     }
 
     private void StartGame()
     {
-        _logger.Info("Admin is starting the game...");
+        _logger.LogInformation("Admin is starting the game...");
         _networkService.SendStartGameRequest();
     }
 
     private void LeaveRoom()
     {
-        _logger.Info("Leaving room...");
+        _logger.LogInformation("Leaving room...");
         _networkService.SendLeaveRoomRequest();
     }
 
     private void KickPlayer(PlayerViewModel player)
     {
         if (!IsAdmin || player == null) return;
-        _logger.Info($"Admin kicking player {player.Name} (ID: {player.PlayerId})");
+        _logger.LogInformation("Admin kicking player {Name} (ID: {PlayerId})", player.Name, player.PlayerId);
         _networkService.SendKickPlayerRequest(player.PlayerId);
     }
 
     private void HandleKicked(string reason)
     {
-        _logger.Warning($"Kicked from room. Reason: {reason}");
+        _logger.LogWarning("Kicked from room. Reason: {Reason}", reason);
         NavigateToMultiplayerMenu();
     }
 
     private void HandleGameStart(GameStartEvent gameStartEvent)
     {
-        _logger.Info("Game start signal received. Preparing assets and navigating to game view...");
-
-        var gameEngine = new GameEngine(_logger, new MapLoader(_logger), new SpriteManager(_logger), _audioManager, new CollisionDetector());
+        _logger.LogInformation("Game start signal received. Preparing assets and navigating to game view...");
 
         var multiplayerGameViewModel = new MultiplayerGameViewModel(
             _mainWindowViewModel,
             _roomId,
             _myRole,
-            gameEngine,
+            _serviceProvider.GetRequiredService<IGameEngine>(),
             _audioManager,
-            _logger,
-            _networkService,
-            _profileManager
+            _serviceProvider.GetRequiredService<ILogger<MultiplayerGameViewModel>>(),
+            _networkService
         );
 
         _mainWindowViewModel.NavigateTo(multiplayerGameViewModel);
     }
 
+
+
     private void HandleLeftRoom()
     {
-        _logger.Info("Left room confirmation received or disconnected.");
+        _logger.LogInformation("Left room confirmation received or disconnected.");
         NavigateToMultiplayerMenu();
     }
 
@@ -226,13 +209,13 @@ public class RoomLobbyViewModel : ViewModelBase
     {
         Dispatcher.UIThread.Post(() =>
         {
-            _mainWindowViewModel.NavigateTo(new MultiplayerMenuViewModel(_mainWindowViewModel, _networkService, _audioManager, _logger, _profileManager));
+            _mainWindowViewModel.NavigateTo<MultiplayerMenuViewModel>();
         });
     }
 
     ~RoomLobbyViewModel()
     {
-        _logger.Debug("Disposing RoomLobbyViewModel and unsubscribing from network events.");
+        _logger.LogDebug("Disposing RoomLobbyViewModel and unsubscribing from network events.");
         _networkService.OnRoomStateUpdate -= UpdatePlayers;
         _networkService.OnKicked -= HandleKicked;
         _networkService.OnGameStart -= HandleGameStart;

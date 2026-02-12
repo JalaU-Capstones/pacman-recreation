@@ -1,25 +1,22 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+using Microsoft.Extensions.Logging;
 using PacmanGame.Server.Models;
-using PacmanGame.Shared;
 
 namespace PacmanGame.Server.Services
 {
     public class MapLoader : IMapLoader
     {
-        private readonly ILogger _logger;
+        private readonly ILogger<MapLoader> _logger;
 
-        public MapLoader(ILogger logger)
+        public MapLoader(ILogger<MapLoader> logger)
         {
             _logger = logger;
+            _logger.LogInformation("MapLoader initialized successfully");
         }
 
         public TileType[,] LoadMap(string mapName)
         {
             // This is a simplified implementation. A real implementation would read from a file.
-            _logger.LogInfo($"Loading map: {mapName}");
+            _logger.LogInformation($"Loading map: {mapName}");
             return new TileType[28, 31];
         }
 

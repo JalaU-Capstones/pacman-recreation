@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using PacmanGame.Server.Services;
 using System.Linq;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Server;
 
@@ -19,36 +20,42 @@ public class RelayServer : INetEventListener
     private readonly NetManager _netManager;
     private readonly RoomManager _roomManager;
     private readonly ConcurrentDictionary<NetPeer, Player> _connectedPlayers = new();
-    private readonly ILogger _logger;
+    private readonly ILogger<RelayServer> _logger;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly MessagePackSerializerOptions _serializerOptions;
     private readonly IMapLoader _mapLoader;
     private readonly ICollisionDetector _collisionDetector;
+    private CancellationTokenSource? _cancellationTokenSource;
 
-    public RelayServer()
+    public RelayServer(ILogger<RelayServer> logger, ILoggerFactory loggerFactory)
     {
         _netManager = new NetManager(this) { DisconnectTimeout = 10000 };
         _roomManager = new RoomManager();
-        _logger = new ConsoleLogger();
+        _logger = logger;
+        _loggerFactory = loggerFactory;
         _serializerOptions = MessagePack.MessagePackSerializer.DefaultOptions.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance);
-        _mapLoader = new MapLoader(_logger);
+        _mapLoader = new MapLoader(_loggerFactory.CreateLogger<MapLoader>());
         _collisionDetector = new CollisionDetector();
     }
 
-    public void Start()
+    public Task StartAsync()
     {
         if (_netManager.Start(IPAddress.Any, IPAddress.IPv6Any, 9050))
         {
-            _logger.LogInfo($"Server listening on all interfaces, port 9050");
+            _logger.LogInformation($"Server listening on all interfaces, port 9050");
         }
         else
         {
             _logger.LogError("Failed to start server. Is the port already in use?");
-            return;
+            return Task.CompletedTask;
         }
 
-        Task.Run(() =>
+        _cancellationTokenSource = new CancellationTokenSource();
+        var token = _cancellationTokenSource.Token;
+
+        return Task.Run(() =>
         {
-            while (true)
+            while (!token.IsCancellationRequested)
             {
                 _netManager.PollEvents();
                 foreach (var room in _roomManager.GetPublicRooms().Where(r => r.State == RoomState.Playing))
@@ -61,25 +68,26 @@ public class RelayServer : INetEventListener
                 }
                 Thread.Sleep(1000 / 20); // 20 FPS
             }
-        });
+        }, token);
     }
 
     public void Stop()
     {
+        _cancellationTokenSource?.Cancel();
         _netManager.Stop();
-        _logger.LogInfo("Server stopped.");
+        _logger.LogInformation("Server stopped.");
     }
 
     public void OnPeerConnected(NetPeer peer)
     {
-        _logger.LogInfo($"Peer connected: {peer.Address}");
+        _logger.LogInformation($"Peer connected: {peer.Address}");
         var player = new Player(peer);
         _connectedPlayers.TryAdd(peer, player);
     }
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
     {
-        _logger.LogInfo($"Peer disconnected: {peer.Address}, reason: {disconnectInfo.Reason}");
+        _logger.LogInformation($"Peer disconnected: {peer.Address}, reason: {disconnectInfo.Reason}");
         if (_connectedPlayers.TryRemove(peer, out var player))
         {
             HandleLeaveRoomRequest(player);
@@ -100,7 +108,7 @@ public class RelayServer : INetEventListener
         try
         {
             var baseMessage = MessagePackSerializer.Deserialize<NetworkMessageBase>(bytes, _serializerOptions);
-            _logger.LogInfo($"Server received message type: {baseMessage.Type} from player {player.Id} ({peer.Address})");
+            _logger.LogInformation($"Server received message type: {baseMessage.Type} from player {player.Id} ({peer.Address})");
             HandleMessage(player, baseMessage);
         }
         catch (Exception ex)
@@ -160,7 +168,7 @@ public class RelayServer : INetEventListener
                 response.Visibility = room.Visibility;
                 response.Players = room.GetPlayerStates();
 
-                _logger.LogInfo($"✓ Player {player.Id} ({player.Name}) created room '{room.Name}' as Pacman.");
+                _logger.LogInformation($"✓ Player {player.Id} ({player.Name}) created room '{room.Name}' as Pacman.");
             }
             else
             {
@@ -212,7 +220,7 @@ public class RelayServer : INetEventListener
             response.Visibility = room.Visibility;
             response.Players = room.GetPlayerStates();
 
-            _logger.LogInfo($"Player {player.Id} ({player.Name}) joined room '{room.Name}'");
+            _logger.LogInformation($"Player {player.Id} ({player.Name}) joined room '{room.Name}'");
             BroadcastRoomState(room);
         }
         SendMessageToPlayer(player, response);
@@ -226,14 +234,14 @@ public class RelayServer : INetEventListener
             room.RemovePlayer(player);
             player.CurrentRoom = null;
             player.IsAdmin = false;
-            _logger.LogInfo($"Player {player.Id} ({player.Name}) has been fully disconnected from room '{room.Name}'.");
+            _logger.LogInformation($"Player {player.Id} ({player.Name}) has been fully disconnected from room '{room.Name}'.");
 
             SendMessageToPlayer(player, new LeaveRoomConfirmation());
 
             if (room.Players.Count == 0)
             {
                 _roomManager.RemoveRoom(room.Name);
-                _logger.LogInfo($"Room '{room.Name}' is empty and has been removed.");
+                _logger.LogInformation($"Room '{room.Name}' is empty and has been removed.");
             }
             else
             {
@@ -243,7 +251,7 @@ public class RelayServer : INetEventListener
                     if (newAdmin != null)
                     {
                         newAdmin.IsAdmin = true;
-                        _logger.LogInfo($"Admin left. New admin is Player {newAdmin.Id} ({newAdmin.Name}).");
+                        _logger.LogInformation($"Admin left. New admin is Player {newAdmin.Id} ({newAdmin.Name}).");
                     }
                 }
                 BroadcastRoomState(room);
@@ -260,7 +268,7 @@ public class RelayServer : INetEventListener
             if (targetPlayer != null)
             {
                 targetPlayer.Role = request.Role;
-                _logger.LogInfo($"Admin {player.Id} assigned role {request.Role} to player {request.PlayerId}");
+                _logger.LogInformation($"Admin {player.Id} assigned role {request.Role} to player {request.PlayerId}");
                 BroadcastRoomState(room);
             }
         }
@@ -276,7 +284,7 @@ public class RelayServer : INetEventListener
             {
                 room.RemovePlayer(playerToKick);
                 playerToKick.CurrentRoom = null;
-                _logger.LogInfo($"Admin {player.Id} kicked player {playerToKick.Id}");
+                _logger.LogInformation($"Admin {player.Id} kicked player {playerToKick.Id}");
                 SendMessageToPlayer(playerToKick, new KickedEvent { Reason = "Kicked by admin." });
                 BroadcastRoomState(room);
             }
@@ -288,9 +296,9 @@ public class RelayServer : INetEventListener
         var room = player.CurrentRoom;
         if (room != null && player.IsAdmin && room.Players.Any(p => p.Role != PlayerRole.None))
         {
-            _logger.LogInfo($"Admin {player.Id} is starting game in room '{room.Name}'");
+            _logger.LogInformation($"Admin {player.Id} is starting game in room '{room.Name}'");
             room.State = RoomState.Playing;
-            room.Game = new GameSimulation(_mapLoader, _collisionDetector, _logger);
+            room.Game = new GameSimulation(_mapLoader, _collisionDetector, _loggerFactory.CreateLogger<GameSimulation>());
             room.Game.Initialize(room.Id, room.Players.Select(p => p.Role).ToList());
 
             var gameStartEvent = new GameStartEvent
@@ -304,7 +312,7 @@ public class RelayServer : INetEventListener
 
     private void HandleGetRoomListRequest(Player player)
     {
-        _logger.LogInfo($"Received GetRoomListRequest from Player {player.Id} ({player.Peer.Address}).");
+        _logger.LogInformation($"Received GetRoomListRequest from Player {player.Id} ({player.Peer.Address}).");
         var publicRooms = _roomManager.GetPublicRooms().Select(r => new RoomInfo
         {
             RoomId = r.Id,
@@ -315,7 +323,7 @@ public class RelayServer : INetEventListener
 
         var response = new GetRoomListResponse { Rooms = publicRooms };
         SendMessageToPlayer(player, response);
-        _logger.LogInfo($"Sent GetRoomListResponse to Player {player.Id} with {publicRooms.Count} rooms.");
+        _logger.LogInformation($"Sent GetRoomListResponse to Player {player.Id} with {publicRooms.Count} rooms.");
     }
 
     private void BroadcastRoomState(Room room)
@@ -342,20 +350,4 @@ public class RelayServer : INetEventListener
     public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType) { }
     public void OnNetworkLatencyUpdate(NetPeer peer, int latency) { }
     public void OnConnectionRequest(ConnectionRequest request) => request.AcceptIfKey("PacmanGame");
-}
-
-public interface ILogger
-{
-    void LogInfo(string message);
-    void LogWarning(string message);
-    void LogError(string message);
-    void LogDebug(string message);
-}
-
-public class ConsoleLogger : ILogger
-{
-    public void LogInfo(string message) => Console.WriteLine($"[INFO] {message}");
-    public void LogWarning(string message) => Console.WriteLine($"[WARN] {message}");
-    public void LogError(string message) => Console.Error.WriteLine($"[ERROR] {message}");
-    public void LogDebug(string message) => Console.WriteLine($"[DEBUG] {message}");
 }

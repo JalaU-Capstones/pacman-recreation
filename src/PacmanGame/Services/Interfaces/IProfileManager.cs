@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using PacmanGame.Models.Game;
 
 namespace PacmanGame.Services.Interfaces;
@@ -8,6 +9,11 @@ namespace PacmanGame.Services.Interfaces;
 /// </summary>
 public interface IProfileManager
 {
+    /// <summary>
+    /// Initializes the profile manager and its database.
+    /// </summary>
+    Task InitializeAsync();
+
     /// <summary>
     /// Gets all existing profiles.
     /// </summary>

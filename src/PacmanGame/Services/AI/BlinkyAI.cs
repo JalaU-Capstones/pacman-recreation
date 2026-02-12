@@ -5,6 +5,7 @@ using PacmanGame.Models.Enums;
 using PacmanGame.Helpers;
 using PacmanGame.Services.Pathfinding;
 using PacmanGame.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Services.AI;
 
@@ -35,9 +36,9 @@ public class BlinkyAI : IGhostAI
             targetX = Constants.BlinkyScatterX;
         }
 
-        logger.Debug($"Blinky target=({targetY},{targetX}) mode={(isChaseMode ? "Chase" : "Scatter")}");
+        logger.LogDebug($"Blinky target=({targetY},{targetX}) mode={(isChaseMode ? "Chase" : "Scatter")}");
         var next = _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost, logger);
-        logger.Debug($"Blinky NextMove={next}");
+        logger.LogDebug($"Blinky NextMove={next}");
         return next;
     }
 }

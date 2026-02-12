@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using PacmanGame.Models.Game;
 using PacmanGame.Services.Interfaces;
 using System.Collections.ObjectModel;
@@ -15,7 +16,7 @@ public class ScoreBoardViewModel : ViewModelBase
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly IProfileManager _profileManager;
     private readonly IAudioManager _audioManager;
-    private readonly ILogger _logger;
+    private readonly ILogger<ScoreBoardViewModel> _logger;
 
     private ObservableCollection<ScoreEntry> _scores;
     public ObservableCollection<ScoreEntry> Scores
@@ -26,7 +27,7 @@ public class ScoreBoardViewModel : ViewModelBase
 
     public ICommand ReturnToMenuCommand { get; }
 
-    public ScoreBoardViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger logger)
+    public ScoreBoardViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger<ScoreBoardViewModel> logger)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _profileManager = profileManager;
@@ -52,12 +53,12 @@ public class ScoreBoardViewModel : ViewModelBase
             Scores.Add(score);
         }
 
-        _logger.Info($"Loaded {Scores.Count} high scores");
+        _logger.LogInformation("Loaded {Count} high scores", Scores.Count);
     }
 
     private void ReturnToMenu()
     {
         _audioManager.PlaySoundEffect("menu-select");
-        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager, _logger));
+        _mainWindowViewModel.NavigateTo<MainMenuViewModel>();
     }
 }

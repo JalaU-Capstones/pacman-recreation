@@ -8,6 +8,7 @@ using PacmanGame.Models.Entities;
 using System.Collections.Generic;
 using PacmanGame.Helpers;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Tests;
 
@@ -17,7 +18,8 @@ public class GameEngineTests
     private readonly Mock<ISpriteManager> _mockSpriteManager;
     private readonly Mock<IAudioManager> _mockAudioManager;
     private readonly Mock<ICollisionDetector> _mockCollisionDetector;
-    private readonly Mock<ILogger> _mockLogger;
+    private readonly Mock<ILogger<GameEngine>> _mockLogger;
+    private readonly Mock<ILoggerFactory> _mockLoggerFactory;
     private readonly GameEngine _sut;
 
     public GameEngineTests()
@@ -26,7 +28,9 @@ public class GameEngineTests
         _mockSpriteManager = new Mock<ISpriteManager>();
         _mockAudioManager = new Mock<IAudioManager>();
         _mockCollisionDetector = new Mock<ICollisionDetector>();
-        _mockLogger = new Mock<ILogger>();
+        _mockLogger = new Mock<ILogger<GameEngine>>();
+        _mockLoggerFactory = new Mock<ILoggerFactory>();
+        _mockLoggerFactory.Setup(x => x.CreateLogger(It.IsAny<string>())).Returns(new Mock<ILogger>().Object);
 
         _mockMapLoader.Setup(m => m.LoadMap(It.IsAny<string>())).Returns(new TileType[31, 28]);
         _mockMapLoader.Setup(m => m.GetPacmanSpawn(It.IsAny<string>())).Returns((1, 1));
@@ -35,6 +39,7 @@ public class GameEngineTests
 
         _sut = new GameEngine(
             _mockLogger.Object,
+            _mockLoggerFactory.Object,
             _mockMapLoader.Object,
             _mockSpriteManager.Object,
             _mockAudioManager.Object,

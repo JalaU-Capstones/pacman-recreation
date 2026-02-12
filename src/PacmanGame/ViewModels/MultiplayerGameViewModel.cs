@@ -4,6 +4,7 @@ using System.Reactive;
 using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Microsoft.Extensions.Logging;
 using PacmanGame.Models.Enums;
 using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
@@ -18,9 +19,8 @@ public class MultiplayerGameViewModel : ViewModelBase
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly IGameEngine _gameEngine;
     private readonly IAudioManager _audioManager;
-    private readonly ILogger _logger;
+    private readonly ILogger<MultiplayerGameViewModel> _logger;
     private readonly NetworkService _networkService;
-    private readonly IProfileManager _profileManager;
 
     private readonly int _roomId;
     private readonly PlayerRole _myRole;
@@ -72,9 +72,8 @@ public class MultiplayerGameViewModel : ViewModelBase
         PlayerRole myRole,
         IGameEngine gameEngine,
         IAudioManager audioManager,
-        ILogger logger,
-        NetworkService networkService,
-        IProfileManager profileManager)
+        ILogger<MultiplayerGameViewModel> logger,
+        NetworkService networkService)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _roomId = roomId;
@@ -83,7 +82,6 @@ public class MultiplayerGameViewModel : ViewModelBase
         _audioManager = audioManager;
         _logger = logger;
         _networkService = networkService;
-        _profileManager = profileManager;
 
         PauseGameCommand = ReactiveCommand.Create(() => { /* TODO: Implement pause for host */ });
         ResumeGameCommand = ReactiveCommand.Create(() => { /* TODO: Implement resume for host */ });
@@ -96,13 +94,13 @@ public class MultiplayerGameViewModel : ViewModelBase
 
     private void Initialize()
     {
-        _logger.Info($"[MULTIPLAYER] Initializing game for Room {_roomId} as {_myRole}");
+        _logger.LogInformation("[MULTIPLAYER] Initializing game for Room {RoomId} as {MyRole}", _roomId, _myRole);
         _gameEngine.LoadLevel(1);
         _audioManager.PlayMusic("background-theme.wav", loop: true);
         _networkService.OnGameStateUpdate += HandleGameStateUpdate;
         _networkService.OnGameEvent += HandleGameEvent;
         IsGameRunning = true;
-        _logger.Info("[MULTIPLAYER] Game initialized successfully");
+        _logger.LogInformation("[MULTIPLAYER] Game initialized successfully");
     }
 
     public void Render(Canvas canvas)
@@ -112,6 +110,7 @@ public class MultiplayerGameViewModel : ViewModelBase
 
     public void HandleKeyPress(Key key)
     {
+        _logger.LogDebug("Key Pressed: {Key}", key);
         var direction = key switch
         {
             Key.Up => Direction.Up,
@@ -129,6 +128,7 @@ public class MultiplayerGameViewModel : ViewModelBase
 
     private void SetPacmanDirection(Direction direction)
     {
+        _logger.LogDebug("Direction set to: {Direction}", direction);
         // Client-side prediction
         _gameEngine.SetPacmanDirection(direction);
 
@@ -148,12 +148,11 @@ public class MultiplayerGameViewModel : ViewModelBase
         _gameEngine.Stop();
         _audioManager.StopMusic();
         IsGameRunning = false;
-        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager, _logger));
+        _mainWindowViewModel.NavigateTo<MainMenuViewModel>();
     }
 
     private void HandleGameStateUpdate(GameStateMessage state)
     {
-        // This logic should be refined to avoid jerky movements, but for now, it's a direct update.
         if (state.PacmanPosition != null)
         {
             _gameEngine.Pacman.X = (int)state.PacmanPosition.X;
@@ -188,7 +187,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         if (state.CurrentLevel != _gameEngine.CurrentLevel)
         {
             _gameEngine.LoadLevel(state.CurrentLevel);
-            _logger.Info($"[MULTIPLAYER] Level changed to {state.CurrentLevel}");
+            _logger.LogInformation("[MULTIPLAYER] Level changed to {CurrentLevel}", state.CurrentLevel);
         }
     }
 
@@ -219,6 +218,6 @@ public class MultiplayerGameViewModel : ViewModelBase
                 IsGameOver = true;
                 break;
         }
-        _logger.Info($"[MULTIPLAYER] Game event: {evt.EventType}");
+        _logger.LogInformation("[MULTIPLAYER] Game event: {EventType}", evt.EventType);
     }
 }

@@ -6,17 +6,18 @@ using PacmanGame.Services.Interfaces;
 using PacmanGame.Models.Enums;
 using System.IO;
 using System;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Tests;
 
 public class MapLoaderTests : IDisposable
 {
-    private readonly Mock<ILogger> _mockLogger;
+    private readonly Mock<ILogger<MapLoader>> _mockLogger;
     private readonly string _tempMapDir;
 
     public MapLoaderTests()
     {
-        _mockLogger = new Mock<ILogger>();
+        _mockLogger = new Mock<ILogger<MapLoader>>();
         _tempMapDir = Path.Combine(Path.GetTempPath(), "PacmanTestMaps");
         Directory.CreateDirectory(_tempMapDir);
     }

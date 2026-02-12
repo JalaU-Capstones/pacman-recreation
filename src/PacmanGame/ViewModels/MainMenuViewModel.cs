@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using System;
 using System.Reactive;
@@ -13,9 +14,8 @@ namespace PacmanGame.ViewModels;
 public class MainMenuViewModel : ViewModelBase
 {
     private readonly MainWindowViewModel _mainWindowViewModel;
-    private readonly IProfileManager _profileManager;
     private readonly IAudioManager _audioManager;
-    private readonly ILogger _logger;
+    private readonly ILogger<MainMenuViewModel> _logger;
 
     public ReactiveCommand<Unit, Unit> StartGameCommand { get; }
     public ReactiveCommand<Unit, Unit> ShowScoreBoardCommand { get; }
@@ -23,10 +23,9 @@ public class MainMenuViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> ShowSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
 
-    public MainMenuViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger logger)
+    public MainMenuViewModel(MainWindowViewModel mainWindowViewModel, IAudioManager audioManager, ILogger<MainMenuViewModel> logger)
     {
         _mainWindowViewModel = mainWindowViewModel;
-        _profileManager = profileManager;
         _audioManager = audioManager;
         _logger = logger;
 
@@ -45,33 +44,33 @@ public class MainMenuViewModel : ViewModelBase
     {
         _audioManager.PlaySoundEffect("menu-select");
         _audioManager.StopMusic();
-        _mainWindowViewModel.NavigateTo(new GameViewModel(_mainWindowViewModel, _profileManager, _audioManager, _logger));
+        _mainWindowViewModel.NavigateTo<GameViewModel>();
     }
 
     private void ShowScoreBoard()
     {
         _audioManager.PlaySoundEffect("menu-select");
         _audioManager.StopMusic();
-        _mainWindowViewModel.NavigateTo(new ScoreBoardViewModel(_mainWindowViewModel, _profileManager, _audioManager, _logger));
+        _mainWindowViewModel.NavigateTo<ScoreBoardViewModel>();
     }
 
     private void ShowMultiplayer()
     {
         _audioManager.PlaySoundEffect("menu-select");
         _audioManager.StopMusic();
-        _mainWindowViewModel.NavigateTo(new MultiplayerMenuViewModel(_mainWindowViewModel, NetworkService.Instance, _audioManager, _logger, _profileManager));
+        _mainWindowViewModel.NavigateTo<MultiplayerMenuViewModel>();
     }
 
     private void ShowSettings()
     {
         _audioManager.PlaySoundEffect("menu-select");
-        _mainWindowViewModel.NavigateTo(new SettingsViewModel(_mainWindowViewModel, _profileManager, _audioManager, _logger));
+        _mainWindowViewModel.NavigateTo<SettingsViewModel>();
     }
 
     private void Exit()
     {
         _audioManager.PlaySoundEffect("menu-select");
-        _logger.Info("Application exit requested by user.");
+        _logger.LogInformation("Application exit requested by user.");
         Environment.Exit(0);
     }
 }

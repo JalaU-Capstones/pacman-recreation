@@ -6,6 +6,7 @@ using PacmanGame.Services.Interfaces;
 using System;
 using System.IO;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Tests;
 
@@ -13,11 +14,11 @@ public class ProfileManagerTests : IDisposable
 {
     private readonly ProfileManager _sut;
     private readonly string _testDbPath;
-    private readonly Mock<ILogger> _mockLogger;
+    private readonly Mock<ILogger<ProfileManager>> _mockLogger;
 
     public ProfileManagerTests()
     {
-        _mockLogger = new Mock<ILogger>();
+        _mockLogger = new Mock<ILogger<ProfileManager>>();
         _testDbPath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.db");
         _sut = new ProfileManager(_mockLogger.Object, _testDbPath);
     }

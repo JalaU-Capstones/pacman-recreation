@@ -7,6 +7,7 @@ using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using System.Collections.Generic;
 using PacmanGame.Helpers;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Tests;
 
@@ -14,18 +15,20 @@ public class ClydeAITests
 {
     private readonly Mock<ILogger> _mockLogger;
     private readonly ClydeAI _sut;
+    private readonly Mock<ILogger<Pacman>> _mockPacmanLogger;
 
     public ClydeAITests()
     {
         _mockLogger = new Mock<ILogger>();
         _sut = new ClydeAI();
+        _mockPacmanLogger = new Mock<ILogger<Pacman>>();
     }
 
     [Fact]
     public void GetNextMove_ChaseMode_ShouldTargetPacmanWhenFar()
     {
         // Arrange
-        var pacman = new Pacman(20, 20);
+        var pacman = new Pacman(20, 20, _mockPacmanLogger.Object);
         var clyde = new Ghost(0, 0, GhostType.Clyde);
         var map = new TileType[31, 28];
 
@@ -42,7 +45,7 @@ public class ClydeAITests
     public void GetNextMove_ChaseMode_ShouldScatterWhenClose()
     {
         // Arrange
-        var pacman = new Pacman(11, 11);
+        var pacman = new Pacman(11, 11, _mockPacmanLogger.Object);
         var clyde = new Ghost(10, 10, GhostType.Clyde);
         var map = new TileType[31, 28];
 

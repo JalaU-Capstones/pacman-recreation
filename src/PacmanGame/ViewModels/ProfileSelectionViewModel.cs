@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
+using Microsoft.Extensions.Logging;
 using PacmanGame.Models.Game;
 using PacmanGame.Services.Interfaces;
 using ReactiveUI;
@@ -11,7 +12,7 @@ public class ProfileSelectionViewModel : ViewModelBase
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly IProfileManager _profileManager;
     private readonly IAudioManager _audioManager;
-    private readonly ILogger _logger;
+    private readonly ILogger<ProfileSelectionViewModel> _logger;
 
     public ObservableCollection<Profile> Profiles { get; } = new();
 
@@ -19,16 +20,12 @@ public class ProfileSelectionViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> CreateNewProfileCommand { get; }
     public ReactiveCommand<Profile, Unit> DeleteProfileCommand { get; }
 
-    public ProfileSelectionViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, ILogger logger, IAudioManager? audioManager = null)
+    public ProfileSelectionViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger<ProfileSelectionViewModel> logger)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _profileManager = profileManager;
+        _audioManager = audioManager;
         _logger = logger;
-        _audioManager = audioManager ?? new PacmanGame.Services.AudioManager(_logger);
-        if (audioManager == null)
-        {
-            _audioManager.Initialize();
-        }
 
         SelectProfileCommand = ReactiveCommand.Create<Profile>(SelectProfile);
         CreateNewProfileCommand = ReactiveCommand.Create(CreateNewProfile);
@@ -45,7 +42,7 @@ public class ProfileSelectionViewModel : ViewModelBase
         {
             Profiles.Add(profile);
         }
-        _logger.Info($"Loaded {Profiles.Count} profiles.");
+        _logger.LogInformation("Loaded {Count} profiles.", Profiles.Count);
     }
 
     private void SelectProfile(Profile profile)
@@ -59,17 +56,17 @@ public class ProfileSelectionViewModel : ViewModelBase
         _audioManager.SetSfxVolume((float)settings.SfxVolume);
         _audioManager.SetMuted(settings.IsMuted);
 
-        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager, _logger));
+        _mainWindowViewModel.NavigateTo<MainMenuViewModel>();
     }
 
     private void CreateNewProfile()
     {
-        _mainWindowViewModel.NavigateTo(new ProfileCreationViewModel(_mainWindowViewModel, _profileManager, _logger, _audioManager));
+        _mainWindowViewModel.NavigateTo<ProfileCreationViewModel>();
     }
 
     private void DeleteProfile(Profile profile)
     {
-        _logger.Info($"Deleting profile: {profile.Name}");
+        _logger.LogInformation("Deleting profile: {Name}", profile.Name);
         _profileManager.DeleteProfile(profile.Id);
         LoadProfiles();
 

@@ -4,6 +4,7 @@ using FluentAssertions;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using PacmanGame.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Tests;
 

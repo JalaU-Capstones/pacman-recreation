@@ -1,41 +1,22 @@
 using PacmanGame.Models.Enums;
 using PacmanGame.Helpers;
 using System;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Models.Entities;
 
-/// <summary>
-/// Represents the player-controlled Pac-Man character
-/// </summary>
 public class Pacman : Entity
 {
-    /// <summary>
-    /// Current animation frame
-    /// </summary>
     public int AnimationFrame { get; set; }
-
-    /// <summary>
-    /// Is Pac-Man currently invulnerable (after eating power pellet)
-    /// </summary>
     public bool IsInvulnerable { get; set; }
-
-    /// <summary>
-    /// Time remaining for invulnerability (in seconds)
-    /// </summary>
     public float InvulnerabilityTime { get; set; }
-
-    /// <summary>
-    /// Is Pac-Man in death animation
-    /// </summary>
     public bool IsDying { get; set; }
-
-    /// <summary>
-    /// Duration of the power pellet effect for the current level
-    /// </summary>
     public float PowerPelletDuration { get; set; }
+    private readonly ILogger<Pacman> _logger;
 
-    public Pacman(int x, int y) : base(x, y)
+    public Pacman(int x, int y, ILogger<Pacman> logger) : base(x, y)
     {
+        _logger = logger;
         Speed = Constants.PacmanSpeed;
         AnimationFrame = 0;
         IsInvulnerable = false;
@@ -57,10 +38,9 @@ public class Pacman : Entity
             ExactX += dx * Speed * deltaTime;
             ExactY += dy * Speed * deltaTime;
 
-            // Handle wrapping through tunnels
-            if (ExactX < 0) ExactX = Constants.MapWidth - 1;
+            if (ExactX < 0) ExactX = Constants.MapWidth - 0.01f;
             else if (ExactX >= Constants.MapWidth) ExactX = 0;
-            if (ExactY < 0) ExactY = Constants.MapHeight - 1;
+            if (ExactY < 0) ExactY = Constants.MapHeight - 0.01f;
             else if (ExactY >= Constants.MapHeight) ExactY = 0;
 
             X = (int)Math.Round(ExactX);
@@ -76,18 +56,12 @@ public class Pacman : Entity
         UpdateInvulnerability(deltaTime);
     }
 
-    /// <summary>
-    /// Activate power pellet effect
-    /// </summary>
     public void ActivatePowerPellet()
     {
         IsInvulnerable = true;
         InvulnerabilityTime = PowerPelletDuration;
     }
 
-    /// <summary>
-    /// Update invulnerability timer
-    /// </summary>
     public void UpdateInvulnerability(float deltaTime)
     {
         if (IsInvulnerable)
@@ -101,41 +75,45 @@ public class Pacman : Entity
         }
     }
 
-    /// <summary>
-    /// Check if Pac-Man can move in the specified direction
-    /// </summary>
     public override bool CanMove(Direction direction, TileType[,] map)
     {
-        int nextX = X;
-        int nextY = Y;
+        float nextX = ExactX;
+        float nextY = ExactY;
+        const float checkOffset = 0.5f;
 
         switch (direction)
         {
             case Direction.Up:
-                nextY--;
+                nextY -= checkOffset;
                 break;
             case Direction.Down:
-                nextY++;
+                nextY += checkOffset;
                 break;
             case Direction.Left:
-                nextX--;
+                nextX -= checkOffset;
                 break;
             case Direction.Right:
-                nextX++;
+                nextX += checkOffset;
                 break;
             default:
                 return false;
         }
 
-        // Check bounds
-        if (nextY < 0 || nextY >= map.GetLength(0) || nextX < 0 || nextX >= map.GetLength(1))
+        int gridX = (int)nextX;
+        int gridY = (int)nextY;
+
+        if (gridY < 0 || gridY >= map.GetLength(0) || gridX < 0 || gridX >= map.GetLength(1))
         {
             return true; // Allow movement into tunnels
         }
 
-        // Check if it's a walkable tile
-        TileType tile = map[nextY, nextX];
-        return tile != TileType.Wall && tile != TileType.GhostDoor;
+        TileType tile = map[gridY, gridX];
+        bool isWall = tile == TileType.Wall || tile == TileType.GhostDoor;
+        if (isWall)
+        {
+            _logger.LogDebug($"[Input] Pacman blocked at ({X},{Y}) by wall at ({gridX},{gridY})");
+        }
+        return !isWall;
     }
 
     private static (int dx, int dy) GetDirectionDeltas(Direction direction)

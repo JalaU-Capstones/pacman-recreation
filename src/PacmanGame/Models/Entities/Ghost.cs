@@ -2,6 +2,7 @@ using System;
 using PacmanGame.Models.Enums;
 using PacmanGame.Helpers;
 using PacmanGame.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Models.Entities;
 
@@ -105,11 +106,11 @@ public class Ghost : Entity
     /// <summary>
     /// Make the ghost vulnerable (after power pellet)
     /// </summary>
-    public void MakeVulnerable(float duration, ILogger logger)
+    public void MakeVulnerable(float duration, Microsoft.Extensions.Logging.ILogger logger)
     {
         if (State != GhostState.Eaten && State != GhostState.InHouse && State != GhostState.ExitingHouse)
         {
-            logger.Debug($"MakeVulnerable called for {GetName()} at ({X},{Y}). PrevState={State} Duration={duration}");
+            logger.LogInformation($"MakeVulnerable called for {GetName()} at ({X},{Y}). PrevState={State} Duration={duration}");
             State = GhostState.Vulnerable;
             VulnerableTime = duration;
         }
@@ -118,7 +119,7 @@ public class Ghost : Entity
     /// <summary>
     /// Update vulnerability timer
     /// </summary>
-    public void UpdateVulnerability(float deltaTime, ILogger logger)
+    public void UpdateVulnerability(float deltaTime, Microsoft.Extensions.Logging.ILogger logger)
     {
         if (State == GhostState.Vulnerable || State == GhostState.Warning)
         {
@@ -127,14 +128,14 @@ public class Ghost : Entity
             // Start warning when approaching the warning threshold
             if (VulnerableTime <= Constants.PowerPelletWarningTime && State == GhostState.Vulnerable)
             {
-                logger.Debug($"{GetName()} entering WARNING at ({X},{Y})");
+                logger.LogInformation($"{GetName()} entering WARNING at ({X},{Y})");
                 State = GhostState.Warning;
             }
 
             // Return to normal when time runs out
             if (VulnerableTime <= 0)
             {
-                logger.Debug($"{GetName()} vulnerability ended at ({X},{Y})");
+                logger.LogInformation($"{GetName()} vulnerability ended at ({X},{Y})");
                 State = GhostState.Normal;
                 VulnerableTime = 0f;
             }
@@ -153,7 +154,7 @@ public class Ghost : Entity
     /// <summary>
     /// Respawn the ghost at its starting position
     /// </summary>
-    public void Respawn(ILogger logger)
+    public void Respawn(Microsoft.Extensions.Logging.ILogger logger)
     {
         ExactX = SpawnX;
         ExactY = SpawnY;
@@ -163,7 +164,7 @@ public class Ghost : Entity
         CurrentDirection = Direction.Up; // Ghosts start facing up
         VulnerableTime = 0f;
         RespawnTimer = 0f;
-        logger.Debug($"{GetName()} respawned at ({X},{Y}) State={State}");
+        logger.LogInformation($"{GetName()} respawned at ({X},{Y}) State={State}");
     }
 
     /// <summary>

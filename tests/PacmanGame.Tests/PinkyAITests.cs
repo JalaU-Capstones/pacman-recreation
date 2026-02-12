@@ -6,6 +6,7 @@ using PacmanGame.Services.Interfaces;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Tests;
 
@@ -13,18 +14,20 @@ public class PinkyAITests
 {
     private readonly Mock<ILogger> _mockLogger;
     private readonly PinkyAI _sut;
+    private readonly Mock<ILogger<Pacman>> _mockPacmanLogger;
 
     public PinkyAITests()
     {
         _mockLogger = new Mock<ILogger>();
         _sut = new PinkyAI();
+        _mockPacmanLogger = new Mock<ILogger<Pacman>>();
     }
 
     [Fact]
     public void GetNextMove_ChaseMode_ShouldTargetAheadOfPacman()
     {
         // Arrange
-        var pacman = new Pacman(15, 20) { CurrentDirection = Direction.Right };
+        var pacman = new Pacman(15, 20, _mockPacmanLogger.Object) { CurrentDirection = Direction.Right };
         var pinky = new Ghost(10, 10, GhostType.Pinky);
         var map = new TileType[31, 28];
 
@@ -40,7 +43,7 @@ public class PinkyAITests
     public void GetNextMove_ScatterMode_ShouldTargetTopLeftCorner()
     {
         // Arrange
-        var pacman = new Pacman(15, 20);
+        var pacman = new Pacman(15, 20, _mockPacmanLogger.Object);
         var pinky = new Ghost(10, 10, GhostType.Pinky);
         var map = new TileType[31, 28];
 

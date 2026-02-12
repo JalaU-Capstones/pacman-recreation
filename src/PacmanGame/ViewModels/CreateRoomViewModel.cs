@@ -4,6 +4,7 @@ using PacmanGame.Services.Interfaces;
 using PacmanGame.Shared;
 using ReactiveUI;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.ViewModels;
 
@@ -12,7 +13,7 @@ public class CreateRoomViewModel : ViewModelBase
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly NetworkService _networkService;
     private readonly IAudioManager _audioManager;
-    private readonly ILogger _logger;
+    private readonly ILogger<CreateRoomViewModel> _logger;
     private readonly IProfileManager _profileManager;
 
     private string _roomName = string.Empty;
@@ -53,10 +54,10 @@ public class CreateRoomViewModel : ViewModelBase
     public ICommand CreateCommand { get; }
     public ICommand CancelCommand { get; }
 
-    public CreateRoomViewModel(MainWindowViewModel mainWindowViewModel, IAudioManager audioManager, ILogger logger, IProfileManager profileManager)
+    public CreateRoomViewModel(MainWindowViewModel mainWindowViewModel, NetworkService networkService, IAudioManager audioManager, ILogger<CreateRoomViewModel> logger, IProfileManager profileManager)
     {
         _mainWindowViewModel = mainWindowViewModel;
-        _networkService = NetworkService.Instance;
+        _networkService = networkService;
         _audioManager = audioManager;
         _logger = logger;
         _profileManager = profileManager;
@@ -71,7 +72,7 @@ public class CreateRoomViewModel : ViewModelBase
     private void CreateRoom()
     {
         ErrorMessage = string.Empty;
-        _logger.Info($"[CreateRoomViewModel] Attempting to create room with name: '{RoomName}'");
+        _logger.LogInformation($"[CreateRoomViewModel] Attempting to create room with name: '{RoomName}'");
         _audioManager.PlaySoundEffect("menu-select");
 
         if (string.IsNullOrWhiteSpace(RoomName))
@@ -93,21 +94,21 @@ public class CreateRoomViewModel : ViewModelBase
 
     private void HandleJoinedRoom(int roomId, string roomName, RoomVisibility visibility, List<PlayerState> players)
     {
-        _logger.Info($"[CreateRoomViewModel] Joined room '{roomName}' successfully. Navigating to lobby.");
+        _logger.LogInformation($"[CreateRoomViewModel] Joined room '{roomName}' successfully. Navigating to lobby.");
         _mainWindowViewModel.NavigateToRoomLobby(roomId, roomName, visibility, players);
     }
 
     private void HandleJoinRoomFailed(string message)
     {
         var errorMessage = $"Failed to create room: {message}";
-        _logger.Error($"[CreateRoomViewModel] {errorMessage}");
+        _logger.LogError($"[CreateRoomViewModel] {errorMessage}");
         ErrorMessage = errorMessage;
     }
 
     private void Cancel()
     {
         _audioManager.PlaySoundEffect("menu-select");
-        _mainWindowViewModel.NavigateTo(new MultiplayerMenuViewModel(_mainWindowViewModel, _networkService, _audioManager, _logger, _profileManager));
+        _mainWindowViewModel.NavigateTo<MultiplayerMenuViewModel>();
     }
 
     ~CreateRoomViewModel()
