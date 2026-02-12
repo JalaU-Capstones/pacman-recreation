@@ -8,6 +8,11 @@ namespace PacmanGame.Models.Entities;
 public class Collectible
 {
     /// <summary>
+    /// Unique identifier for the collectible
+    /// </summary>
+    public int Id { get; }
+
+    /// <summary>
     /// X position in the grid
     /// </summary>
     public int X { get; set; }
@@ -37,14 +42,19 @@ public class Collectible
     /// </summary>
     public bool IsVisible { get; set; }
 
-    public Collectible(int x, int y, CollectibleType type)
+    public Collectible(int id, int x, int y, CollectibleType type)
     {
+        Id = id;
         X = x;
         Y = y;
         Type = type;
         Points = GetPointsForType(type);
         IsActive = true;
         IsVisible = true;
+    }
+
+    public Collectible(int x, int y, CollectibleType type) : this(y * 100 + x, x, y, type)
+    {
     }
 
     /// <summary>

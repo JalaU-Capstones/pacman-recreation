@@ -35,8 +35,9 @@ public class NetworkService : INetEventListener
     public event Action<List<RoomInfo>>? OnRoomListReceived;
 
     // Game events
-    public event Action? OnGameStart;
+    public event Action<GameStartEvent>? OnGameStart;
     public event Action<GameStateMessage>? OnGameStateUpdate;
+    public event Action<GameEventMessage>? OnGameEvent;
 
     private NetworkService()
     {
@@ -83,7 +84,7 @@ public class NetworkService : INetEventListener
 
         try
         {
-            var bytes = MessagePackSerializer.Serialize<NetworkMessageBase>(message, MessagePackSerializerOptions.Standard);
+            var bytes = MessagePackSerializer.Serialize(message, MessagePackSerializerOptions.Standard);
             _logger.Debug($"Sending message type: {message.Type}");
             _server.Send(bytes, DeliveryMethod.ReliableOrdered);
         }
@@ -198,12 +199,15 @@ public class NetworkService : INetEventListener
                 _currentRoomId = null;
                 OnKicked?.Invoke(kickedEvent.Reason);
                 break;
-            case GameStartEvent _:
+            case GameStartEvent gameStartEvent:
                 _logger.Info("Game is starting!");
-                OnGameStart?.Invoke();
+                OnGameStart?.Invoke(gameStartEvent);
                 break;
             case GameStateMessage gameState:
                 OnGameStateUpdate?.Invoke(gameState);
+                break;
+            case GameEventMessage gameEvent:
+                OnGameEvent?.Invoke(gameEvent);
                 break;
         }
     }

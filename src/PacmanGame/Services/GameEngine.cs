@@ -1,3 +1,5 @@
+using Avalonia.Controls;
+using Avalonia.Media.Imaging;
 using PacmanGame.Helpers;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
@@ -7,13 +9,9 @@ using PacmanGame.Services.Pathfinding;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using PacmanGame.Views;
 
 namespace PacmanGame.Services;
 
-/// <summary>
-/// Main game engine managing game loop and logic
-/// </summary>
 public class GameEngine : IGameEngine, IGameEngineInternal
 {
     private readonly ILogger _logger;
@@ -34,7 +32,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     private int _currentLevel;
     private float _ghostRespawnTime;
 
-    // AI specific fields
     private readonly Dictionary<GhostType, IGhostAI> _ghostAIs;
     private readonly AStarPathfinder _pathfinder;
     private bool _isChaseMode = false;
@@ -42,10 +39,8 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     private float _chaseDuration;
     private float _scatterDuration;
 
-    // Ghost house release logic
     private float _ghostReleaseTimer = 0f;
 
-    // Death animation
     private float _deathAnimationTimer = 0f;
 
     public event Action<int>? ScoreChanged;
@@ -61,10 +56,8 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     public ISpriteManager SpriteManager => _spriteManager;
     public bool IsRunning => _isRunning;
     public bool IsPaused => _isPaused;
+    public int CurrentLevel => _currentLevel;
 
-    /// <summary>
-    /// Create a new GameEngine instance
-    /// </summary>
     public GameEngine(
         ILogger logger,
         IMapLoader mapLoader,
@@ -90,7 +83,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         _currentLevel = 1;
         _ghostRespawnTime = Constants.Level1GhostRespawnTime;
 
-        // Initialize AI
         _pathfinder = new AStarPathfinder();
         _ghostAIs = new Dictionary<GhostType, IGhostAI>
         {
@@ -101,9 +93,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         };
     }
 
-    /// <summary>
-    /// Load a level from the map files
-    /// </summary>
     public void LoadLevel(int level)
     {
         try
@@ -136,8 +125,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
                 Ghost ghost = new Ghost(spawn.Col, spawn.Row, ghostTypes[i]);
                 ghost.ExactX = spawn.Col;
                 ghost.ExactY = spawn.Row;
-                ghost.State = GhostState.InHouse; // Start all ghosts in house
-                // Stagger release timers so ghosts leave sequentially
+                ghost.State = GhostState.InHouse;
                 ghost.ReleaseTimer = 0.5f + i * Constants.GhostReleaseInterval;
                 _ghosts.Add(ghost);
             }
@@ -145,7 +133,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
             _ghostsEatenThisRound = 0;
             _modeTimer = 0f;
-            _isChaseMode = false; // Start in Scatter mode
+            _isChaseMode = false;
 
             _spriteManager.Initialize();
             _audioManager.Initialize();
@@ -190,9 +178,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         }
     }
 
-    /// <summary>
-    /// Start the game
-    /// </summary>
     public void Start()
     {
         _isRunning = true;
@@ -200,9 +185,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         _logger.Info("Game started");
     }
 
-    /// <summary>
-    /// Stop the game
-    /// </summary>
     public void Stop()
     {
         _isRunning = false;
@@ -210,9 +192,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         _logger.Info("Game stopped");
     }
 
-    /// <summary>
-    /// Pause the game
-    /// </summary>
     public void Pause()
     {
         if (_isRunning && !_isPaused)
@@ -222,9 +201,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         }
     }
 
-    /// <summary>
-    /// Resume a paused game
-    /// </summary>
     public void Resume()
     {
         if (_isRunning && _isPaused)
@@ -234,9 +210,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         }
     }
 
-    /// <summary>
-    /// Set the desired direction for Pac-Man
-    /// </summary>
     public void SetPacmanDirection(Direction direction)
     {
         if (_isRunning && !_isPaused && !_pacman.IsDying)
@@ -245,9 +218,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         }
     }
 
-    /// <summary>
-    /// Update game logic for one frame
-    /// </summary>
     public void Update(float deltaTime)
     {
         if (!_isRunning || _isPaused)
@@ -268,7 +238,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     private void UpdateDeathAnimation(float deltaTime)
     {
         _deathAnimationTimer += deltaTime;
-        if (_deathAnimationTimer >= 0.1f) // 100ms per frame
+        if (_deathAnimationTimer >= 0.1f)
         {
             _pacman.AnimationFrame++;
             _deathAnimationTimer = 0;
@@ -284,64 +254,17 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         _pacman.IsDying = false;
         _pacman.AnimationFrame = 0;
         LifeLost?.Invoke();
-        if (_isRunning) // Check if game is still running (not game over)
+        if (_isRunning)
         {
             ResetPositions();
         }
     }
 
-    /// <summary>
-    /// Update Pac-Man movement and animation
-    /// </summary>
     private void UpdatePacman(float deltaTime)
     {
-        // Try to turn into NextDirection first
-        if (_pacman.NextDirection != Direction.None && _pacman.CanMove(_pacman.NextDirection, _map))
-        {
-            _pacman.CurrentDirection = _pacman.NextDirection;
-            _pacman.NextDirection = Direction.None;
-        }
-
-        // Now try to advance in CurrentDirection
-        if (_pacman.CurrentDirection != Direction.None && _pacman.CanMove(_pacman.CurrentDirection, _map))
-        {
-            (int dx, int dy) = GetDirectionDeltas(_pacman.CurrentDirection);
-            _pacman.ExactX += dx * _pacman.Speed * deltaTime;
-            _pacman.ExactY += dy * _pacman.Speed * deltaTime;
-
-            // Tunnel wrapping
-            if (_pacman.ExactX < 0) _pacman.ExactX = Constants.MapWidth - 1;
-            else if (_pacman.ExactX >= Constants.MapWidth) _pacman.ExactX = 0;
-            if (_pacman.ExactY < 0) _pacman.ExactY = Constants.MapHeight - 1;
-            else if (_pacman.ExactY >= Constants.MapHeight) _pacman.ExactY = 0;
-
-            // Update integer grid position
-            int pX = (int)Math.Round(_pacman.ExactX);
-            int pY = (int)Math.Round(_pacman.ExactY);
-
-            // Ensure integer coordinates are within bounds
-            if (pX >= Constants.MapWidth) pX = 0;
-            else if (pX < 0) pX = Constants.MapWidth - 1;
-
-            if (pY >= Constants.MapHeight) pY = 0;
-            else if (pY < 0) pY = Constants.MapHeight - 1;
-
-            _pacman.X = pX;
-            _pacman.Y = pY;
-
-            _pacman.IsMoving = true;
-        }
-        else
-        {
-            _pacman.IsMoving = false;
-        }
-
-        _pacman.UpdateInvulnerability(deltaTime);
+        _pacman.Update(deltaTime, _map);
     }
 
-    /// <summary>
-    /// Update all ghosts with advanced AI
-    /// </summary>
     private void UpdateGhosts(float deltaTime)
     {
         _ghostReleaseTimer += deltaTime;
@@ -351,29 +274,23 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         }
     }
 
-    /// <summary>
-    /// Update a single ghost's movement
-    /// </summary>
     private void UpdateGhost(Ghost ghost, float deltaTime)
     {
-        // Handle ghost house states
         if (ghost.State == GhostState.InHouse)
         {
             if (_ghostReleaseTimer >= ghost.ReleaseTimer)
             {
                 ghost.State = GhostState.ExitingHouse;
-                ghost.CurrentDirection = Direction.Up; // Start moving up to exit
+                ghost.CurrentDirection = Direction.Up;
             }
-            return; // Don't move yet if in house
+            return;
         }
 
-        // Check if ghost is centered on a tile to make a new decision.
         const float centeringThreshold = 0.03f;
         bool isCentered = Math.Abs(ghost.ExactX - ghost.X) < centeringThreshold && Math.Abs(ghost.ExactY - ghost.Y) < centeringThreshold;
 
         if (isCentered)
         {
-            // Snap to grid center
             ghost.ExactX = ghost.X;
             ghost.ExactY = ghost.Y;
 
@@ -381,25 +298,21 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             ghost.CurrentDirection = nextMove;
         }
 
-        // Apply movement based on current direction and speed
         if (ghost.CurrentDirection != Direction.None)
         {
             (int dx, int dy) = GetDirectionDeltas(ghost.CurrentDirection);
             ghost.ExactX += dx * ghost.GetSpeed() * deltaTime;
             ghost.ExactY += dy * ghost.GetSpeed() * deltaTime;
 
-            // Tunnel wrapping for ghosts
             if (ghost.ExactX < 0) ghost.ExactX = Constants.MapWidth - 1;
             else if (ghost.ExactX >= Constants.MapWidth) ghost.ExactX = 0;
             if (ghost.ExactY < 0) ghost.ExactY = Constants.MapHeight - 1;
             else if (ghost.ExactY >= Constants.MapHeight) ghost.ExactY = 0;
 
-            // Update integer grid position
             ghost.X = (int)Math.Round(ghost.ExactX);
             ghost.Y = (int)Math.Round(ghost.ExactY);
         }
 
-        // Update timers for vulnerability and respawn
         ghost.UpdateVulnerability(deltaTime, _logger);
         if (ghost.State == GhostState.Eaten && ghost.RespawnTimer > 0f)
         {
@@ -407,8 +320,8 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             if (ghost.RespawnTimer <= 0f)
             {
                 ghost.Respawn(_logger);
-                ghost.State = GhostState.ExitingHouse; // Make ghost exit the house after respawning
-                ghost.ReleaseTimer = 0f; // No delay
+                ghost.State = GhostState.ExitingHouse;
+                ghost.ReleaseTimer = 0f;
             }
         }
     }
@@ -642,4 +555,140 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     {
         GameOver?.Invoke();
     }
+
+    public void Render(Canvas canvas)
+    {
+        if (_spriteManager == null || _map.Length == 0) return;
+
+        // Draw tiles
+        for (int row = 0; row < Constants.MapHeight; row++)
+        for (int col = 0; col < Constants.MapWidth; col++)
+        {
+            if (_map[row, col] == TileType.Wall)
+            {
+                string spriteName = GetWallSpriteName(row, col, _map);
+                var sprite = _spriteManager.GetTileSprite(spriteName);
+                if (sprite != null)
+                    DrawImage(canvas, sprite, col * Constants.TileSize, row * Constants.TileSize, 0);
+            }
+        }
+
+        // Draw collectibles
+        foreach (var collectible in Collectibles.Where(c => c.IsActive))
+        {
+            string itemTypeKey = collectible.Type switch
+            {
+                CollectibleType.SmallDot => "dot",
+                CollectibleType.PowerPellet => "power_pellet",
+                CollectibleType.Cherry => "cherry",
+                CollectibleType.Strawberry => "strawberry",
+                _ => collectible.Type.ToString().ToLower()
+            };
+            var sprite = _spriteManager.GetItemSprite(itemTypeKey, Pacman.AnimationFrame % 2);
+            if (sprite != null)
+                DrawImage(canvas, sprite, collectible.X * Constants.TileSize, collectible.Y * Constants.TileSize, 1);
+        }
+
+        // Draw Pac-Man
+        if (Pacman.IsDying)
+        {
+            var sprite = _spriteManager.GetDeathSprite(Pacman.AnimationFrame);
+            if (sprite != null)
+                DrawImage(canvas, sprite, (int)(Pacman.ExactX * Constants.TileSize), (int)(Pacman.ExactY * Constants.TileSize), 2);
+        }
+        else
+        {
+            string direction = Pacman.CurrentDirection switch
+            {
+                Direction.Up => "down",
+                Direction.Down => "up",
+                Direction.Left => "left",
+                Direction.Right => "right",
+                _ => "right"
+            };
+            var sprite = _spriteManager.GetPacmanSprite(direction, Pacman.AnimationFrame);
+            if (sprite != null)
+                DrawImage(canvas, sprite, (int)(Pacman.ExactX * Constants.TileSize), (int)(Pacman.ExactY * Constants.TileSize), 2);
+        }
+
+        // Draw ghosts
+        foreach (var ghost in Ghosts)
+        {
+            CroppedBitmap? sprite = GetGhostSprite(ghost);
+            if (sprite != null)
+                DrawImage(canvas, sprite, (int)(ghost.ExactX * Constants.TileSize), (int)(ghost.ExactY * Constants.TileSize), 3);
+        }
+    }
+
+    private CroppedBitmap? GetGhostSprite(Ghost ghost)
+    {
+        if (_spriteManager == null) return null;
+
+        return ghost.State switch
+        {
+            GhostState.Eaten => _spriteManager.GetGhostEyesSprite(ghost.CurrentDirection.ToString().ToLower()),
+            GhostState.Vulnerable => _spriteManager.GetVulnerableGhostSprite(0),
+            GhostState.Warning => (ghost.AnimationFrame % 2 == 0) ? _spriteManager.GetVulnerableGhostSprite(1) : _spriteManager.GetVulnerableGhostSprite(0),
+            _ => _spriteManager.GetGhostSprite(ghost.Type.ToString().ToLower(), ghost.CurrentDirection.ToString().ToLower(), ghost.AnimationFrame)
+        };
+    }
+
+    private void DrawImage(Canvas canvas, CroppedBitmap sprite, int x, int y, int zIndex)
+    {
+        var image = new Image
+        {
+            Source = sprite,
+            Width = Constants.TileSize,
+            Height = Constants.TileSize,
+            ZIndex = zIndex
+        };
+        Canvas.SetLeft(image, x);
+        Canvas.SetTop(image, y);
+        canvas.Children.Add(image);
+    }
+
+    private string GetWallSpriteName(int row, int col, TileType[,] map)
+    {
+        bool hasUp = row > 0 && map[row - 1, col] == TileType.Wall;
+        bool hasDown = row < Constants.MapHeight - 1 && map[row + 1, col] == TileType.Wall;
+        bool hasLeft = col > 0 && map[row, col - 1] == TileType.Wall;
+        bool hasRight = col < Constants.MapWidth - 1 && map[row, col + 1] == TileType.Wall;
+
+        int neighbors = (hasUp ? 1 : 0) + (hasDown ? 1 : 0) + (hasLeft ? 1 : 0) + (hasRight ? 1 : 0);
+
+        if (neighbors == 4) return "walls_cross";
+
+        if (neighbors == 3)
+        {
+            if (!hasRight) return "walls_t_left";
+            if (!hasLeft) return "walls_t_right";
+            if (!hasDown) return "walls_t_up";
+            if (!hasUp) return "walls_t_down";
+        }
+
+        if (neighbors == 2)
+        {
+            if (hasUp && hasDown) return "walls_vertical";
+            if (hasLeft && hasRight) return "walls_horizontal";
+            if (hasDown && hasRight) return "walls_corner_br";
+            if (hasDown && hasLeft) return "walls_corner_bl";
+            if (hasUp && hasRight) return "walls_corner_tr";
+            if (hasUp && hasLeft) return "walls_corner_tl";
+        }
+
+        if (neighbors == 1)
+        {
+            if (hasUp) return "walls_end_down";
+            if (hasDown) return "walls_end_up";
+            if (hasLeft) return "walls_end_left";
+            if (hasRight) return "walls_end_right";
+        }
+
+        return "special_empty";
+    }
+}
+
+public interface IGameEngineInternal
+{
+    ISpriteManager SpriteManager { get; }
 }

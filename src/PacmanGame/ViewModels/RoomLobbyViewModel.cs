@@ -22,6 +22,7 @@ public class RoomLobbyViewModel : ViewModelBase
 
     private readonly int _roomId;
     private readonly int _myPlayerId;
+    private PlayerRole _myRole;
 
     public string RoomName { get; }
     public string RoomVisibility { get; }
@@ -106,14 +107,18 @@ public class RoomLobbyViewModel : ViewModelBase
     {
         Dispatcher.UIThread.Post(() =>
         {
-            // Remove players who are no longer in the room
+            var myPlayerState = playerStates.FirstOrDefault(p => p.PlayerId == _myPlayerId);
+            if (myPlayerState != null)
+            {
+                _myRole = myPlayerState.Role;
+            }
+
             var playersToRemove = Players.Where(p => !playerStates.Any(s => s.PlayerId == p.PlayerId)).ToList();
             foreach (var player in playersToRemove)
             {
                 Players.Remove(player);
             }
 
-            // Update existing players and add new ones
             foreach (var state in playerStates)
             {
                 var existingPlayer = Players.FirstOrDefault(p => p.PlayerId == state.PlayerId);
@@ -191,11 +196,24 @@ public class RoomLobbyViewModel : ViewModelBase
         NavigateToMultiplayerMenu();
     }
 
-    private void HandleGameStart()
+    private void HandleGameStart(GameStartEvent gameStartEvent)
     {
-        _logger.Info("Game start signal received. Loading assets and navigating to game view...");
-        _audioManager.StopMusic();
-        _mainWindowViewModel.NavigateTo(new MultiplayerGameViewModel(_networkService));
+        _logger.Info("Game start signal received. Preparing assets and navigating to game view...");
+
+        var gameEngine = new GameEngine(_logger, new MapLoader(_logger), new SpriteManager(_logger), _audioManager, new CollisionDetector());
+
+        var multiplayerGameViewModel = new MultiplayerGameViewModel(
+            _mainWindowViewModel,
+            _roomId,
+            _myRole,
+            gameEngine,
+            _audioManager,
+            _logger,
+            _networkService,
+            _profileManager
+        );
+
+        _mainWindowViewModel.NavigateTo(multiplayerGameViewModel);
     }
 
     private void HandleLeftRoom()

@@ -1,133 +1,224 @@
 using System;
+using System.Linq;
 using System.Reactive;
 using System.Windows.Input;
+using Avalonia.Controls;
+using Avalonia.Input;
+using PacmanGame.Models.Enums;
 using PacmanGame.Services;
+using PacmanGame.Services.Interfaces;
 using PacmanGame.Shared;
 using ReactiveUI;
+using Direction = PacmanGame.Models.Enums.Direction;
 
 namespace PacmanGame.ViewModels;
 
 public class MultiplayerGameViewModel : ViewModelBase
 {
+    private readonly MainWindowViewModel _mainWindowViewModel;
+    private readonly IGameEngine _gameEngine;
+    private readonly IAudioManager _audioManager;
+    private readonly ILogger _logger;
     private readonly NetworkService _networkService;
+    private readonly IProfileManager _profileManager;
+
+    private readonly int _roomId;
+    private readonly PlayerRole _myRole;
 
     private int _score;
-    public int Score
-    {
-        get => _score;
-        set => this.RaiseAndSetIfChanged(ref _score, value);
-    }
-
-    private int _level;
-    public int Level
-    {
-        get => _level;
-        set => this.RaiseAndSetIfChanged(ref _level, value);
-    }
+    public int Score { get => _score; set => this.RaiseAndSetIfChanged(ref _score, value); }
 
     private int _lives;
-    public int Lives
-    {
-        get => _lives;
-        set => this.RaiseAndSetIfChanged(ref _lives, value);
-    }
+    public int Lives { get => _lives; set => this.RaiseAndSetIfChanged(ref _lives, value); }
 
-    private bool _isGameRunning;
-    public bool IsGameRunning
-    {
-        get => _isGameRunning;
-        set => this.RaiseAndSetIfChanged(ref _isGameRunning, value);
-    }
-
-    private bool _isPaused;
-    public bool IsPaused
-    {
-        get => _isPaused;
-        set => this.RaiseAndSetIfChanged(ref _isPaused, value);
-    }
-
-    private bool _isPausedByHost;
-    public bool IsPausedByHost
-    {
-        get => _isPausedByHost;
-        set => this.RaiseAndSetIfChanged(ref _isPausedByHost, value);
-    }
-
-    private bool _isSpectating;
-    public bool IsSpectating
-    {
-        get => _isSpectating;
-        set => this.RaiseAndSetIfChanged(ref _isSpectating, value);
-    }
-
-    private bool _isLevelComplete;
-    public bool IsLevelComplete
-    {
-        get => _isLevelComplete;
-        set => this.RaiseAndSetIfChanged(ref _isLevelComplete, value);
-    }
+    private int _level;
+    public int Level { get => _level; set => this.RaiseAndSetIfChanged(ref _level, value); }
 
     private bool _isGameOver;
-    public bool IsGameOver
-    {
-        get => _isGameOver;
-        set => this.RaiseAndSetIfChanged(ref _isGameOver, value);
-    }
+    public bool IsGameOver { get => _isGameOver; set => this.RaiseAndSetIfChanged(ref _isGameOver, value); }
+
+    private bool _isGameRunning;
+    public bool IsGameRunning { get => _isGameRunning; set => this.RaiseAndSetIfChanged(ref _isGameRunning, value); }
+
+    private bool _isPaused;
+    public bool IsPaused { get => _isPaused; set => this.RaiseAndSetIfChanged(ref _isPaused, value); }
+
+    private bool _isPausedByHost;
+    public bool IsPausedByHost { get => _isPausedByHost; set => this.RaiseAndSetIfChanged(ref _isPausedByHost, value); }
+
+    private bool _isSpectating;
+    public bool IsSpectating { get => _isSpectating; set => this.RaiseAndSetIfChanged(ref _isSpectating, value); }
+
+    private bool _isLevelComplete;
+    public bool IsLevelComplete { get => _isLevelComplete; set => this.RaiseAndSetIfChanged(ref _isLevelComplete, value); }
+
+    private int _finalScore;
+    public int FinalScore { get => _finalScore; set => this.RaiseAndSetIfChanged(ref _finalScore, value); }
 
     private bool _isVictory;
-    public bool IsVictory
-    {
-        get => _isVictory;
-        set => this.RaiseAndSetIfChanged(ref _isVictory, value);
-    }
+    public bool IsVictory { get => _isVictory; set => this.RaiseAndSetIfChanged(ref _isVictory, value); }
 
-    private string _finalScore = string.Empty;
-    public string FinalScore
-    {
-        get => _finalScore;
-        set => this.RaiseAndSetIfChanged(ref _finalScore, value);
-    }
-
-    public ReactiveCommand<Unit, Unit> PauseGameCommand { get; }
-    public ReactiveCommand<Unit, Unit> ResumeGameCommand { get; }
-    public ReactiveCommand<Unit, Unit> ReturnToMenuCommand { get; }
-    public ReactiveCommand<Unit, Unit> RestartGameCommand { get; }
+    public ICommand PauseGameCommand { get; }
+    public ICommand ResumeGameCommand { get; }
+    public ICommand ReturnToMenuCommand { get; }
+    public ICommand RestartGameCommand { get; }
     public ReactiveCommand<Direction, Unit> SetDirectionCommand { get; }
 
-    public MultiplayerGameViewModel(NetworkService networkService)
+    public IGameEngine Engine => _gameEngine;
+
+    public MultiplayerGameViewModel(
+        MainWindowViewModel mainWindowViewModel,
+        int roomId,
+        PlayerRole myRole,
+        IGameEngine gameEngine,
+        IAudioManager audioManager,
+        ILogger logger,
+        NetworkService networkService,
+        IProfileManager profileManager)
     {
+        _mainWindowViewModel = mainWindowViewModel;
+        _roomId = roomId;
+        _myRole = myRole;
+        _gameEngine = gameEngine;
+        _audioManager = audioManager;
+        _logger = logger;
         _networkService = networkService;
-        _networkService.OnGameStateUpdate += OnGameStateUpdate;
+        _profileManager = profileManager;
 
-        PauseGameCommand = ReactiveCommand.Create(() => { /* Send pause request */ });
-        ResumeGameCommand = ReactiveCommand.Create(() => { /* Send resume request */ });
-        ReturnToMenuCommand = ReactiveCommand.Create(() => { /* Navigate to main menu */ });
-        RestartGameCommand = ReactiveCommand.Create(() => { /* Send restart request */ });
-        SetDirectionCommand = ReactiveCommand.Create<Direction>(SetDirection);
+        PauseGameCommand = ReactiveCommand.Create(() => { /* TODO: Implement pause for host */ });
+        ResumeGameCommand = ReactiveCommand.Create(() => { /* TODO: Implement resume for host */ });
+        ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
+        RestartGameCommand = ReactiveCommand.Create(() => { /* TODO: Implement restart for host */ });
+        SetDirectionCommand = ReactiveCommand.Create<Direction>(SetPacmanDirection);
+
+        Initialize();
     }
 
-    private void SetDirection(Direction direction)
+    private void Initialize()
     {
-        var input = new PlayerInputMessage
+        _logger.Info($"[MULTIPLAYER] Initializing game for Room {_roomId} as {_myRole}");
+        _gameEngine.LoadLevel(1);
+        _audioManager.PlayMusic("background-theme.wav", loop: true);
+        _networkService.OnGameStateUpdate += HandleGameStateUpdate;
+        _networkService.OnGameEvent += HandleGameEvent;
+        IsGameRunning = true;
+        _logger.Info("[MULTIPLAYER] Game initialized successfully");
+    }
+
+    public void Render(Canvas canvas)
+    {
+        _gameEngine.Render(canvas);
+    }
+
+    public void HandleKeyPress(Key key)
+    {
+        var direction = key switch
         {
-            Direction = direction,
-            Timestamp = DateTime.UtcNow.Ticks
+            Key.Up => Direction.Up,
+            Key.Down => Direction.Down,
+            Key.Left => Direction.Left,
+            Key.Right => Direction.Right,
+            _ => Direction.None
         };
-        _networkService.SendPlayerInput(input);
+
+        if (direction != Direction.None)
+        {
+            SetDirectionCommand.Execute(direction);
+        }
     }
 
-    private void OnGameStateUpdate(GameStateMessage message)
+    private void SetPacmanDirection(Direction direction)
     {
-        if (message.PlayerStates == null) return;
+        // Client-side prediction
+        _gameEngine.SetPacmanDirection(direction);
 
-        Score = message.Score;
-        Level = message.Level;
-        Lives = message.Lives;
-        // Update player positions and other state from message.PlayerStates
+        // Send input to server
+        var inputMessage = new PlayerInputMessage
+        {
+            RoomId = _roomId,
+            Direction = (PacmanGame.Shared.Direction)direction,
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+        };
+        _networkService.SendPlayerInput(inputMessage);
     }
 
-    ~MultiplayerGameViewModel()
+    private void ReturnToMenu()
     {
-        _networkService.OnGameStateUpdate -= OnGameStateUpdate;
+        _networkService.SendLeaveRoomRequest();
+        _gameEngine.Stop();
+        _audioManager.StopMusic();
+        IsGameRunning = false;
+        _mainWindowViewModel.NavigateTo(new MainMenuViewModel(_mainWindowViewModel, _profileManager, _audioManager, _logger));
+    }
+
+    private void HandleGameStateUpdate(GameStateMessage state)
+    {
+        // This logic should be refined to avoid jerky movements, but for now, it's a direct update.
+        if (state.PacmanPosition != null)
+        {
+            _gameEngine.Pacman.X = (int)state.PacmanPosition.X;
+            _gameEngine.Pacman.Y = (int)state.PacmanPosition.Y;
+            _gameEngine.Pacman.CurrentDirection = (Direction)state.PacmanPosition.Direction;
+        }
+
+        foreach (var ghostState in state.Ghosts)
+        {
+            var ghost = _gameEngine.Ghosts.FirstOrDefault(g => g.Type.ToString() == ghostState.Type);
+            if (ghost != null)
+            {
+                ghost.X = (int)ghostState.Position.X;
+                ghost.Y = (int)ghostState.Position.Y;
+                ghost.CurrentDirection = (Direction)ghostState.Position.Direction;
+                ghost.State = (Models.Enums.GhostState)ghostState.State;
+            }
+        }
+
+        foreach (var collectibleId in state.CollectedItems)
+        {
+            var collectible = _gameEngine.Collectibles.FirstOrDefault(c => c.Id == collectibleId);
+            if (collectible != null)
+            {
+                collectible.IsActive = false;
+            }
+        }
+
+        Score = state.Score;
+        Lives = state.Lives;
+
+        if (state.CurrentLevel != _gameEngine.CurrentLevel)
+        {
+            _gameEngine.LoadLevel(state.CurrentLevel);
+            _logger.Info($"[MULTIPLAYER] Level changed to {state.CurrentLevel}");
+        }
+    }
+
+    private void HandleGameEvent(GameEventMessage evt)
+    {
+        switch (evt.EventType)
+        {
+            case GameEventType.DotCollected:
+                _audioManager.PlaySoundEffect("chomp.wav");
+                break;
+            case GameEventType.PowerPelletCollected:
+                _audioManager.PlaySoundEffect("eat-power-pellet.wav");
+                break;
+            case GameEventType.GhostEaten:
+                _audioManager.PlaySoundEffect("eat-ghost.wav");
+                break;
+            case GameEventType.FruitCollected:
+                _audioManager.PlaySoundEffect("eat-fruit.wav");
+                break;
+            case GameEventType.PacmanDied:
+                _audioManager.PlaySoundEffect("death.wav");
+                break;
+            case GameEventType.LevelComplete:
+                _audioManager.PlaySoundEffect("level-complete.wav");
+                break;
+            case GameEventType.GameOver:
+                _audioManager.PlayMusic("game-over-theme.wav");
+                IsGameOver = true;
+                break;
+        }
+        _logger.Info($"[MULTIPLAYER] Game event: {evt.EventType}");
     }
 }

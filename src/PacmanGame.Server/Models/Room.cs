@@ -11,6 +11,7 @@ public class Room
     public string? Password { get; }
     public RoomVisibility Visibility { get; }
     public RoomState State { get; set; }
+    public GameSimulation? Game { get; set; }
 
     private readonly List<Player> _players = new();
     public IReadOnlyCollection<Player> Players => _players.AsReadOnly();

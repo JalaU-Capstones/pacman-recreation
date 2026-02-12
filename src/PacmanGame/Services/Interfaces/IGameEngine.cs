@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using System;
@@ -66,6 +67,11 @@ public interface IGameEngine
     bool IsPaused { get; }
 
     /// <summary>
+    /// Gets the current level number
+    /// </summary>
+    int CurrentLevel { get; }
+
+    /// <summary>
     /// Load a specific level
     /// </summary>
     /// <param name="level">Level number to load</param>
@@ -102,4 +108,10 @@ public interface IGameEngine
     /// </summary>
     /// <param name="deltaTime">Time elapsed since last frame in seconds</param>
     void Update(float deltaTime);
+
+    /// <summary>
+    /// Render the game to a canvas
+    /// </summary>
+    /// <param name="canvas">The canvas to render to</param>
+    void Render(Canvas canvas);
 }

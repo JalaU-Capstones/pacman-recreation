@@ -1,5 +1,6 @@
 using PacmanGame.Models.Enums;
 using PacmanGame.Helpers;
+using System;
 
 namespace PacmanGame.Models.Entities;
 
@@ -41,6 +42,38 @@ public class Pacman : Entity
         InvulnerabilityTime = 0f;
         IsDying = false;
         PowerPelletDuration = Constants.Level1PowerPelletDuration;
+    }
+
+    public void Update(float deltaTime, TileType[,] map)
+    {
+        if (NextDirection != Direction.None && CanMove(NextDirection, map))
+        {
+            CurrentDirection = NextDirection;
+        }
+
+        if (CurrentDirection != Direction.None && CanMove(CurrentDirection, map))
+        {
+            (int dx, int dy) = GetDirectionDeltas(CurrentDirection);
+            ExactX += dx * Speed * deltaTime;
+            ExactY += dy * Speed * deltaTime;
+
+            // Handle wrapping through tunnels
+            if (ExactX < 0) ExactX = Constants.MapWidth - 1;
+            else if (ExactX >= Constants.MapWidth) ExactX = 0;
+            if (ExactY < 0) ExactY = Constants.MapHeight - 1;
+            else if (ExactY >= Constants.MapHeight) ExactY = 0;
+
+            X = (int)Math.Round(ExactX);
+            Y = (int)Math.Round(ExactY);
+
+            IsMoving = true;
+        }
+        else
+        {
+            IsMoving = false;
+        }
+
+        UpdateInvulnerability(deltaTime);
     }
 
     /// <summary>
@@ -96,10 +129,24 @@ public class Pacman : Entity
 
         // Check bounds
         if (nextY < 0 || nextY >= map.GetLength(0) || nextX < 0 || nextX >= map.GetLength(1))
-            return false;
+        {
+            return true; // Allow movement into tunnels
+        }
 
         // Check if it's a walkable tile
         TileType tile = map[nextY, nextX];
         return tile != TileType.Wall && tile != TileType.GhostDoor;
+    }
+
+    private static (int dx, int dy) GetDirectionDeltas(Direction direction)
+    {
+        return direction switch
+        {
+            Direction.Up => (0, -1),
+            Direction.Down => (0, 1),
+            Direction.Left => (-1, 0),
+            Direction.Right => (1, 0),
+            _ => (0, 0)
+        };
     }
 }

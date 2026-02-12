@@ -1,4 +1,5 @@
 using MessagePack;
+using System.Collections.Generic;
 
 namespace PacmanGame.Shared;
 
@@ -22,6 +23,7 @@ namespace PacmanGame.Shared;
 [Union(16, typeof(GetRoomListRequest))]
 [Union(17, typeof(GetRoomListResponse))]
 [Union(18, typeof(LeaveRoomConfirmation))]
+[Union(19, typeof(GameStartEvent))]
 public abstract class NetworkMessageBase
 {
     [Key(0)]
@@ -29,6 +31,13 @@ public abstract class NetworkMessageBase
 }
 
 #region Room Management Messages
+
+[MessagePackObject]
+public class RoomDetails
+{
+    [Key(0)]
+    public List<PlayerState> PlayerStates { get; set; } = new();
+}
 
 [MessagePackObject]
 public class CreateRoomRequest : NetworkMessageBase
@@ -187,6 +196,48 @@ public class RoleAssignedEvent : NetworkMessageBase
 
 #region Game Flow Messages
 
+public enum GameEventType
+{
+    DotCollected,
+    PowerPelletCollected,
+    GhostEaten,
+    FruitCollected,
+    PacmanDied,
+    LevelComplete,
+    GameOver,
+    Victory
+}
+
+[MessagePackObject]
+public class EntityPosition
+{
+    [Key(0)]
+    public float X { get; set; }
+    [Key(1)]
+    public float Y { get; set; }
+    [Key(2)]
+    public Direction Direction { get; set; }
+}
+
+public enum GhostStateEnum
+{
+    Normal,
+    Vulnerable,
+    Eaten
+}
+
+[MessagePackObject]
+public class GhostState
+{
+    [Key(0)]
+    public string Type { get; set; }
+    [Key(1)]
+    public EntityPosition Position { get; set; }
+    [Key(2)]
+    public GhostStateEnum State { get; set; }
+}
+
+
 [MessagePackObject]
 public class StartGameRequest : NetworkMessageBase
 {
@@ -197,6 +248,10 @@ public class StartGameRequest : NetworkMessageBase
 public class GameStartEvent : NetworkMessageBase
 {
     public override MessageType Type => MessageType.GameStartEvent;
+    [Key(1)]
+    public List<PlayerState> PlayerStates { get; set; } = new();
+    [Key(2)]
+    public string MapName { get; set; } = string.Empty;
 }
 
 [MessagePackObject]
@@ -204,7 +259,7 @@ public class PlayerInputMessage : NetworkMessageBase
 {
     public override MessageType Type => MessageType.PlayerInput;
     [Key(1)]
-    public int PlayerId { get; set; }
+    public int RoomId { get; set; }
     [Key(2)]
     public Direction Direction { get; set; }
     [Key(3)]
@@ -216,19 +271,25 @@ public class GameStateMessage : NetworkMessageBase
 {
     public override MessageType Type => MessageType.GameState;
     [Key(1)]
-    public Dictionary<int, PlayerState> PlayerStates { get; set; } = new();
+    public EntityPosition PacmanPosition { get; set; }
     [Key(2)]
-    public int Level { get; set; }
+    public List<GhostState> Ghosts { get; set; } = new();
     [Key(3)]
-    public int Score { get; set; }
+    public List<int> CollectedItems { get; set; } = new();
     [Key(4)]
+    public int Score { get; set; }
+    [Key(5)]
     public int Lives { get; set; }
+    [Key(6)]
+    public int CurrentLevel { get; set; }
 }
 
 [MessagePackObject]
 public class GameEventMessage : NetworkMessageBase
 {
     public override MessageType Type => MessageType.GameEvent;
+    [Key(1)]
+    public GameEventType EventType { get; set; }
 }
 
 [MessagePackObject]

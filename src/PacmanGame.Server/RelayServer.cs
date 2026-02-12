@@ -5,6 +5,12 @@ using PacmanGame.Server.Models;
 using PacmanGame.Shared;
 using MessagePack;
 using System.Collections.Concurrent;
+using System.Threading;
+using System;
+using System.Threading.Tasks;
+using PacmanGame.Server.Services;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace PacmanGame.Server;
 
@@ -15,13 +21,17 @@ public class RelayServer : INetEventListener
     private readonly ConcurrentDictionary<NetPeer, Player> _connectedPlayers = new();
     private readonly ILogger _logger;
     private readonly MessagePackSerializerOptions _serializerOptions;
+    private readonly IMapLoader _mapLoader;
+    private readonly ICollisionDetector _collisionDetector;
 
     public RelayServer()
     {
         _netManager = new NetManager(this) { DisconnectTimeout = 10000 };
         _roomManager = new RoomManager();
         _logger = new ConsoleLogger();
-        _serializerOptions = MessagePackSerializerOptions.Standard;
+        _serializerOptions = MessagePack.MessagePackSerializer.DefaultOptions.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance);
+        _mapLoader = new MapLoader(_logger);
+        _collisionDetector = new CollisionDetector();
     }
 
     public void Start()
@@ -41,7 +51,15 @@ public class RelayServer : INetEventListener
             while (true)
             {
                 _netManager.PollEvents();
-                Thread.Sleep(15);
+                foreach (var room in _roomManager.GetPublicRooms().Where(r => r.State == RoomState.Playing))
+                {
+                    room.Game?.Update(1f / 20f); // 20 FPS
+                    if (room.Game != null)
+                    {
+                        BroadcastToRoom(room, room.Game.GetState());
+                    }
+                }
+                Thread.Sleep(1000 / 20); // 20 FPS
             }
         });
     }
@@ -102,7 +120,17 @@ public class RelayServer : INetEventListener
             case KickPlayerRequest req: HandleKickPlayerRequest(player, req); break;
             case StartGameRequest _: HandleStartGameRequest(player); break;
             case GetRoomListRequest _: HandleGetRoomListRequest(player); break;
+            case PlayerInputMessage input: HandlePlayerInput(player, input); break;
             default: _logger.LogWarning($"Unknown message type: {message.Type} from {player.Peer.Address}"); break;
+        }
+    }
+
+    private void HandlePlayerInput(Player player, PlayerInputMessage input)
+    {
+        var room = player.CurrentRoom;
+        if (room?.Game != null)
+        {
+            room.Game.SetPlayerInput(player.Role, input.Direction);
         }
     }
 
@@ -118,7 +146,7 @@ public class RelayServer : INetEventListener
         {
             player.Name = request.PlayerName;
             player.IsAdmin = true;
-            player.Role = PlayerRole.Pacman; // Creator is Pacman by default
+            player.Role = PlayerRole.Pacman;
             var room = _roomManager.CreateRoom(request.RoomName, request.Password, request.Visibility);
             if (room != null)
             {
@@ -261,7 +289,16 @@ public class RelayServer : INetEventListener
         if (room != null && player.IsAdmin && room.Players.Any(p => p.Role != PlayerRole.None))
         {
             _logger.LogInfo($"Admin {player.Id} is starting game in room '{room.Name}'");
-            BroadcastToRoom(room, new GameStartEvent());
+            room.State = RoomState.Playing;
+            room.Game = new GameSimulation(_mapLoader, _collisionDetector, _logger);
+            room.Game.Initialize(room.Id, room.Players.Select(p => p.Role).ToList());
+
+            var gameStartEvent = new GameStartEvent
+            {
+                PlayerStates = room.GetPlayerStates(),
+                MapName = "level1.txt"
+            };
+            BroadcastToRoom(room, gameStartEvent);
         }
     }
 
