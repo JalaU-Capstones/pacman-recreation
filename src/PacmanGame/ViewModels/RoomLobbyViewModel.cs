@@ -26,10 +26,16 @@ public class RoomLobbyViewModel : ViewModelBase
     private readonly int _roomId;
     private readonly int _myPlayerId;
     private PlayerRole _myRole;
+    private bool _isAdmin;
 
     public string RoomName { get; }
     public string RoomVisibility { get; }
-    public bool IsAdmin { get; }
+
+    public bool IsAdmin
+    {
+        get => _isAdmin;
+        set => this.RaiseAndSetIfChanged(ref _isAdmin, value);
+    }
 
     private bool _canStartGame;
     public bool CanStartGame { get => _canStartGame; set => this.RaiseAndSetIfChanged(ref _canStartGame, value); }
@@ -71,8 +77,22 @@ public class RoomLobbyViewModel : ViewModelBase
         RoomVisibility = visibility.ToString().ToUpper();
 
         var myProfile = _profileManager.GetActiveProfile();
+        _logger.LogDebug("Active profile: {ProfileName}", myProfile?.Name ?? "null");
+        _logger.LogDebug("Initial players count: {Count}", initialPlayers.Count);
+
+        // Find the current player by matching name
         _myPlayerId = initialPlayers.FirstOrDefault(p => p.Name == myProfile?.Name)?.PlayerId ?? -1;
+
+        if (_myPlayerId == -1)
+        {
+            // If exact name match fails, use the first player (fallback)
+            _myPlayerId = initialPlayers.FirstOrDefault()?.PlayerId ?? -1;
+            _logger.LogWarning("Could not match player by name '{ProfileName}'. Using first player ID: {PlayerId}", myProfile?.Name, _myPlayerId);
+        }
+
         IsAdmin = initialPlayers.FirstOrDefault(p => p.PlayerId == _myPlayerId)?.IsAdmin ?? false;
+
+        _logger.LogInformation("My Player ID: {PlayerId}, IsAdmin: {IsAdmin}", _myPlayerId, IsAdmin);
 
         var roles = new ObservableCollection<PlayerRole>
         {

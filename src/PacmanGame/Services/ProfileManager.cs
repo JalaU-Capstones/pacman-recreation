@@ -171,7 +171,34 @@ public class ProfileManager : IProfileManager
     public Profile? GetProfileById(int id)
     {
         if (!_isInitialized) return null;
-        // ... implementation ...
+
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            var command = connection.CreateCommand();
+            command.CommandText = "SELECT Id, Name, AvatarColor, CreatedAt, LastPlayedAt FROM Profiles WHERE Id = $id";
+            command.Parameters.AddWithValue("$id", id);
+
+            using var reader = command.ExecuteReader();
+            if (reader.Read())
+            {
+                return new Profile
+                {
+                    Id = reader.GetInt32(0),
+                    Name = reader.GetString(1),
+                    AvatarColor = reader.IsDBNull(2) ? null : reader.GetString(2),
+                    CreatedAt = DateTime.Parse(reader.GetString(3)),
+                    LastPlayedAt = reader.IsDBNull(4) ? null : DateTime.Parse(reader.GetString(4))
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get profile by ID {ProfileId}.", id);
+        }
+
         return null;
     }
 
@@ -180,7 +207,6 @@ public class ProfileManager : IProfileManager
         if (!_isInitialized) return;
         _logger.LogDebug("SetActiveProfile called with profileId={ProfileId}", profileId);
         _activeProfile = GetProfileById(profileId);
-        // ... implementation ...
     }
 
     public Profile? GetActiveProfile() => _activeProfile;
@@ -188,32 +214,180 @@ public class ProfileManager : IProfileManager
     public void DeleteProfile(int profileId)
     {
         if (!_isInitialized) return;
-        // ... implementation ...
+
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM Profiles WHERE Id = $id";
+            command.Parameters.AddWithValue("$id", profileId);
+
+            command.ExecuteNonQuery();
+            _logger.LogInformation("Profile {ProfileId} deleted.", profileId);
+
+            if (_activeProfile?.Id == profileId)
+            {
+                _activeProfile = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete profile {ProfileId}.", profileId);
+        }
     }
 
     public void SaveScore(int profileId, int score, int level)
     {
         if (!_isInitialized) return;
-        // ... implementation ...
+
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            var command = connection.CreateCommand();
+            command.CommandText = @"
+                INSERT INTO Scores (ProfileId, Score, Level, Date)
+                VALUES ($profileId, $score, $level, $date)
+            ";
+
+            command.Parameters.AddWithValue("$profileId", profileId);
+            command.Parameters.AddWithValue("$score", score);
+            command.Parameters.AddWithValue("$level", level);
+            command.Parameters.AddWithValue("$date", DateTime.Now.ToString("o"));
+
+            command.ExecuteNonQuery();
+
+            // Also update LastPlayedAt for the profile
+            var updateCmd = connection.CreateCommand();
+            updateCmd.CommandText = "UPDATE Profiles SET LastPlayedAt = $lastPlayedAt WHERE Id = $id";
+            updateCmd.Parameters.AddWithValue("$lastPlayedAt", DateTime.Now.ToString("o"));
+            updateCmd.Parameters.AddWithValue("$id", profileId);
+            updateCmd.ExecuteNonQuery();
+
+            _logger.LogInformation("Score saved for profile {ProfileId}: {Score} points at level {Level}", profileId, score, level);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save score for profile ID {ProfileId}.", profileId);
+        }
     }
 
     public List<ScoreEntry> GetTopScores(int limit = 10)
     {
-        if (!_isInitialized) return new List<ScoreEntry>();
-        // ... implementation ...
-        return new List<ScoreEntry>();
+        var scores = new List<ScoreEntry>();
+        if (!_isInitialized) return scores;
+
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            var command = connection.CreateCommand();
+            command.CommandText = @"
+                SELECT p.Name, MAX(s.Score) as Score, s.Level, s.Date
+                FROM Scores s
+                JOIN Profiles p ON s.ProfileId = p.Id
+                GROUP BY s.ProfileId
+                ORDER BY Score DESC
+                LIMIT $limit
+            ";
+            command.Parameters.AddWithValue("$limit", limit);
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                scores.Add(new ScoreEntry
+                {
+                    PlayerName = reader.GetString(0),
+                    Score = reader.GetInt32(1),
+                    Level = reader.GetInt32(2),
+                    Date = DateTime.Parse(reader.GetString(3))
+                });
+            }
+
+            _logger.LogDebug("GetTopScores completed, found {Count} scores", scores.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get top scores.");
+        }
+
+        return scores;
     }
 
     public void SaveSettings(int profileId, Settings settings)
     {
         if (!_isInitialized) return;
-        // ... implementation ...
+
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            var command = connection.CreateCommand();
+            command.CommandText = @"
+                INSERT INTO UserSettings (ProfileId, MenuMusicVolume, GameMusicVolume, SfxVolume, IsMuted)
+                VALUES ($profileId, $menuVol, $gameVol, $sfxVol, $isMuted)
+                ON CONFLICT(ProfileId) DO UPDATE SET
+                    MenuMusicVolume = excluded.MenuMusicVolume,
+                    GameMusicVolume = excluded.GameMusicVolume,
+                    SfxVolume = excluded.SfxVolume,
+                    IsMuted = excluded.IsMuted;
+            ";
+
+            command.Parameters.AddWithValue("$profileId", profileId);
+            command.Parameters.AddWithValue("$menuVol", settings.MenuMusicVolume);
+            command.Parameters.AddWithValue("$gameVol", settings.GameMusicVolume);
+            command.Parameters.AddWithValue("$sfxVol", settings.SfxVolume);
+            command.Parameters.AddWithValue("$isMuted", settings.IsMuted ? 1 : 0);
+
+            command.ExecuteNonQuery();
+            _logger.LogInformation("Settings saved for profile ID {ProfileId}.", profileId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save settings for profile ID {ProfileId}.", profileId);
+        }
     }
 
     public Settings LoadSettings(int profileId)
     {
         if (!_isInitialized) return new Settings { ProfileId = profileId };
-        // ... implementation ...
+
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            var command = connection.CreateCommand();
+            command.CommandText = @"
+                SELECT MenuMusicVolume, GameMusicVolume, SfxVolume, IsMuted
+                FROM UserSettings
+                WHERE ProfileId = $profileId
+            ";
+            command.Parameters.AddWithValue("$profileId", profileId);
+
+            using var reader = command.ExecuteReader();
+            if (reader.Read())
+            {
+                return new Settings
+                {
+                    ProfileId = profileId,
+                    MenuMusicVolume = reader.GetDouble(0),
+                    GameMusicVolume = reader.GetDouble(1),
+                    SfxVolume = reader.GetDouble(2),
+                    IsMuted = reader.GetInt32(3) != 0
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load settings for profile ID {ProfileId}.", profileId);
+        }
+
         return new Settings { ProfileId = profileId };
     }
 }

@@ -123,7 +123,7 @@ public class MultiplayerGameViewModel : ViewModelBase
 
         if (direction != Direction.None)
         {
-            SetDirectionCommand.Execute(direction);
+            SetDirectionCommand.Execute(direction).Subscribe();
         }
     }
 

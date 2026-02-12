@@ -96,11 +96,11 @@ public partial class GameView : UserControl
         {
             if (DataContext is GameViewModel gvm)
             {
-                gvm.SetDirectionCommand.Execute(direction);
+                gvm.SetDirectionCommand.Execute(direction).Subscribe();
             }
             else if (DataContext is MultiplayerGameViewModel mgvm)
             {
-                mgvm.SetDirectionCommand.Execute(direction);
+                mgvm.SetDirectionCommand.Execute(direction).Subscribe();
             }
             e.Handled = true;
         }
