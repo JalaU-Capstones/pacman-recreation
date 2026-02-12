@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -24,9 +25,15 @@ public class NetworkService : INetEventListener
     private readonly object _connectionLock = new();
     private bool _isStarted = false;
 
-    public event Action<int, string>? OnRoomCreated;
-    public event Action<string>? OnRoomCreationFailed;
-    public event Action<JoinRoomResponse>? OnJoinRoomResponse;
+    // Room events
+    public event Action<int, string, RoomVisibility, List<PlayerState>>? OnJoinedRoom;
+    public event Action<string>? OnJoinRoomFailed;
+    public event Action? OnLeftRoom;
+    public event Action<List<PlayerState>>? OnRoomStateUpdate;
+    public event Action<string>? OnKicked;
+
+    // Game events
+    public event Action? OnGameStart;
     public event Action<GameStateMessage>? OnGameStateUpdate;
 
     private NetworkService()
@@ -38,161 +45,137 @@ public class NetworkService : INetEventListener
     public void Start()
     {
         if (_isStarted) return;
-
         _isStarted = true;
         _netManager.Start();
         _logger.Info("Starting connection to server...");
         _server = _netManager.Connect(Constants.MultiplayerServerIP, Constants.MultiplayerServerPort, "PacmanGame");
-
-        Task.Run(() =>
-        {
-            while (true)
-            {
-                _netManager.PollEvents();
-                Thread.Sleep(15);
-            }
-        });
+        Task.Run(PollEventsLoop);
     }
 
-    public bool IsConnected
+    private void PollEventsLoop()
     {
-        get
+        while (_isStarted)
         {
-            lock (_connectionLock)
-            {
-                return _isConnected;
-            }
+            _netManager.PollEvents();
+            Thread.Sleep(15);
         }
     }
 
-    public void WaitForConnection(int timeoutMs = 5000)
-    {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        while (!IsConnected && stopwatch.ElapsedMilliseconds < timeoutMs)
-        {
-            Thread.Sleep(50);
-        }
-
-        if (!IsConnected)
-        {
-            _logger.Warning($"Connection timeout after {timeoutMs}ms");
-        }
-    }
+    public bool IsConnected => _isConnected;
 
     public void Stop()
     {
         if (!_isStarted) return;
-        _netManager.Stop();
         _isStarted = false;
+        _netManager.Stop();
+        _logger.Info("Network service stopped.");
     }
 
     private void SendMessage(NetworkMessageBase message)
     {
-        if (_server == null)
+        if (_server == null || _server.ConnectionState != ConnectionState.Connected)
         {
-            _logger.Error("Cannot send message: _server is null");
+            _logger.Error("Cannot send message: not connected to server.");
             return;
         }
 
-        if (_server.ConnectionState != ConnectionState.Connected)
+        try
         {
-            _logger.Warning($"Server connection state is {_server.ConnectionState}, message may not be delivered");
+            var bytes = MessagePackSerializer.Serialize<NetworkMessageBase>(message, MessagePackSerializerOptions.Standard);
+            _logger.Debug($"Sending message type: {message.Type}");
+            _server.Send(bytes, DeliveryMethod.ReliableOrdered);
         }
-
-        var bytes = MessagePackSerializer.Serialize<NetworkMessageBase>(message, MessagePackSerializerOptions.Standard);
-        _logger.Debug($"Sending message type: {message.Type}");
-        _server.Send(bytes, DeliveryMethod.ReliableOrdered);
+        catch (Exception ex)
+        {
+            _logger.Error($"Error serializing message: {ex.Message}");
+        }
     }
 
-    public void SendCreateRoomRequest(CreateRoomRequest request)
-    {
-        _logger.Info($"Sending CreateRoomRequest for room '{request.RoomName}' (Visibility: {request.Visibility})...");
-        SendMessage(request);
-    }
-
-    public void SendJoinRoomRequest(JoinRoomRequest request)
-    {
-        SendMessage(request);
-    }
-
-    public void SendPlayerInput(PlayerInputMessage input)
-    {
-        SendMessage(input);
-    }
+    public void SendCreateRoomRequest(CreateRoomRequest request) => SendMessage(request);
+    public void SendJoinRoomRequest(JoinRoomRequest request) => SendMessage(request);
+    public void SendLeaveRoomRequest() => SendMessage(new LeaveRoomRequest());
+    public void SendAssignRoleRequest(int playerId, PlayerRole role) => SendMessage(new AssignRoleRequest { PlayerId = playerId, Role = role });
+    public void SendKickPlayerRequest(int playerId) => SendMessage(new KickPlayerRequest { PlayerIdToKick = playerId });
+    public void SendStartGameRequest() => SendMessage(new StartGameRequest());
+    public void SendPlayerInput(PlayerInputMessage input) => SendMessage(input);
 
     public void OnPeerConnected(NetPeer peer)
     {
         _logger.Info($"Connected to server: {peer.Address}");
-        lock (_connectionLock)
-        {
-            _isConnected = true;
-        }
+        _isConnected = true;
     }
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
     {
         _logger.Warning($"Disconnected from server: {disconnectInfo.Reason}");
-        lock (_connectionLock)
-        {
-            _isConnected = false;
-        }
+        _isConnected = false;
+        Dispatcher.UIThread.Post(() => OnLeftRoom?.Invoke());
     }
 
-    public void OnNetworkError(IPEndPoint endPoint, SocketError socketError)
-    {
-        _logger.Error($"Network error: {socketError}");
-    }
+    public void OnNetworkError(IPEndPoint endPoint, SocketError socketError) => _logger.Error($"Network error: {socketError}");
 
     public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliveryMethod)
     {
         var bytes = reader.GetRemainingBytes();
-        var baseMessage = MessagePackSerializer.Deserialize<NetworkMessageBase>(bytes, MessagePackSerializerOptions.Standard);
-        _logger.Debug($"Received message type: {baseMessage.Type}");
-
-        Dispatcher.UIThread.Post(() =>
+        try
         {
-            switch (baseMessage.Type)
-            {
-                case MessageType.CreateRoomResponse:
-                    _logger.Debug("Processing CreateRoomResponse...");
-                    var createRoomResponse = (CreateRoomResponse)baseMessage;
-                    _logger.Info($"CreateRoomResponse: Success={createRoomResponse.Success}, Message='{createRoomResponse.Message}'");
-                    if (createRoomResponse.Success)
-                    {
-                        OnRoomCreated?.Invoke(createRoomResponse.RoomId, createRoomResponse.RoomName ?? string.Empty);
-                    }
-                    else
-                    {
-                        OnRoomCreationFailed?.Invoke(createRoomResponse.Message ?? "Unknown error");
-                    }
-                    break;
-                case MessageType.JoinRoomResponse:
-                    _logger.Debug("Processing JoinRoomResponse...");
-                    var joinRoomResponse = (JoinRoomResponse)baseMessage;
-                    _logger.Info($"JoinRoomResponse: Success={joinRoomResponse.Success}, Message='{joinRoomResponse.Message}'");
-                    OnJoinRoomResponse?.Invoke(joinRoomResponse);
-                    break;
-                case MessageType.GameState:
-                    _logger.Debug("Processing GameState...");
-                    var gameStateMessage = (GameStateMessage)baseMessage;
-                    OnGameStateUpdate?.Invoke(gameStateMessage);
-                    break;
-            }
-        });
+            var baseMessage = MessagePackSerializer.Deserialize<NetworkMessageBase>(bytes, MessagePackSerializerOptions.Standard);
+            Dispatcher.UIThread.Post(() => HandleMessage(baseMessage));
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"[FATAL] Failed to deserialize message. Length: {bytes.Length}. Exception: {ex}");
+        }
     }
 
-    public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)
+    private void HandleMessage(NetworkMessageBase message)
     {
-        // Handle unconnected messages
+        _logger.Debug($"Received message type: {message.Type}");
+        switch (message)
+        {
+            case CreateRoomResponse createResponse:
+                if (createResponse.Success)
+                {
+                    _logger.Info($"Successfully created and joined room '{createResponse.RoomName}'");
+                    OnJoinedRoom?.Invoke(createResponse.RoomId, createResponse.RoomName!, createResponse.Visibility, createResponse.Players);
+                }
+                else
+                {
+                    _logger.Error($"Failed to create room: {createResponse.Message}");
+                    OnJoinRoomFailed?.Invoke(createResponse.Message ?? "Unknown error");
+                }
+                break;
+            case JoinRoomResponse joinResponse:
+                if (joinResponse.Success)
+                {
+                    _logger.Info($"Successfully joined room '{joinResponse.RoomName}'");
+                    OnJoinedRoom?.Invoke(joinResponse.RoomId, joinResponse.RoomName!, joinResponse.Visibility, joinResponse.Players);
+                }
+                else
+                {
+                    _logger.Error($"Failed to join room: {joinResponse.Message}");
+                    OnJoinRoomFailed?.Invoke(joinResponse.Message ?? "Unknown error");
+                }
+                break;
+            case RoomStateUpdateMessage roomUpdate:
+                _logger.Info("Received room state update.");
+                OnRoomStateUpdate?.Invoke(roomUpdate.Players);
+                break;
+            case KickedEvent kickedEvent:
+                _logger.Warning($"Kicked from room: {kickedEvent.Reason}");
+                OnKicked?.Invoke(kickedEvent.Reason);
+                break;
+            case GameStartEvent _:
+                _logger.Info("Game is starting!");
+                OnGameStart?.Invoke();
+                break;
+            case GameStateMessage gameState:
+                OnGameStateUpdate?.Invoke(gameState);
+                break;
+        }
     }
 
-    public void OnNetworkLatencyUpdate(NetPeer peer, int latency)
-    {
-        // Handle latency updates
-    }
-
-    public void OnConnectionRequest(ConnectionRequest request)
-    {
-        // Not used on client
-    }
+    public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType) { }
+    public void OnNetworkLatencyUpdate(NetPeer peer, int latency) { }
+    public void OnConnectionRequest(ConnectionRequest request) { }
 }

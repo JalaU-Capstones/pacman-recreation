@@ -3,6 +3,7 @@ using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
 using PacmanGame.Shared;
 using ReactiveUI;
+using System.Collections.Generic;
 
 namespace PacmanGame.ViewModels;
 
@@ -59,8 +60,9 @@ public class CreateRoomViewModel : ViewModelBase
         _audioManager = audioManager;
         _logger = logger;
         _profileManager = profileManager;
-        _networkService.OnRoomCreated += HandleRoomCreated;
-        _networkService.OnRoomCreationFailed += HandleRoomCreationFailed;
+
+        _networkService.OnJoinedRoom += HandleJoinedRoom;
+        _networkService.OnJoinRoomFailed += HandleJoinRoomFailed;
 
         CreateCommand = ReactiveCommand.Create(CreateRoom);
         CancelCommand = ReactiveCommand.Create(Cancel);
@@ -69,48 +71,33 @@ public class CreateRoomViewModel : ViewModelBase
     private void CreateRoom()
     {
         ErrorMessage = string.Empty;
-        _logger.Info($"[CreateRoomViewModel] Attempting to create room with name: '{RoomName}', Public: {IsPublic}, Private: {IsPrivate}");
+        _logger.Info($"[CreateRoomViewModel] Attempting to create room with name: '{RoomName}'");
         _audioManager.PlaySoundEffect("menu-select");
 
         if (string.IsNullOrWhiteSpace(RoomName))
         {
             ErrorMessage = "Room name cannot be empty.";
-            _logger.Warning("[CreateRoomViewModel] Room name validation failed: empty name.");
             return;
-        }
-
-        if (!_networkService.IsConnected)
-        {
-            _logger.Info("[CreateRoomViewModel] Not connected to server, attempting to reconnect...");
-            ErrorMessage = "Connecting to server...";
-            _networkService.WaitForConnection(timeoutMs: 5000);
-
-            if (!_networkService.IsConnected)
-            {
-                ErrorMessage = "Failed to connect to server. Please check if the server is running.";
-                _logger.Error("[CreateRoomViewModel] Failed to connect to server after timeout.");
-                return;
-            }
         }
 
         var request = new CreateRoomRequest
         {
             RoomName = RoomName,
             Visibility = IsPublic ? RoomVisibility.Public : RoomVisibility.Private,
-            Password = IsPrivate ? Password : null
+            Password = IsPrivate ? Password : null,
+            PlayerName = _profileManager.GetActiveProfile()?.Name ?? "Player"
         };
 
-        _logger.Info($"[CreateRoomViewModel] Sending CreateRoomRequest: RoomName='{request.RoomName}', Visibility='{request.Visibility}'");
         _networkService.SendCreateRoomRequest(request);
     }
 
-    private void HandleRoomCreated(int roomId, string roomName)
+    private void HandleJoinedRoom(int roomId, string roomName, RoomVisibility visibility, List<PlayerState> players)
     {
-        _logger.Info($"[CreateRoomViewModel] Room '{roomName}' (ID: {roomId}) created successfully. Navigating to lobby.");
-        _mainWindowViewModel.NavigateToRoomLobby(roomId, roomName, true);
+        _logger.Info($"[CreateRoomViewModel] Joined room '{roomName}' successfully. Navigating to lobby.");
+        _mainWindowViewModel.NavigateToRoomLobby(roomId, roomName, visibility, players);
     }
 
-    private void HandleRoomCreationFailed(string message)
+    private void HandleJoinRoomFailed(string message)
     {
         var errorMessage = $"Failed to create room: {message}";
         _logger.Error($"[CreateRoomViewModel] {errorMessage}");
@@ -125,7 +112,7 @@ public class CreateRoomViewModel : ViewModelBase
 
     ~CreateRoomViewModel()
     {
-        _networkService.OnRoomCreated -= HandleRoomCreated;
-        _networkService.OnRoomCreationFailed -= HandleRoomCreationFailed;
+        _networkService.OnJoinedRoom -= HandleJoinedRoom;
+        _networkService.OnJoinRoomFailed -= HandleJoinRoomFailed;
     }
 }

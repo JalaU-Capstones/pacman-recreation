@@ -13,4 +13,13 @@ public class PlayerState
 
     [Key(2)]
     public PlayerRole Role { get; set; }
+
+    [Key(3)]
+    public int PlayerId { get; set; }
+
+    [Key(4)]
+    public string Name { get; set; } = string.Empty;
+
+    [Key(5)]
+    public bool IsAdmin { get; set; }
 }

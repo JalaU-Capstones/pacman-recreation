@@ -5,6 +5,8 @@ namespace PacmanGame.ViewModels;
 
 public class PlayerViewModel : ViewModelBase
 {
+    public int PlayerId { get; set; }
+
     private string _name = string.Empty;
     public string Name
     {

@@ -1,6 +1,8 @@
 using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
+using PacmanGame.Shared;
 using ReactiveUI;
+using System.Collections.Generic;
 
 namespace PacmanGame.ViewModels;
 
@@ -47,9 +49,9 @@ public class MainWindowViewModel : ViewModelBase
         CurrentViewModel = viewModel;
     }
 
-    public void NavigateToRoomLobby(int roomId, string roomName, bool isAdmin)
+    public void NavigateToRoomLobby(int roomId, string roomName, RoomVisibility visibility, List<PlayerState> players)
     {
-        var lobbyViewModel = new RoomLobbyViewModel(roomId, roomName, isAdmin, _networkService, this, _audioManager, _logger, _profileManager);
+        var lobbyViewModel = new RoomLobbyViewModel(roomId, roomName, visibility, players, this, _audioManager, _logger, _profileManager);
         CurrentViewModel = lobbyViewModel;
     }
 }

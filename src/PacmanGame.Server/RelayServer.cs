@@ -9,6 +9,8 @@ using System.Threading;
 using System;
 using System.Threading.Tasks;
 using MessagePack.Resolvers;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace PacmanGame.Server;
 
@@ -22,10 +24,7 @@ public class RelayServer : INetEventListener
 
     public RelayServer()
     {
-        _netManager = new NetManager(this)
-        {
-            DisconnectTimeout = 10000
-        };
+        _netManager = new NetManager(this) { DisconnectTimeout = 10000 };
         _roomManager = new RoomManager();
         _logger = new ConsoleLogger();
         _serializerOptions = MessagePackSerializerOptions.Standard;
@@ -35,7 +34,6 @@ public class RelayServer : INetEventListener
     {
         _netManager.Start(9050);
         _logger.LogInfo("Server listening on port 9050");
-
         Task.Run(() =>
         {
             while (true)
@@ -68,15 +66,13 @@ public class RelayServer : INetEventListener
             if (room != null)
             {
                 room.RemovePlayer(player);
+                BroadcastRoomState(room);
                 _logger.LogInfo($"Player {player.Id} removed from room {room.Name}");
             }
         }
     }
 
-    public void OnNetworkError(IPEndPoint endPoint, SocketError socketError)
-    {
-        _logger.LogError($"Network error: {socketError} from {endPoint}");
-    }
+    public void OnNetworkError(IPEndPoint endPoint, SocketError socketError) => _logger.LogError($"Network error: {socketError} from {endPoint}");
 
     public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliveryMethod)
     {
@@ -87,132 +83,186 @@ public class RelayServer : INetEventListener
         }
 
         var bytes = reader.GetRemainingBytes();
-        var baseMessage = MessagePackSerializer.Deserialize<NetworkMessageBase>(bytes, _serializerOptions);
-        _logger.LogInfo($"Server received message type: {baseMessage.Type} from player {player.Id} ({peer.Address})");
-
-        switch (baseMessage.Type)
+        try
         {
-            case MessageType.CreateRoomRequest:
-                _logger.LogInfo("Processing CreateRoomRequest...");
-                HandleCreateRoomRequest(player, (CreateRoomRequest)baseMessage);
-                break;
-            case MessageType.JoinRoomRequest:
-                _logger.LogInfo("Processing JoinRoomRequest...");
-                HandleJoinRoomRequest(player, (JoinRoomRequest)baseMessage);
-                break;
-            case MessageType.PlayerInput:
-                _logger.LogDebug("Processing PlayerInput...");
-                HandlePlayerInput(player, (PlayerInputMessage)baseMessage);
-                break;
-            default:
-                _logger.LogWarning($"Unknown message type: {baseMessage.Type} from {peer.Address}");
-                break;
+            var baseMessage = MessagePackSerializer.Deserialize<NetworkMessageBase>(bytes, _serializerOptions);
+            _logger.LogInfo($"Server received message type: {baseMessage.Type} from player {player.Id} ({peer.Address})");
+            HandleMessage(player, baseMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error deserializing message from {peer.Address}: {ex.Message}");
         }
     }
 
-    public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType)
+    private void HandleMessage(Player player, NetworkMessageBase message)
     {
-        _logger.LogInfo($"Unconnected message from {remoteEndPoint}, type: {messageType}");
-    }
-
-    public void OnNetworkLatencyUpdate(NetPeer peer, int latency)
-    {
-    }
-
-    public void OnConnectionRequest(ConnectionRequest request)
-    {
-        request.AcceptIfKey("PacmanGame");
+        switch (message)
+        {
+            case CreateRoomRequest req: HandleCreateRoomRequest(player, req); break;
+            case JoinRoomRequest req: HandleJoinRoomRequest(player, req); break;
+            case LeaveRoomRequest _: HandleLeaveRoomRequest(player); break;
+            case AssignRoleRequest req: HandleAssignRoleRequest(player, req); break;
+            case KickPlayerRequest req: HandleKickPlayerRequest(player, req); break;
+            case StartGameRequest _: HandleStartGameRequest(player); break;
+            default: _logger.LogWarning($"Unknown message type: {message.Type} from {player.Peer.Address}"); break;
+        }
     }
 
     private void HandleCreateRoomRequest(Player player, CreateRoomRequest request)
     {
-        _logger.LogInfo($"HandleCreateRoomRequest: Player {player.Id} requesting to create room '{request.RoomName}'");
         var response = new CreateRoomResponse();
-
         if (player.CurrentRoom != null)
         {
             response.Success = false;
             response.Message = "Already in a room.";
-            _logger.LogWarning($"Player {player.Id} already in a room. Denying request.");
         }
         else
         {
-            _logger.LogInfo($"Attempting to create room '{request.RoomName}' with password: {(string.IsNullOrEmpty(request.Password) ? "none" : "***")}");
-            var room = _roomManager.CreateRoom(request.RoomName, request.Password);
+            player.Name = request.PlayerName;
+            player.IsAdmin = true;
+            var room = _roomManager.CreateRoom(request.RoomName, request.Password, request.Visibility);
             if (room != null)
             {
                 room.AddPlayer(player);
                 player.CurrentRoom = room;
-                player.IsAdmin = true;
+
                 response.Success = true;
                 response.Message = $"Room '{room.Name}' created successfully.";
                 response.RoomId = room.Id;
                 response.RoomName = room.Name;
-                _logger.LogInfo($"✓ Player {player.Id} created room '{room.Name}'. Sending success response.");
+                response.Visibility = room.Visibility;
+                response.Players = room.GetPlayerStates();
+
+                _logger.LogInfo($"✓ Player {player.Id} ({player.Name}) created room '{room.Name}'.");
             }
             else
             {
                 response.Success = false;
                 response.Message = $"Room '{request.RoomName}' already exists.";
-                _logger.LogWarning($"Room '{request.RoomName}' already exists. Denying request.");
             }
         }
-
-        _logger.LogInfo($"Sending CreateRoomResponse to player {player.Id}: Success={response.Success}, Message={response.Message}");
-        player.Peer.Send(MessagePackSerializer.Serialize<NetworkMessageBase>(response, _serializerOptions), DeliveryMethod.ReliableOrdered);
+        SendMessageToPlayer(player, response);
     }
 
     private void HandleJoinRoomRequest(Player player, JoinRoomRequest request)
     {
         var response = new JoinRoomResponse();
+        var room = _roomManager.GetRoom(request.RoomName);
 
         if (player.CurrentRoom != null)
         {
             response.Success = false;
             response.Message = "Already in a room.";
         }
+        else if (room == null)
+        {
+            response.Success = false;
+            response.Message = "Room not found.";
+        }
+        else if (room.Visibility == RoomVisibility.Private && room.Password != request.Password)
+        {
+            response.Success = false;
+            response.Message = "Incorrect password.";
+        }
+        else if (!room.AddPlayer(player))
+        {
+            response.Success = false;
+            response.Message = "Room is full.";
+        }
         else
         {
-            var room = _roomManager.GetRoom(request.RoomName);
-            if (room != null)
+            player.Name = request.PlayerName;
+            player.CurrentRoom = room;
+            response.Success = true;
+            response.Message = $"Joined room '{room.Name}' successfully.";
+            response.RoomId = room.Id;
+            response.RoomName = room.Name;
+            response.Visibility = room.Visibility;
+            response.Players = room.GetPlayerStates();
+
+            _logger.LogInfo($"Player {player.Id} ({player.Name}) joined room '{room.Name}'");
+            BroadcastRoomState(room);
+        }
+        SendMessageToPlayer(player, response);
+    }
+
+    private void HandleLeaveRoomRequest(Player player)
+    {
+        var room = player.CurrentRoom;
+        if (room != null)
+        {
+            room.RemovePlayer(player);
+            _logger.LogInfo($"Player {player.Id} left room '{room.Name}'");
+            BroadcastRoomState(room);
+        }
+    }
+
+    private void HandleAssignRoleRequest(Player player, AssignRoleRequest request)
+    {
+        var room = player.CurrentRoom;
+        if (room != null && player.IsAdmin)
+        {
+            var targetPlayer = room.Players.FirstOrDefault(p => p.Id == request.PlayerId);
+            if (targetPlayer != null)
             {
-                if (room.IsPublic || room.Password == request.Password)
-                {
-                    if (room.AddPlayer(player))
-                    {
-                        player.CurrentRoom = room;
-                        response.Success = true;
-                        response.Message = $"Joined room '{room.Name}' successfully.";
-                        response.RoomId = room.Id;
-                        response.RoomName = room.Name;
-                        _logger.LogInfo($"Player {player.Id} joined room '{room.Name}'");
-                    }
-                    else
-                    {
-                        response.Success = false;
-                        response.Message = "Room is full.";
-                    }
-                }
-                else
-                {
-                    response.Success = false;
-                    response.Message = "Invalid password.";
-                }
-            }
-            else
-            {
-                response.Success = false;
-                response.Message = $"Room '{request.RoomName}' not found.";
+                targetPlayer.Role = request.Role;
+                _logger.LogInfo($"Admin {player.Id} assigned role {request.Role} to player {request.PlayerId}");
+                BroadcastRoomState(room);
             }
         }
-
-        player.Peer.Send(MessagePackSerializer.Serialize<NetworkMessageBase>(response, _serializerOptions), DeliveryMethod.ReliableOrdered);
     }
 
-    private void HandlePlayerInput(Player player, PlayerInputMessage input)
+    private void HandleKickPlayerRequest(Player player, KickPlayerRequest request)
     {
-        _logger.LogDebug($"Player {player.Id} input: {input.Direction}");
+        var room = player.CurrentRoom;
+        if (room != null && player.IsAdmin)
+        {
+            var playerToKick = room.Players.FirstOrDefault(p => p.Id == request.PlayerIdToKick);
+            if (playerToKick != null)
+            {
+                room.RemovePlayer(playerToKick);
+                _logger.LogInfo($"Admin {player.Id} kicked player {playerToKick.Id}");
+                SendMessageToPlayer(playerToKick, new KickedEvent { Reason = "Kicked by admin." });
+                BroadcastRoomState(room);
+            }
+        }
     }
+
+    private void HandleStartGameRequest(Player player)
+    {
+        var room = player.CurrentRoom;
+        if (room != null && player.IsAdmin && room.Players.Any(p => p.Role != PlayerRole.None))
+        {
+            _logger.LogInfo($"Admin {player.Id} is starting game in room '{room.Name}'");
+            BroadcastToRoom(room, new GameStartEvent());
+        }
+    }
+
+    private void BroadcastRoomState(Room room)
+    {
+        var state = new RoomStateUpdateMessage { Players = room.GetPlayerStates() };
+        BroadcastToRoom(room, state);
+    }
+
+    private void BroadcastToRoom(Room room, NetworkMessageBase message)
+    {
+        var bytes = MessagePackSerializer.Serialize(message, _serializerOptions);
+        foreach (var p in room.Players)
+        {
+            p.Peer.Send(bytes, DeliveryMethod.ReliableOrdered);
+        }
+    }
+
+    private void SendMessageToPlayer(Player player, NetworkMessageBase message)
+    {
+        var bytes = MessagePackSerializer.Serialize(message, _serializerOptions);
+        player.Peer.Send(bytes, DeliveryMethod.ReliableOrdered);
+    }
+
+    public void OnNetworkReceiveUnconnected(IPEndPoint remoteEndPoint, NetPacketReader reader, UnconnectedMessageType messageType) { }
+    public void OnNetworkLatencyUpdate(NetPeer peer, int latency) { }
+    public void OnConnectionRequest(ConnectionRequest request) => request.AcceptIfKey("PacmanGame");
 }
 
 public interface ILogger

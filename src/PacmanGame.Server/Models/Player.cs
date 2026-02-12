@@ -8,6 +8,7 @@ public class Player
 {
     private static int _nextId;
     public int Id { get; }
+    public string Name { get; set; } // Name will be set from client request
     public NetPeer Peer { get; }
     public PlayerRole Role { get; set; }
     public Room? CurrentRoom { get; set; }
@@ -15,9 +16,9 @@ public class Player
 
     public Player(NetPeer peer)
     {
-        // Assign a unique, sequential ID, starting from 1.
         Id = Interlocked.Increment(ref _nextId);
         Peer = peer;
         Role = PlayerRole.None;
+        Name = string.Empty; // Initialize as empty, to be set by client request
     }
 }
