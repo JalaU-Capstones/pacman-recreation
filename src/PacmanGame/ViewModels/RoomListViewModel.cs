@@ -50,12 +50,23 @@ public class RoomListViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
     }
 
+    private bool _showSpectatorPrompt;
+    public bool ShowSpectatorPrompt
+    {
+        get => _showSpectatorPrompt;
+        set => this.RaiseAndSetIfChanged(ref _showSpectatorPrompt, value);
+    }
+
+    private RoomInfo? _pendingJoinRoom;
+
     public ICommand JoinPublicRoomCommand { get; }
     public ICommand RefreshCommand { get; }
     public ICommand ShowPrivateJoinFormCommand { get; }
     public ICommand CancelPrivateJoinCommand { get; }
     public ICommand JoinPrivateRoomCommand { get; }
     public ICommand BackCommand { get; }
+    public ICommand JoinAsSpectatorCommand { get; }
+    public ICommand CancelSpectatorJoinCommand { get; }
 
     public RoomListViewModel(MainWindowViewModel mainWindowViewModel, NetworkService networkService, IAudioManager audioManager, ILogger<RoomListViewModel> logger, IProfileManager profileManager)
     {
@@ -68,6 +79,7 @@ public class RoomListViewModel : ViewModelBase
         _networkService.OnJoinedRoom += HandleJoinedRoom;
         _networkService.OnJoinRoomFailed += HandleJoinRoomFailed;
         _networkService.OnRoomListReceived += HandleRoomListReceived;
+        _networkService.OnJoinRoomSpectatorPrompt += HandleJoinRoomSpectatorPrompt;
 
         JoinPublicRoomCommand = ReactiveCommand.Create<RoomInfo>(JoinPublicRoom);
         RefreshCommand = ReactiveCommand.Create(RefreshRooms);
@@ -75,6 +87,8 @@ public class RoomListViewModel : ViewModelBase
         CancelPrivateJoinCommand = ReactiveCommand.Create(() => IsPrivateJoinFormVisible = false);
         JoinPrivateRoomCommand = ReactiveCommand.Create(JoinPrivateRoom);
         BackCommand = ReactiveCommand.Create(Back);
+        JoinAsSpectatorCommand = ReactiveCommand.Create(JoinAsSpectator);
+        CancelSpectatorJoinCommand = ReactiveCommand.Create(CancelSpectatorJoin);
 
         RefreshRooms();
     }
@@ -82,6 +96,7 @@ public class RoomListViewModel : ViewModelBase
     private void JoinPublicRoom(RoomInfo? room)
     {
         if (room == null) return;
+        _pendingJoinRoom = room;
         _audioManager.PlaySoundEffect("menu-select");
         var request = new JoinRoomRequest
         {
@@ -108,6 +123,29 @@ public class RoomListViewModel : ViewModelBase
             PlayerName = _profileManager.GetActiveProfile()?.Name ?? "Player"
         };
         _networkService.SendJoinRoomRequest(request);
+    }
+
+    private void JoinAsSpectator()
+    {
+        if (_pendingJoinRoom == null) return;
+
+        _audioManager.PlaySoundEffect("menu-select");
+        var request = new JoinRoomRequest
+        {
+            RoomName = _pendingJoinRoom.Name,
+            PlayerName = _profileManager.GetActiveProfile()?.Name ?? "Player",
+            JoinAsSpectator = true
+        };
+        _networkService.SendJoinRoomRequest(request);
+        ShowSpectatorPrompt = false;
+        ErrorMessage = string.Empty;
+    }
+
+    private void CancelSpectatorJoin()
+    {
+        ShowSpectatorPrompt = false;
+        ErrorMessage = string.Empty;
+        _pendingJoinRoom = null;
     }
 
     private void RefreshRooms()
@@ -148,6 +186,15 @@ public class RoomListViewModel : ViewModelBase
         });
     }
 
+    private void HandleJoinRoomSpectatorPrompt(string message)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            ErrorMessage = message;
+            ShowSpectatorPrompt = true;
+        });
+    }
+
     private void Back()
     {
         _audioManager.PlaySoundEffect("menu-select");
@@ -159,5 +206,6 @@ public class RoomListViewModel : ViewModelBase
         _networkService.OnJoinedRoom -= HandleJoinedRoom;
         _networkService.OnJoinRoomFailed -= HandleJoinRoomFailed;
         _networkService.OnRoomListReceived -= HandleRoomListReceived;
+        _networkService.OnJoinRoomSpectatorPrompt -= HandleJoinRoomSpectatorPrompt;
     }
 }

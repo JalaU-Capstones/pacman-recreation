@@ -25,6 +25,7 @@ namespace PacmanGame.Shared;
 [Union(18, typeof(LeaveRoomConfirmation))]
 [Union(19, typeof(GameStartEvent))]
 [Union(20, typeof(GamePausedEvent))]
+[Union(21, typeof(RestartGameRequest))]
 public abstract class NetworkMessageBase
 {
     [IgnoreMember]
@@ -85,6 +86,8 @@ public class JoinRoomRequest : NetworkMessageBase
     public string? Password { get; set; }
     [Key(2)]
     public string PlayerName { get; set; } = string.Empty;
+    [Key(3)]
+    public bool JoinAsSpectator { get; set; } // New field to request spectator join explicitly
 }
 
 [MessagePackObject]
@@ -104,6 +107,8 @@ public class JoinRoomResponse : NetworkMessageBase
     public RoomVisibility Visibility { get; set; }
     [Key(5)]
     public List<PlayerState> Players { get; set; } = new();
+    [Key(6)]
+    public bool CanJoinAsSpectator { get; set; } // New field to prompt user
 }
 
 [MessagePackObject]
@@ -271,6 +276,13 @@ public class StartGameRequest : NetworkMessageBase
 {
     [IgnoreMember]
     public override MessageType Type => MessageType.StartGameRequest;
+}
+
+[MessagePackObject]
+public class RestartGameRequest : NetworkMessageBase
+{
+    [IgnoreMember]
+    public override MessageType Type => MessageType.RestartGameRequest;
 }
 
 [MessagePackObject]

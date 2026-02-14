@@ -25,6 +25,7 @@ public class NetworkService : INetEventListener
     // Room events
     public event Action<int, string, RoomVisibility, List<PlayerState>>? OnJoinedRoom;
     public event Action<string>? OnJoinRoomFailed;
+    public event Action<string>? OnJoinRoomSpectatorPrompt;
     public event Action? OnLeftRoom;
     public event Action<List<PlayerState>>? OnRoomStateUpdate;
     public event Action<string>? OnKicked;
@@ -116,6 +117,7 @@ public class NetworkService : INetEventListener
     public void SendAssignRoleRequest(int playerId, PlayerRole role) => SendMessage(new AssignRoleRequest { PlayerId = playerId, Role = role });
     public void SendKickPlayerRequest(int playerId) => SendMessage(new KickPlayerRequest { PlayerIdToKick = playerId });
     public void SendStartGameRequest() => SendMessage(new StartGameRequest());
+    public void SendRestartGameRequest() => SendMessage(new RestartGameRequest());
 
     public void SendPlayerInput(PlayerInputMessage input)
     {
@@ -205,6 +207,11 @@ public class NetworkService : INetEventListener
                 {
                     _logger.LogInformation("Successfully joined room '{RoomName}'", joinResponse.RoomName);
                     OnJoinedRoom?.Invoke(joinResponse.RoomId, joinResponse.RoomName!, joinResponse.Visibility, joinResponse.Players);
+                }
+                else if (joinResponse.CanJoinAsSpectator)
+                {
+                    _logger.LogInformation("Room full, prompting for spectator join.");
+                    OnJoinRoomSpectatorPrompt?.Invoke(joinResponse.Message ?? "Room is full. Join as Spectator?");
                 }
                 else
                 {

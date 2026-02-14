@@ -137,6 +137,7 @@ public class RelayServer : INetEventListener
             case AssignRoleRequest req: HandleAssignRoleRequest(player, req); break;
             case KickPlayerRequest req: HandleKickPlayerRequest(player, req); break;
             case StartGameRequest _: HandleStartGameRequest(player); break;
+            case RestartGameRequest _: HandleRestartGameRequest(player); break;
             case GetRoomListRequest _: HandleGetRoomListRequest(player); break;
             case PlayerInputMessage input: HandlePlayerInput(player, input); break;
             case PauseGameRequest req: HandlePauseGameRequest(player, req); break;
@@ -260,79 +261,102 @@ public class RelayServer : INetEventListener
         else if (room.Players.Any(p => p.Name.Equals(request.PlayerName, StringComparison.OrdinalIgnoreCase)))
         {
             response.Success = false;
-            response.Message = "Name already taken. Join as Spectator or return to list?";
-        }
-        else if (room.State == RoomState.Playing && room.Players.Count(p => p.Role != PlayerRole.Spectator) >= 5)
-        {
-            // Room is full, offer spectator
-            response.Success = false;
-            response.Message = "Game in Progress. Join as Spectator or Return to Menu?";
-        }
-        else if (!room.AddPlayer(player))
-        {
-            response.Success = false;
-            response.Message = "Room is full.";
+            response.Message = "Name already taken.";
         }
         else
         {
-            player.Name = request.PlayerName;
-            player.CurrentRoom = room;
-            player.Role = PlayerRole.None; // Default, will be assigned
+            // Check capacity
+            int playerCount = room.Players.Count(p => p.Role != PlayerRole.Spectator && p.Role != PlayerRole.None);
+            int spectatorCount = room.Players.Count(p => p.Role == PlayerRole.Spectator);
+            bool roomFull = playerCount >= 5;
+            bool spectatorsFull = spectatorCount >= 5;
 
-            // Handle mid-game join
-            if (room.State == RoomState.Playing)
+            if (roomFull && !request.JoinAsSpectator)
             {
-                // Try to assign an available role
-                var assignedRoles = room.Players.Select(p => p.Role).ToList();
-                var availableRoles = new List<PlayerRole> { PlayerRole.Blinky, PlayerRole.Pinky, PlayerRole.Inky, PlayerRole.Clyde }
-                    .Except(assignedRoles)
-                    .ToList();
-
-                if (availableRoles.Any())
+                if (!spectatorsFull)
                 {
-                    player.Role = availableRoles.First();
-                    _logger.LogInformation($"[INFO] Player {player.Name} re-joined mid-game. Assigning role {player.Role}.");
-
-                    // Update simulation with new role
-                    room.Game?.UpdateAssignedRoles(room.Players.Select(p => p.Role).ToList());
+                    // Prompt user to join as spectator
+                    response.Success = false;
+                    response.Message = "Room is full. Join as Spectator?";
+                    response.CanJoinAsSpectator = true;
                 }
                 else
                 {
-                    player.Role = PlayerRole.Spectator;
-                    _logger.LogInformation($"[INFO] Player {player.Name} joined mid-game as Spectator (Room full).");
+                    response.Success = false;
+                    response.Message = "Room is completely full (Players & Spectators).";
                 }
             }
-
-            // Create session
-            _playerSessions[player.Id] = new PlayerSession
+            else if (!room.AddPlayer(player))
             {
-                PlayerId = player.Id,
-                RoomId = room.Id,
-                Role = player.Role,
-                Peer = player.Peer,
-                PlayerName = player.Name
-            };
-            _logger.LogInformation($"[SERVER] Player {player.Id} session created for room {room.Id}");
-
-            response.Success = true;
-            response.Message = $"Joined room '{room.Name}' successfully.";
-            response.RoomId = room.Id;
-            response.RoomName = room.Name;
-            response.Visibility = room.Visibility;
-            response.Players = room.GetPlayerStates();
-
-            _logger.LogInformation($"Player {player.Id} ({player.Name}) joined room '{room.Name}'");
-            BroadcastRoomState(room);
-
-            // If game is running, send game start event to the new player so they load the map
-            if (room.State == RoomState.Playing)
+                response.Success = false;
+                response.Message = "Room is full.";
+            }
+            else
             {
-                var gameStartEvent = new GameStartEvent
+                player.Name = request.PlayerName;
+                player.CurrentRoom = room;
+                player.Role = PlayerRole.None; // Default
+
+                // Handle mid-game join or explicit spectator request
+                if (request.JoinAsSpectator)
                 {
-                    PlayerStates = room.GetPlayerStates(),
-                    MapName = "level1.txt"
+                    player.Role = PlayerRole.Spectator;
+                    _logger.LogInformation($"[INFO] Player {player.Name} joined as Spectator.");
+                }
+                else if (room.State == RoomState.Playing)
+                {
+                    // Try to assign an available role
+                    var assignedRoles = room.Players.Select(p => p.Role).ToList();
+                    var availableRoles = new List<PlayerRole> { PlayerRole.Pacman, PlayerRole.Blinky, PlayerRole.Pinky, PlayerRole.Inky, PlayerRole.Clyde }
+                        .Except(assignedRoles)
+                        .ToList();
+
+                    if (availableRoles.Any())
+                    {
+                        player.Role = availableRoles.First();
+                        _logger.LogInformation($"[INFO] Player {player.Name} re-joined mid-game. Assigning role {player.Role}.");
+
+                        // Update simulation with new role
+                        room.Game?.UpdateAssignedRoles(room.Players.Select(p => p.Role).ToList());
+                    }
+                    else
+                    {
+                        player.Role = PlayerRole.Spectator;
+                        _logger.LogInformation($"[INFO] Player {player.Name} joined mid-game as Spectator (Room full).");
+                    }
+                }
+
+                // Create session
+                _playerSessions[player.Id] = new PlayerSession
+                {
+                    PlayerId = player.Id,
+                    RoomId = room.Id,
+                    Role = player.Role,
+                    Peer = player.Peer,
+                    PlayerName = player.Name
                 };
-                SendMessageToPlayer(player, gameStartEvent);
+                _logger.LogInformation($"[SERVER] Player {player.Id} session created for room {room.Id}");
+
+                response.Success = true;
+                response.Message = $"Joined room '{room.Name}' successfully.";
+                response.RoomId = room.Id;
+                response.RoomName = room.Name;
+                response.Visibility = room.Visibility;
+                response.Players = room.GetPlayerStates();
+
+                _logger.LogInformation($"Player {player.Id} ({player.Name}) joined room '{room.Name}'");
+                BroadcastRoomState(room);
+
+                // If game is running, send game start event to the new player so they load the map
+                if (room.State == RoomState.Playing)
+                {
+                    var gameStartEvent = new GameStartEvent
+                    {
+                        PlayerStates = room.GetPlayerStates(),
+                        MapName = "level1.txt"
+                    };
+                    SendMessageToPlayer(player, gameStartEvent);
+                }
             }
         }
         SendMessageToPlayer(player, response);
@@ -372,9 +396,34 @@ public class RelayServer : INetEventListener
                     }
                 }
 
+                // Promote spectator if available
+                if (role != PlayerRole.Spectator && role != PlayerRole.None)
+                {
+                    var spectator = room.Players.FirstOrDefault(p => p.Role == PlayerRole.Spectator);
+                    if (spectator != null)
+                    {
+                        spectator.Role = role;
+                        if (_playerSessions.TryGetValue(spectator.Id, out var session))
+                        {
+                            session.Role = role;
+                        }
+                        _logger.LogInformation($"Promoted spectator {spectator.Name} to {role}.");
+
+                        // Notify spectator they have a new role?
+                        // The RoomStateUpdate will handle it, but we might need to re-initialize their game view if they were just watching.
+                        // For now, just updating the role in the room and simulation.
+                    }
+                    else if (room.State == RoomState.Playing && room.Game != null)
+                    {
+                        // No spectator to take over, remove entity
+                        room.Game.RemovePlayerRole(role);
+                    }
+                }
+
                 if (room.State == RoomState.Playing && room.Game != null)
                 {
-                    room.Game.RemovePlayerRole(role);
+                    // Update roles in simulation
+                    room.Game.UpdateAssignedRoles(room.Players.Select(p => p.Role).ToList());
                 }
 
                 BroadcastRoomState(room);
@@ -438,6 +487,53 @@ public class RelayServer : INetEventListener
             // Get all assigned roles
             var assignedRoles = room.Players.Select(p => p.Role).Where(r => r != PlayerRole.None && r != PlayerRole.Spectator).ToList();
             room.Game.Initialize(room.Id, assignedRoles);
+
+            var gameStartEvent = new GameStartEvent
+            {
+                PlayerStates = room.GetPlayerStates(),
+                MapName = "level1.txt"
+            };
+            BroadcastToRoom(room, gameStartEvent);
+        }
+    }
+
+    private void HandleRestartGameRequest(Player player)
+    {
+        var room = player.CurrentRoom;
+        if (room != null && player.IsAdmin)
+        {
+            _logger.LogInformation($"Admin {player.Id} is restarting game in room '{room.Name}'");
+
+            // Shuffle roles among current players (excluding spectators)
+            var players = room.Players.Where(p => p.Role != PlayerRole.Spectator && p.Role != PlayerRole.None).ToList();
+            var roles = players.Select(p => p.Role).ToList();
+
+            // Simple shuffle
+            var rng = new Random();
+            int n = roles.Count;
+            while (n > 1)
+            {
+                n--;
+                int k = rng.Next(n + 1);
+                (roles[k], roles[n]) = (roles[n], roles[k]);
+            }
+
+            for (int i = 0; i < players.Count; i++)
+            {
+                players[i].Role = roles[i];
+                if (_playerSessions.TryGetValue(players[i].Id, out var session))
+                {
+                    session.Role = roles[i];
+                }
+            }
+
+            // Re-initialize game
+            room.Game = new GameSimulation(_mapLoader, _loggerFactory.CreateLogger<GameSimulation>());
+            var assignedRoles = room.Players.Select(p => p.Role).Where(r => r != PlayerRole.None && r != PlayerRole.Spectator).ToList();
+            room.Game.Initialize(room.Id, assignedRoles);
+
+            // Broadcast new state and start event
+            BroadcastRoomState(room);
 
             var gameStartEvent = new GameStartEvent
             {

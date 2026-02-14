@@ -25,6 +25,7 @@ public enum MessageType
     AssignRoleRequest,
     RoleAssigned,
     StartGameRequest,
+    RestartGameRequest, // Added
     GameStartEvent,
     PlayerInput,
     GameState,

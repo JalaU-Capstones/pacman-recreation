@@ -115,7 +115,7 @@ public class MultiplayerGameViewModel : ViewModelBase
 
         TogglePauseCommand = ReactiveCommand.Create(TogglePause);
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
-        RestartGameCommand = ReactiveCommand.Create(() => { /* TODO: Implement restart for host */ });
+        RestartGameCommand = ReactiveCommand.Create(RestartGame);
         SetDirectionCommand = ReactiveCommand.Create<Direction>(SetDirection);
 
         Initialize();
@@ -155,6 +155,8 @@ public class MultiplayerGameViewModel : ViewModelBase
         var inputTimer = new System.Timers.Timer(1000.0 / 60.0);
         inputTimer.Elapsed += (s, e) =>
         {
+            if (IsPaused || IsPausedByHost) return;
+
             // Always send current direction (even if None)
             var inputMessage = new PlayerInputMessage
             {
@@ -187,6 +189,18 @@ public class MultiplayerGameViewModel : ViewModelBase
         if (IsAdmin)
         {
             _networkService.SendPauseGameRequest();
+        }
+    }
+
+    private void RestartGame()
+    {
+        if (IsAdmin)
+        {
+            _networkService.SendRestartGameRequest();
+            // Reset local UI state
+            IsGameOver = false;
+            IsVictory = false;
+            IsLevelComplete = false;
         }
     }
 
@@ -299,10 +313,33 @@ public class MultiplayerGameViewModel : ViewModelBase
                 break;
             case GameEventType.LevelComplete:
                 _audioManager.PlaySoundEffect("level-complete.wav");
+                // For multiplayer level 1 only, this is victory for Pacman
+                if (_myRole == PlayerRole.Pacman)
+                {
+                    IsVictory = true;
+                    FinalScore = Score;
+                }
+                else
+                {
+                    IsGameOver = true; // Ghosts lost
+                }
                 break;
             case GameEventType.GameOver:
                 _audioManager.PlayMusic("game-over-theme.wav");
-                IsGameOver = true;
+                if (_myRole == PlayerRole.Pacman)
+                {
+                    IsGameOver = true; // Pacman lost
+                }
+                else
+                {
+                    IsVictory = true; // Ghosts won
+                    FinalScore = Score; // Show score anyway
+                }
+                break;
+            case GameEventType.Victory:
+                // Explicit victory event if server sends it
+                if (_myRole == PlayerRole.Pacman) IsVictory = true;
+                else IsGameOver = true;
                 break;
         }
         _logger.LogInformation("[MULTIPLAYER] Game event: {EventType}", evt.EventType);
