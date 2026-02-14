@@ -65,8 +65,8 @@ public class RelayServer : INetEventListener
             {
                 _netManager.PollEvents();
 
-                // Update game simulations
-                foreach (var room in _roomManager.GetPublicRooms().Where(r => r.State == RoomState.Playing))
+                // Update game simulations for ALL rooms (including private ones)
+                foreach (var room in _roomManager.GetAllRooms().Where(r => r.State == RoomState.Playing))
                 {
                     if (room.Game != null && !room.IsPaused)
                     {

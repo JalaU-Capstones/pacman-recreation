@@ -105,7 +105,6 @@ namespace PacmanGame.Server.Services
             if (!File.Exists(filePath)) return collectibles;
 
             string[] lines = File.ReadAllLines(filePath);
-            int idCounter = 0;
 
             for (int row = 0; row < lines.Length; row++)
             {
@@ -116,7 +115,9 @@ namespace PacmanGame.Server.Services
 
                     if (type.HasValue)
                     {
-                        collectibles.Add(new Collectible(idCounter++, row, col, type.Value));
+                        // Use (row * 100 + col) to match client ID generation
+                        int id = row * 100 + col;
+                        collectibles.Add(new Collectible(id, row, col, type.Value));
                     }
                 }
             }

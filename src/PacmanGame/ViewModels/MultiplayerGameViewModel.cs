@@ -236,7 +236,15 @@ public class MultiplayerGameViewModel : ViewModelBase
                 ghost.ExactX = ghostState.Position.X;
                 ghost.ExactY = ghostState.Position.Y;
                 ghost.CurrentDirection = (Models.Enums.Direction)ghostState.Position.Direction;
-                ghost.State = (Models.Enums.GhostState)ghostState.State;
+
+                // Map server GhostStateEnum to client GhostState
+                ghost.State = ghostState.State switch
+                {
+                    GhostStateEnum.Normal => Models.Enums.GhostState.Normal,
+                    GhostStateEnum.Vulnerable => Models.Enums.GhostState.Vulnerable,
+                    GhostStateEnum.Eaten => Models.Enums.GhostState.Eaten,
+                    _ => Models.Enums.GhostState.Normal
+                };
             }
         }
 

@@ -39,6 +39,11 @@ public class RoomManager
         return _rooms.Values.Where(r => r.Visibility == RoomVisibility.Public);
     }
 
+    public IEnumerable<Room> GetAllRooms()
+    {
+        return _rooms.Values;
+    }
+
     public Room? GetRoomForPlayer(Player player)
     {
         return _rooms.Values.FirstOrDefault(r => r.Players.Any(p => p.Id == player.Id));
