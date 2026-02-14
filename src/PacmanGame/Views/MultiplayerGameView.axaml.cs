@@ -41,7 +41,7 @@ public partial class MultiplayerGameView : UserControl
         if (direction != Direction.None)
         {
             // Execute the ReactiveCommand with the direction
-            vm.SetDirectionCommand.Execute(direction);
+            vm.SetDirectionCommand.Execute(direction).Subscribe();
             e.Handled = true;
 
             Console.WriteLine($"[CLIENT-VIEW] Key pressed: {e.Key} -> Direction: {direction}");
