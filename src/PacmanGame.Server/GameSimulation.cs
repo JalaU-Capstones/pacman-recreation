@@ -28,6 +28,9 @@ public class GameSimulation
     private readonly Dictionary<PlayerRole, Direction> _playerInputs = new();
     private List<PlayerRole> _assignedRoles = new();
 
+    private float _powerPelletTimer = 0f;
+    private readonly Dictionary<GhostType, (int Row, int Col)> _ghostSpawns = new();
+
     public event Action<GameEventMessage>? OnGameEvent;
 
     public GameSimulation(IMapLoader mapLoader, ILogger<GameSimulation> logger)
@@ -55,8 +58,6 @@ public class GameSimulation
     {
         _assignedRoles = roles;
         _logger.LogInformation($"[SIMULATION] Updated assigned roles: {string.Join(", ", roles)}");
-        // Reload level to spawn/despawn entities based on roles if needed, or just update internal list
-        // For now, we keep entities but only update those with assigned roles
     }
 
     public void RemovePlayerRole(PlayerRole role)
@@ -91,7 +92,6 @@ public class GameSimulation
         _mapWidth = _map.GetLength(1);
 
         _pacman = null;
-        // Always spawn Pacman if the role is assigned
         if (_assignedRoles.Contains(PlayerRole.Pacman))
         {
             var pacmanSpawn = _mapLoader.GetPacmanSpawn($"level{level}.txt");
@@ -100,18 +100,19 @@ public class GameSimulation
         }
 
         _ghosts.Clear();
-        var ghostSpawns = _mapLoader.GetGhostSpawns($"level{level}.txt");
+        _ghostSpawns.Clear();
+        var ghostSpawnsData = _mapLoader.GetGhostSpawns($"level{level}.txt");
 
-        // Helper to add ghost if role is assigned
         void AddGhostIfAssigned(PlayerRole role, GhostType type, int index)
         {
-            if (_assignedRoles.Contains(role) && index < ghostSpawns.Count)
+            if (_assignedRoles.Contains(role) && index < ghostSpawnsData.Count)
             {
-                var spawn = ghostSpawns[index];
+                var spawn = ghostSpawnsData[index];
+                _ghostSpawns[type] = spawn;
                 var ghost = new Ghost(type, spawn.Row, spawn.Col)
                 {
                     CurrentDirection = Direction.None,
-                    IsAIControlled = false // Player controlled
+                    IsAIControlled = false
                 };
                 _ghosts.Add(ghost);
                 _playerInputs[role] = Direction.None;
@@ -125,6 +126,9 @@ public class GameSimulation
 
         _collectibles = _mapLoader.GetCollectibles($"level{level}.txt");
         _currentLevel = level;
+        _lives = 3;
+        _score = 0;
+        _powerPelletTimer = 0;
     }
 
     public void SetPlayerInput(PlayerRole role, Direction direction)
@@ -136,7 +140,6 @@ public class GameSimulation
         }
 
         _playerInputs[role] = direction;
-
         _logger.LogDebug($"[SIMULATION] Input stored: {role} -> {direction}");
     }
 
@@ -144,6 +147,8 @@ public class GameSimulation
     {
         if (_map.Length == 0) return;
         _frameCount++;
+
+        UpdateTimers(deltaTime);
 
         if (_pacman != null) UpdatePacman(_pacman, deltaTime);
 
@@ -153,7 +158,48 @@ public class GameSimulation
         }
 
         CheckCollisions();
-        // CheckGameEnd(); // TODO: Implement game end logic
+    }
+
+    private void UpdateTimers(float deltaTime)
+    {
+        if (_powerPelletTimer > 0)
+        {
+            _powerPelletTimer -= deltaTime;
+            if (_powerPelletTimer <= 0)
+            {
+                foreach (var ghost in _ghosts.Where(g => g.State == GhostStateEnum.Vulnerable))
+                {
+                    ghost.State = GhostStateEnum.Normal;
+                }
+            }
+        }
+
+        foreach (var ghost in _ghosts.Where(g => g.State == GhostStateEnum.Eaten))
+        {
+            ghost.RespawnTimer -= deltaTime;
+            if (ghost.RespawnTimer <= 0)
+            {
+                ghost.State = GhostStateEnum.Normal;
+                // Ensure it's at spawn
+                if (_ghostSpawns.TryGetValue(ghost.Type, out var spawn))
+                {
+                    ghost.X = spawn.Col;
+                    ghost.Y = spawn.Row;
+                }
+            }
+        }
+    }
+
+    private void ResetPacmanOnly()
+    {
+        if (_pacman != null)
+        {
+            var pacmanSpawn = _mapLoader.GetPacmanSpawn($"level{_currentLevel}.txt");
+            _pacman.X = pacmanSpawn.Col;
+            _pacman.Y = pacmanSpawn.Row;
+            _pacman.CurrentDirection = Direction.None;
+            _playerInputs[PlayerRole.Pacman] = Direction.None;
+        }
     }
 
     private void UpdatePacman(Pacman pacman, float deltaTime)
@@ -165,91 +211,46 @@ public class GameSimulation
 
     private void UpdateGhost(Ghost ghost, float deltaTime)
     {
-        if (ghost.State == GhostStateEnum.Eaten) return;
+        if (ghost.State == GhostStateEnum.Eaten) return; // Wait for respawn timer
 
-        if (ghost.IsAIControlled)
+        if (ghost.IsAIControlled) return;
+
+        PlayerRole ghostRole = GetRoleForGhost(ghost.Type);
+        if (!_playerInputs.TryGetValue(ghostRole, out var desiredDirection))
         {
-            // TODO: Implement AI logic here
-            // For now, do nothing or simple random movement if needed
+            ghost.CurrentDirection = Direction.None;
             return;
         }
-        else
-        {
-            // Player controlled logic
-            PlayerRole ghostRole = GetRoleForGhost(ghost.Type);
 
-            // Check if this ghost has player input
-            if (!_playerInputs.TryGetValue(ghostRole, out var desiredDirection))
-            {
-                // NO INPUT -> Ghost must STOP
-                ghost.CurrentDirection = Direction.None;
-                ghost.X = (float)Math.Round(ghost.X);
-                ghost.Y = (float)Math.Round(ghost.Y);
-
-                _logger.LogDebug($"[SIMULATION] Ghost {ghost.Type} has no input - stopped at ({ghost.X}, {ghost.Y})");
-                return; // EXIT EARLY, do NOT move
-            }
-
-            // Has input -> process movement
-            _logger.LogDebug($"[SIMULATION] Ghost {ghost.Type} received input: {desiredDirection}");
-
-            HandleTurning(ghost, ghostRole, desiredDirection);
-
-            float speed = GetGhostSpeed(ghost);
-            MoveEntity(ghost, speed, deltaTime);
-        }
+        HandleTurning(ghost, ghostRole, desiredDirection);
+        float speed = GetGhostSpeed(ghost);
+        MoveEntity(ghost, speed, deltaTime);
     }
 
     private void HandleTurning(Entity entity, PlayerRole role, Direction? overrideDirection = null)
     {
-        Direction desiredDirection;
-        if (overrideDirection.HasValue)
-        {
-            desiredDirection = overrideDirection.Value;
-        }
-        else if (!_playerInputs.TryGetValue(role, out desiredDirection))
-        {
-            desiredDirection = Direction.None;
-        }
-
+        Direction desiredDirection = overrideDirection ?? _playerInputs.GetValueOrDefault(role, Direction.None);
         if (desiredDirection == Direction.None) return;
 
-        // If we want to turn, check if we can
         if (desiredDirection != entity.CurrentDirection)
         {
-            // Center check
             float roundedX = (float)Math.Round(entity.X);
             float roundedY = (float)Math.Round(entity.Y);
-
-            // Tolerance for being "at the center" of a tile
             float tolerance = 0.15f;
-
-            bool isAtCenter = Math.Abs(entity.X - roundedX) < tolerance &&
-                              Math.Abs(entity.Y - roundedY) < tolerance;
-
+            bool isAtCenter = Math.Abs(entity.X - roundedX) < tolerance && Math.Abs(entity.Y - roundedY) < tolerance;
             bool isOpposite = IsOppositeDirection(entity.CurrentDirection, desiredDirection);
 
             if (isAtCenter || isOpposite)
             {
                 var (dx, dy) = GetDirectionDeltas(desiredDirection);
-
-                // For center turn, we need to ensure we are exactly at center to turn cleanly
-                if (isAtCenter)
+                if (IsValidMove(roundedX + dx, roundedY + dy))
                 {
-                    // Check if we can move in the new direction
-                    if (IsValidMove(roundedX + dx, roundedY + dy))
+                    if (isAtCenter)
                     {
-                        // Snap to center to avoid drift
                         entity.X = roundedX;
                         entity.Y = roundedY;
-                        entity.CurrentDirection = desiredDirection;
-                        _logger.LogDebug($"[SIMULATION] {role} turned to {desiredDirection} at ({entity.X}, {entity.Y})");
                     }
-                }
-                else if (isOpposite)
-                {
                     entity.CurrentDirection = desiredDirection;
-                    _logger.LogDebug($"[SIMULATION] {role} reversed to {desiredDirection}");
                 }
             }
         }
@@ -260,88 +261,45 @@ public class GameSimulation
         if (entity.CurrentDirection == Direction.None) return;
 
         var (dx, dy) = GetDirectionDeltas(entity.CurrentDirection);
-
         float nextX = entity.X + dx * speed * deltaTime;
         float nextY = entity.Y + dy * speed * deltaTime;
 
-        // Strict collision enforcement: Check if the move is valid BEFORE updating
         if (IsValidMove(nextX, nextY))
         {
-            // Safe to move
             entity.X = nextX;
             entity.Y = nextY;
-            _logger.LogDebug($"[SIMULATION] Moving to ({nextX}, {nextY})");
         }
         else
         {
-            // Hit wall -> stop at current tile center
             entity.X = (float)Math.Round(entity.X);
             entity.Y = (float)Math.Round(entity.Y);
             entity.CurrentDirection = Direction.None;
-
-            string name = entity is Ghost g ? g.Type.ToString() : "Pacman";
-            _logger.LogWarning($"[COLLISION] {name} blocked by wall at ({entity.X}, {entity.Y})");
         }
     }
 
     private bool IsValidMove(float x, float y)
     {
-        if (_map.Length == 0)
-        {
-            _logger.LogCritical("[SIMULATION] Map is empty during IsValidMove check!");
-            return false;
-        }
-
-        // Bounds check
-        if (x < 0 || x >= _mapWidth || y < 0 || y >= _mapHeight)
-            return false;
-
-        // Convert to tile coordinates
+        if (_map.Length == 0) return false;
+        if (x < 0 || x >= _mapWidth || y < 0 || y >= _mapHeight) return false;
         int tileX = (int)Math.Round(x);
         int tileY = (int)Math.Round(y);
-
-        // Double-check bounds after Round
-        if (tileX < 0 || tileX >= _mapWidth || tileY < 0 || tileY >= _mapHeight)
-            return false;
-
-        // Check tile type (Map is [row, col] = [y, x])
+        if (tileX < 0 || tileX >= _mapWidth || tileY < 0 || tileY >= _mapHeight) return false;
         return _map[tileY, tileX] != TileType.Wall;
     }
 
     private float GetGhostSpeed(Ghost ghost)
     {
-        // Base speed for Normal state
-        float baseSpeed = _currentLevel switch
-        {
-            1 => 4.0f,  // Level 1: Moderate speed
-            2 => 4.2f,  // Level 2: 5% faster
-            3 => 4.5f,  // Level 3: 12.5% faster
-            _ => 4.0f
-        };
-
-        // Adjust for ghost state
-        float speed = ghost.State switch
+        float baseSpeed = 4.0f;
+        return ghost.State switch
         {
             GhostStateEnum.Normal => baseSpeed,
-            GhostStateEnum.Vulnerable => baseSpeed * 0.5f,  // 50% speed when vulnerable
-            GhostStateEnum.Eaten => baseSpeed * 1.5f,       // 150% speed returning to spawn
+            GhostStateEnum.Vulnerable => baseSpeed * 0.5f,
+            GhostStateEnum.Eaten => baseSpeed * 1.5f,
             _ => baseSpeed
         };
-
-        return speed;
     }
 
-    private float GetPacmanSpeed()
-    {
-        // Pac-Man speed (slightly slower than ghosts for balance)
-        return _currentLevel switch
-        {
-            1 => 3.8f,
-            2 => 4.0f,
-            3 => 4.2f,
-            _ => 3.8f
-        };
-    }
+    private float GetPacmanSpeed() => 3.8f;
 
     private (int dx, int dy) GetDirectionDeltas(Direction direction) => direction switch
     {
@@ -354,11 +312,10 @@ public class GameSimulation
 
     private bool IsOppositeDirection(Direction current, Direction desired)
     {
-        if (current == Direction.Up && desired == Direction.Down) return true;
-        if (current == Direction.Down && desired == Direction.Up) return true;
-        if (current == Direction.Left && desired == Direction.Right) return true;
-        if (current == Direction.Right && desired == Direction.Left) return true;
-        return false;
+        return (current == Direction.Up && desired == Direction.Down) ||
+               (current == Direction.Down && desired == Direction.Up) ||
+               (current == Direction.Left && desired == Direction.Right) ||
+               (current == Direction.Right && desired == Direction.Left);
     }
 
     private PlayerRole GetRoleForGhost(GhostType type) => type switch
@@ -374,21 +331,30 @@ public class GameSimulation
     {
         if (_pacman == null) return;
 
-        // Pacman vs Dots
-        // Simple distance check
         for (int i = _collectibles.Count - 1; i >= 0; i--)
         {
             var c = _collectibles[i];
-            // Use X and Y from Entity base class instead of Col and Row
             if (c.IsActive && Math.Abs(_pacman.X - c.X) < 0.5f && Math.Abs(_pacman.Y - c.Y) < 0.5f)
             {
                 c.IsActive = false;
-                _score += 10; // TODO: Different scores for different items
-                OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.DotCollected });
+                if (c.Type == CollectibleType.PowerPellet)
+                {
+                    _score += 50;
+                    _powerPelletTimer = 6f;
+                    foreach (var ghost in _ghosts.Where(g => g.State == GhostStateEnum.Normal))
+                    {
+                        ghost.State = GhostStateEnum.Vulnerable;
+                    }
+                    OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.PowerPelletCollected });
+                }
+                else
+                {
+                    _score += 10;
+                    OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.DotCollected });
+                }
             }
         }
 
-        // Pacman vs Ghosts
         foreach (var ghost in _ghosts)
         {
             if (Math.Abs(_pacman.X - ghost.X) < 0.5f && Math.Abs(_pacman.Y - ghost.Y) < 0.5f)
@@ -396,15 +362,27 @@ public class GameSimulation
                 if (ghost.State == GhostStateEnum.Vulnerable)
                 {
                     ghost.State = GhostStateEnum.Eaten;
+                    ghost.RespawnTimer = 3f;
+                    if (_ghostSpawns.TryGetValue(ghost.Type, out var spawn))
+                    {
+                        ghost.X = spawn.Col;
+                        ghost.Y = spawn.Row;
+                    }
                     _score += 200;
                     OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.GhostEaten });
                 }
                 else if (ghost.State == GhostStateEnum.Normal)
                 {
-                    // Pacman dies
                     _lives--;
                     OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.PacmanDied });
-                    // Reset positions?
+                    if (_lives <= 0)
+                    {
+                        OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.GameOver });
+                    }
+                    else
+                    {
+                        ResetPacmanOnly();
+                    }
                 }
             }
         }
