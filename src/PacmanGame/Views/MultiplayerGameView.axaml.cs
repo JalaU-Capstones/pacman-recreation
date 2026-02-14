@@ -48,30 +48,6 @@ public partial class MultiplayerGameView : UserControl
         }
     }
 
-    protected override void OnKeyUp(KeyEventArgs e)
-    {
-        base.OnKeyUp(e);
-
-        if (DataContext is not MultiplayerGameViewModel vm) return;
-
-        var direction = e.Key switch
-        {
-            Key.Up => Direction.Up,
-            Key.Down => Direction.Down,
-            Key.Left => Direction.Left,
-            Key.Right => Direction.Right,
-            _ => Direction.None
-        };
-
-        // Only stop if the released key matches the current direction
-        if (direction != Direction.None && direction == vm.CurrentDirection)
-        {
-            vm.SetDirectionCommand.Execute(Direction.None);
-            e.Handled = true;
-            Console.WriteLine($"[CLIENT-VIEW] Key released: {e.Key} -> Direction: None");
-        }
-    }
-
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
