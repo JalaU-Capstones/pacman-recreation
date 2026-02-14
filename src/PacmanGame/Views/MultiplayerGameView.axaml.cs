@@ -18,6 +18,7 @@ public partial class MultiplayerGameView : UserControl
         // Replicate the working single-player formula:
         this.Focusable = true;
         this.Loaded += (s, e) => this.Focus();
+        this.PointerPressed += (s, e) => this.Focus();
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -44,6 +45,30 @@ public partial class MultiplayerGameView : UserControl
             e.Handled = true;
 
             Console.WriteLine($"[CLIENT-VIEW] Key pressed: {e.Key} -> Direction: {direction}");
+        }
+    }
+
+    protected override void OnKeyUp(KeyEventArgs e)
+    {
+        base.OnKeyUp(e);
+
+        if (DataContext is not MultiplayerGameViewModel vm) return;
+
+        var direction = e.Key switch
+        {
+            Key.Up => Direction.Up,
+            Key.Down => Direction.Down,
+            Key.Left => Direction.Left,
+            Key.Right => Direction.Right,
+            _ => Direction.None
+        };
+
+        // Only stop if the released key matches the current direction
+        if (direction != Direction.None && direction == vm.CurrentDirection)
+        {
+            vm.SetDirectionCommand.Execute(Direction.None);
+            e.Handled = true;
+            Console.WriteLine($"[CLIENT-VIEW] Key released: {e.Key} -> Direction: None");
         }
     }
 

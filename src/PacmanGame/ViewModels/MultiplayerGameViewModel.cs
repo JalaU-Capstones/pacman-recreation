@@ -63,6 +63,8 @@ public class MultiplayerGameViewModel : ViewModelBase
     public bool IsAdmin { get => _isAdmin; set => this.RaiseAndSetIfChanged(ref _isAdmin, value); }
     public string PauseButtonText => IsPaused ? "RESUME" : "PAUSE";
 
+    public Direction CurrentDirection => _currentDirection;
+
     public string MyRoleText => _myRole switch
     {
         PlayerRole.Pacman => "YOU ARE: PAC-MAN",
