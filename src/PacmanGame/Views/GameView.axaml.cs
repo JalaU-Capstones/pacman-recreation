@@ -34,26 +34,42 @@ public partial class GameView : UserControl
 
         if (DataContext is not (GameViewModel or MultiplayerGameViewModel)) return;
 
-        var vm = DataContext as ViewModelBase;
-        var engine = vm switch
+        // We need to handle different view models separately or use a common interface if available
+        // For now, let's just check the type
+        IGameEngine? engine = null;
+        if (DataContext is GameViewModel gvm)
         {
-            GameViewModel gvm => gvm.Engine,
-            MultiplayerGameViewModel mgvm => mgvm.Engine,
-            _ => null
-        };
-
-        if (engine == null || vm == null) return;
-
-        if (vm is GameViewModel gameVm)
-        {
-            gameVm.StartGame();
+            engine = gvm.Engine;
+            gvm.StartGame();
         }
+        else if (DataContext is MultiplayerGameViewModel mgvm)
+        {
+            engine = mgvm.Engine;
+        }
+
+        if (engine == null) return;
 
         _gameLoopTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(1000.0 / Constants.TargetFps)
         };
-        _gameLoopTimer.Tick += (s, e) => GameLoop_Tick(vm, engine);
+
+        // Capture the current DataContext to avoid closure issues if it changes (though unlikely in this lifecycle)
+        var currentVm = DataContext;
+        _gameLoopTimer.Tick += (s, args) =>
+        {
+             if (currentVm is GameViewModel g && g.IsGameRunning && !g.IsPaused)
+             {
+                 engine.Update(Constants.FixedDeltaTime);
+             }
+             else if (currentVm is MultiplayerGameViewModel m && m.IsGameRunning)
+             {
+                 engine.Update(Constants.FixedDeltaTime);
+             }
+
+             GameCanvas.Children.Clear();
+             engine.Render(GameCanvas);
+        };
         _gameLoopTimer.Start();
 
         // Give focus to this UserControl so KeyDown events are captured
@@ -65,21 +81,6 @@ public partial class GameView : UserControl
         base.OnDetachedFromVisualTree(e);
         _gameLoopTimer?.Stop();
         _gameLoopTimer = null;
-    }
-
-    private void GameLoop_Tick(ViewModelBase vm, IGameEngine engine)
-    {
-        if (vm is GameViewModel gvm && gvm.IsGameRunning && !gvm.IsPaused)
-        {
-            engine.Update(Constants.FixedDeltaTime);
-        }
-        else if (vm is MultiplayerGameViewModel mgvm && mgvm.IsGameRunning)
-        {
-            engine.Update(Constants.FixedDeltaTime);
-        }
-
-        GameCanvas.Children.Clear();
-        engine.Render(GameCanvas);
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
@@ -111,16 +112,18 @@ public partial class GameView : UserControl
         }
         else if (DataContext is MultiplayerGameViewModel mgvm)
         {
+            // Map Avalonia Key to LocalDirection (which is what the ViewModel expects)
+            // The ViewModel expects PacmanGame.Models.Enums.Direction
             var direction = e.Key switch
             {
-                Key.Up => SharedDirection.Up,
-                Key.Down => SharedDirection.Down,
-                Key.Left => SharedDirection.Left,
-                Key.Right => SharedDirection.Right,
-                _ => SharedDirection.None
+                Key.Up => LocalDirection.Up,
+                Key.Down => LocalDirection.Down,
+                Key.Left => LocalDirection.Left,
+                Key.Right => LocalDirection.Right,
+                _ => LocalDirection.None
             };
 
-            if (direction != SharedDirection.None)
+            if (direction != LocalDirection.None)
             {
                 mgvm.SetDirectionCommand.Execute(direction).Subscribe();
                 e.Handled = true;

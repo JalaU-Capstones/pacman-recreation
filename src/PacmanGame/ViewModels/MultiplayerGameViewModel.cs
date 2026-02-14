@@ -24,6 +24,8 @@ public class MultiplayerGameViewModel : ViewModelBase
     private readonly int _roomId;
     private readonly PlayerRole _myRole;
     private bool _isAdmin;
+    private int _myPlayerId;
+    private Direction _currentDirection = Direction.None;
 
     private int _score;
     public int Score { get => _score; set => this.RaiseAndSetIfChanged(ref _score, value); }
@@ -84,7 +86,7 @@ public class MultiplayerGameViewModel : ViewModelBase
     public ICommand TogglePauseCommand { get; }
     public ICommand ReturnToMenuCommand { get; }
     public ICommand RestartGameCommand { get; }
-    public ReactiveCommand<Direction, Unit> SetDirectionCommand { get; }
+    public ReactiveCommand<PacmanGame.Models.Enums.Direction, Unit> SetDirectionCommand { get; }
 
     public IGameEngine Engine => _gameEngine;
 
@@ -96,7 +98,8 @@ public class MultiplayerGameViewModel : ViewModelBase
         IGameEngine gameEngine,
         IAudioManager audioManager,
         ILogger<MultiplayerGameViewModel> logger,
-        NetworkService networkService)
+        NetworkService networkService,
+        int myPlayerId)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _roomId = roomId;
@@ -106,13 +109,15 @@ public class MultiplayerGameViewModel : ViewModelBase
         _audioManager = audioManager;
         _logger = logger;
         _networkService = networkService;
+        _myPlayerId = myPlayerId;
 
         TogglePauseCommand = ReactiveCommand.Create(TogglePause);
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
         RestartGameCommand = ReactiveCommand.Create(() => { /* TODO: Implement restart for host */ });
-        SetDirectionCommand = ReactiveCommand.Create<Direction>(SendEntityDirection);
+        SetDirectionCommand = ReactiveCommand.Create<PacmanGame.Models.Enums.Direction>(SetDirection);
 
         Initialize();
+        StartInputPolling();
     }
 
     private void Initialize()
@@ -135,50 +140,43 @@ public class MultiplayerGameViewModel : ViewModelBase
         _logger.LogInformation("[MULTIPLAYER] Game initialized successfully");
     }
 
+    private void SetDirection(PacmanGame.Models.Enums.Direction direction)
+    {
+        _currentDirection = (Direction)direction;
+        _logger.LogInformation($"[CLIENT-VM] Direction set to: {direction}");
+    }
+
+    private void StartInputPolling()
+    {
+        // Send input to server at 60 FPS
+        var inputTimer = new System.Timers.Timer(1000.0 / 60.0);
+        inputTimer.Elapsed += (s, e) =>
+        {
+            // Always send current direction (even if None)
+            var inputMessage = new PlayerInputMessage
+            {
+                RoomId = _roomId,
+                PlayerId = _myPlayerId,
+                Direction = _currentDirection,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            };
+
+            _networkService.SendPlayerInput(inputMessage);
+
+            if (_currentDirection != Direction.None)
+            {
+                _logger.LogDebug($"[CLIENT-VM] Sending input: {_currentDirection}");
+            }
+        };
+        inputTimer.Start();
+
+        _logger.LogInformation($"[CLIENT-VM] Input polling started for {_myRole}");
+    }
+
     public void Render(Canvas canvas)
     {
         if (IsPausedByHost) return;
-
-        // Simple interpolation for smoother movement
-        foreach (var ghost in _gameEngine.Ghosts)
-        {
-            // Lerp logic can be added here if needed, for now direct update
-        }
         _gameEngine.Render(canvas);
-    }
-
-    public void HandleKeyPress(Key key)
-    {
-        _logger.LogDebug("Key Pressed: {Key}", key);
-        var direction = key switch
-        {
-            Key.Up => Direction.Up,
-            Key.Down => Direction.Down,
-            Key.Left => Direction.Left,
-            Key.Right => Direction.Right,
-            _ => Direction.None
-        };
-
-        if (direction != Direction.None)
-        {
-            SetDirectionCommand.Execute(direction).Subscribe();
-        }
-    }
-
-    private void SendEntityDirection(Direction direction)
-    {
-        if (_myRole == PlayerRole.Spectator || _myRole == PlayerRole.None) return;
-
-        _logger.LogDebug("Sending input for {Role}: {Direction}", _myRole, direction);
-
-        var inputMessage = new PlayerInputMessage
-        {
-            RoomId = _roomId,
-            Role = _myRole,
-            Direction = direction,
-            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-        };
-        _networkService.SendPlayerInput(inputMessage);
     }
 
     private void TogglePause()

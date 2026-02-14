@@ -27,7 +27,7 @@ namespace PacmanGame.Shared;
 [Union(20, typeof(GamePausedEvent))]
 public abstract class NetworkMessageBase
 {
-    [Key(0)]
+    [IgnoreMember]
     public abstract MessageType Type { get; }
 }
 
@@ -43,82 +43,89 @@ public class RoomDetails
 [MessagePackObject]
 public class CreateRoomRequest : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.CreateRoomRequest;
-    [Key(1)]
+    [Key(0)]
     public string RoomName { get; set; } = string.Empty;
-    [Key(2)]
+    [Key(1)]
     public RoomVisibility Visibility { get; set; }
-    [Key(3)]
+    [Key(2)]
     public string? Password { get; set; }
-    [Key(4)]
+    [Key(3)]
     public string PlayerName { get; set; } = string.Empty;
 }
 
 [MessagePackObject]
 public class CreateRoomResponse : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.CreateRoomResponse;
-    [Key(1)]
+    [Key(0)]
     public bool Success { get; set; }
-    [Key(2)]
+    [Key(1)]
     public string? Message { get; set; }
-    [Key(3)]
+    [Key(2)]
     public int RoomId { get; set; }
-    [Key(4)]
+    [Key(3)]
     public string? RoomName { get; set; }
-    [Key(5)]
+    [Key(4)]
     public RoomVisibility Visibility { get; set; }
-    [Key(6)]
+    [Key(5)]
     public List<PlayerState> Players { get; set; } = new();
 }
 
 [MessagePackObject]
 public class JoinRoomRequest : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.JoinRoomRequest;
-    [Key(1)]
+    [Key(0)]
     public string RoomName { get; set; } = string.Empty;
-    [Key(2)]
+    [Key(1)]
     public string? Password { get; set; }
-    [Key(3)]
+    [Key(2)]
     public string PlayerName { get; set; } = string.Empty;
 }
 
 [MessagePackObject]
 public class JoinRoomResponse : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.JoinRoomResponse;
-    [Key(1)]
+    [Key(0)]
     public bool Success { get; set; }
-    [Key(2)]
+    [Key(1)]
     public string? Message { get; set; }
-    [Key(3)]
+    [Key(2)]
     public int RoomId { get; set; }
-    [Key(4)]
+    [Key(3)]
     public string? RoomName { get; set; }
-    [Key(5)]
+    [Key(4)]
     public RoomVisibility Visibility { get; set; }
-    [Key(6)]
+    [Key(5)]
     public List<PlayerState> Players { get; set; } = new();
 }
 
 [MessagePackObject]
 public class LeaveRoomRequest : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.LeaveRoomRequest;
 }
 
 [MessagePackObject]
 public class LeaveRoomConfirmation : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.LeaveRoomConfirmation;
 }
 
 [MessagePackObject]
 public class RoomStateUpdateMessage : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.RoomStateUpdate;
-    [Key(1)]
+    [Key(0)]
     public List<PlayerState> Players { get; set; } = new();
 }
 
@@ -142,14 +149,16 @@ public class RoomInfo
 [MessagePackObject]
 public class GetRoomListRequest : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.GetRoomListRequest;
 }
 
 [MessagePackObject]
 public class GetRoomListResponse : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.GetRoomListResponse;
-    [Key(1)]
+    [Key(0)]
     public List<RoomInfo> Rooms { get; set; } = new();
 }
 
@@ -160,36 +169,40 @@ public class GetRoomListResponse : NetworkMessageBase
 [MessagePackObject]
 public class KickPlayerRequest : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.KickPlayerRequest;
-    [Key(1)]
+    [Key(0)]
     public int PlayerIdToKick { get; set; }
 }
 
 [MessagePackObject]
 public class KickedEvent : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.Kicked;
-    [Key(1)]
+    [Key(0)]
     public string Reason { get; set; } = string.Empty;
 }
 
 [MessagePackObject]
 public class AssignRoleRequest : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.AssignRoleRequest;
-    [Key(1)]
+    [Key(0)]
     public int PlayerId { get; set; }
-    [Key(2)]
+    [Key(1)]
     public PlayerRole Role { get; set; }
 }
 
 [MessagePackObject]
 public class RoleAssignedEvent : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.RoleAssigned;
-    [Key(1)]
+    [Key(0)]
     public int PlayerId { get; set; }
-    [Key(2)]
+    [Key(1)]
     public PlayerRole Role { get; set; }
 }
 
@@ -245,9 +258,9 @@ public enum GhostStateEnum
 public class GhostState
 {
     [Key(0)]
-    public string Type { get; set; }
+    public string Type { get; set; } = string.Empty;
     [Key(1)]
-    public EntityPosition Position { get; set; }
+    public EntityPosition Position { get; set; } = new();
     [Key(2)]
     public GhostStateEnum State { get; set; }
 }
@@ -256,76 +269,84 @@ public class GhostState
 [MessagePackObject]
 public class StartGameRequest : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.StartGameRequest;
 }
 
 [MessagePackObject]
 public class GameStartEvent : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.GameStartEvent;
-    [Key(1)]
+    [Key(0)]
     public List<PlayerState> PlayerStates { get; set; } = new();
-    [Key(2)]
+    [Key(1)]
     public string MapName { get; set; } = string.Empty;
 }
 
 [MessagePackObject]
 public class PlayerInputMessage : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.PlayerInput;
-    [Key(1)]
+    [Key(0)]
     public int RoomId { get; set; }
+    [Key(1)]
+    public int PlayerId { get; set; }
     [Key(2)]
     public Direction Direction { get; set; }
     [Key(3)]
-    public PlayerRole Role { get; set; }
-    [Key(4)]
     public long Timestamp { get; set; }
 }
 
 [MessagePackObject]
 public class GameStateMessage : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.GameState;
-    [Key(1)]
+    [Key(0)]
     public EntityPosition? PacmanPosition { get; set; }
-    [Key(2)]
+    [Key(1)]
     public List<GhostState> Ghosts { get; set; } = new();
-    [Key(3)]
+    [Key(2)]
     public List<int> CollectedItems { get; set; } = new();
-    [Key(4)]
+    [Key(3)]
     public int Score { get; set; }
-    [Key(5)]
+    [Key(4)]
     public int Lives { get; set; }
-    [Key(6)]
+    [Key(5)]
     public int CurrentLevel { get; set; }
 }
 
 [MessagePackObject]
 public class GameEventMessage : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.GameEvent;
-    [Key(1)]
+    [Key(0)]
     public GameEventType EventType { get; set; }
 }
 
 [MessagePackObject]
 public class PauseGameRequest : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.PauseGameRequest;
 }
 
 [MessagePackObject]
 public class ResumeGameRequest : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.ResumeGameRequest;
 }
 
 [MessagePackObject]
 public class GamePausedEvent : NetworkMessageBase
 {
+    [IgnoreMember]
     public override MessageType Type => MessageType.GamePausedEvent;
-    [Key(1)]
+    [Key(0)]
     public bool IsPaused { get; set; }
 }
 

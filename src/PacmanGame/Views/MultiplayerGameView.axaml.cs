@@ -22,10 +22,27 @@ public partial class MultiplayerGameView : UserControl
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        // Send the key directly to the ViewModel just like in normal mode
-        if (DataContext is MultiplayerGameViewModel vm)
+
+        if (DataContext is not MultiplayerGameViewModel vm) return;
+
+        // Map key to direction
+        var direction = e.Key switch
         {
-            vm.HandleKeyPress(e.Key);
+            Key.Up => PacmanGame.Models.Enums.Direction.Up,
+            Key.Down => PacmanGame.Models.Enums.Direction.Down,
+            Key.Left => PacmanGame.Models.Enums.Direction.Left,
+            Key.Right => PacmanGame.Models.Enums.Direction.Right,
+            Key.Escape => PacmanGame.Models.Enums.Direction.None, // For pause/menu
+            _ => PacmanGame.Models.Enums.Direction.None
+        };
+
+        if (direction != PacmanGame.Models.Enums.Direction.None)
+        {
+            // Execute the ReactiveCommand with the direction
+            vm.SetDirectionCommand.Execute(direction);
+            e.Handled = true;
+
+            Console.WriteLine($"[CLIENT-VIEW] Key pressed: {e.Key} -> Direction: {direction}");
         }
     }
 

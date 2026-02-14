@@ -20,6 +20,7 @@ public class NetworkService : INetEventListener
     private NetPeer? _server;
     private bool _isConnected;
     private bool _isStarted;
+    private readonly MessagePackSerializerOptions _serializerOptions;
 
     // Room events
     public event Action<int, string, RoomVisibility, List<PlayerState>>? OnJoinedRoom;
@@ -39,6 +40,8 @@ public class NetworkService : INetEventListener
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _netManager = new NetManager(this);
+        // Use StandardResolver to support [MessagePackObject] and [Union] attributes
+        _serializerOptions = MessagePack.MessagePackSerializer.DefaultOptions.WithResolver(MessagePack.Resolvers.StandardResolver.Instance);
     }
 
     public void Start()
@@ -87,7 +90,7 @@ public class NetworkService : INetEventListener
         _logger.LogInformation("Network service stopped.");
     }
 
-    private void SendMessage(NetworkMessageBase message)
+    private void SendMessage(NetworkMessageBase message, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
     {
         if (_server == null || _server.ConnectionState != ConnectionState.Connected)
         {
@@ -97,13 +100,13 @@ public class NetworkService : INetEventListener
 
         try
         {
-            var bytes = MessagePackSerializer.Serialize(message, MessagePackSerializerOptions.Standard);
-            _logger.LogDebug($"Sending message type: {message.Type}");
-            _server.Send(bytes, DeliveryMethod.ReliableOrdered);
+            var bytes = MessagePackSerializer.Serialize(message, _serializerOptions);
+            _logger.LogDebug($"Sending message type: {message.GetType().Name}");
+            _server.Send(bytes, deliveryMethod);
         }
         catch (Exception ex)
         {
-            _logger.LogError("Error serializing message: {Exception}", ex);
+            _logger.LogError(ex, "Error serializing message");
         }
     }
 
@@ -113,7 +116,29 @@ public class NetworkService : INetEventListener
     public void SendAssignRoleRequest(int playerId, PlayerRole role) => SendMessage(new AssignRoleRequest { PlayerId = playerId, Role = role });
     public void SendKickPlayerRequest(int playerId) => SendMessage(new KickPlayerRequest { PlayerIdToKick = playerId });
     public void SendStartGameRequest() => SendMessage(new StartGameRequest());
-    public void SendPlayerInput(PlayerInputMessage input) => SendMessage(input);
+
+    public void SendPlayerInput(PlayerInputMessage input)
+    {
+        if (!IsConnected || _netManager == null)
+        {
+            _logger.LogWarning("[NETWORK] Cannot send input - not connected");
+            return;
+        }
+
+        try
+        {
+            var bytes = MessagePackSerializer.Serialize<NetworkMessageBase>(input, _serializerOptions);
+
+            _logger.LogDebug($"[NETWORK] Sending PlayerInputMessage: RoomId={input.RoomId}, PlayerId={input.PlayerId}, Direction={input.Direction}");
+
+            _netManager.FirstPeer?.Send(bytes, DeliveryMethod.Unreliable);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NETWORK] Failed to send player input");
+        }
+    }
+
     public void SendGetRoomListRequest() => SendMessage(new GetRoomListRequest());
     public void SendPauseGameRequest() => SendMessage(new PauseGameRequest());
 
@@ -138,7 +163,8 @@ public class NetworkService : INetEventListener
         _logger.LogDebug("Raw data received. Length: {Length}", bytes.Length);
         try
         {
-            var baseMessage = MessagePackSerializer.Deserialize<NetworkMessageBase>(bytes, MessagePackSerializerOptions.Standard);
+             var baseMessage = MessagePackSerializer.Deserialize<NetworkMessageBase>(bytes, _serializerOptions);
+
             Dispatcher.UIThread.Post(() =>
             {
                 try
@@ -147,19 +173,19 @@ public class NetworkService : INetEventListener
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("Error handling message {MessageType}: {Exception}", baseMessage.Type, ex);
+                    _logger.LogError(ex, "Error handling message {MessageType}", baseMessage.GetType().Name);
                 }
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError("[FATAL] Failed to deserialize message. Length: {Length}. Exception: {Exception}", bytes.Length, ex);
+            _logger.LogError(ex, "[FATAL] Failed to deserialize message. Length: {Length}", bytes.Length);
         }
     }
 
     private void HandleMessage(NetworkMessageBase message)
     {
-        _logger.LogDebug("Received message type: {MessageType}", message.Type);
+        _logger.LogDebug("Received message type: {MessageType}", message.GetType().Name);
         switch (message)
         {
             case CreateRoomResponse createResponse:

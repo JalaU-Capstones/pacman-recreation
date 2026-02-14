@@ -21,13 +21,26 @@ public class RelayServer : INetEventListener
     private readonly IMapLoader _mapLoader;
     private CancellationTokenSource? _cancellationTokenSource;
 
+    // Mapping to track player sessions and roles
+    private class PlayerSession
+    {
+        public int PlayerId { get; set; }
+        public int RoomId { get; set; }
+        public PlayerRole Role { get; set; }
+        public NetPeer Peer { get; set; } = null!;
+        public string PlayerName { get; set; } = string.Empty;
+    }
+
+    private ConcurrentDictionary<int, PlayerSession> _playerSessions = new();
+
     public RelayServer(ILogger<RelayServer> logger, ILoggerFactory loggerFactory)
     {
         _netManager = new NetManager(this) { DisconnectTimeout = 30000 }; // Increased timeout
         _roomManager = new RoomManager();
         _logger = logger;
         _loggerFactory = loggerFactory;
-        _serializerOptions = MessagePack.MessagePackSerializer.DefaultOptions.WithResolver(MessagePack.Resolvers.ContractlessStandardResolver.Instance);
+        // Use StandardResolver to support [MessagePackObject] and [Union] attributes
+        _serializerOptions = MessagePack.MessagePackSerializer.DefaultOptions.WithResolver(MessagePack.Resolvers.StandardResolver.Instance);
         _mapLoader = new MapLoader(_loggerFactory.CreateLogger<MapLoader>());
     }
 
@@ -51,6 +64,8 @@ public class RelayServer : INetEventListener
             while (!token.IsCancellationRequested)
             {
                 _netManager.PollEvents();
+
+                // Update game simulations
                 foreach (var room in _roomManager.GetPublicRooms().Where(r => r.State == RoomState.Playing))
                 {
                     if (room.Game != null && !room.IsPaused)
@@ -85,6 +100,8 @@ public class RelayServer : INetEventListener
         if (_connectedPlayers.TryRemove(peer, out var player))
         {
             HandleLeaveRoomRequest(player);
+            // Remove session
+            _playerSessions.TryRemove(player.Id, out _);
         }
     }
 
@@ -139,19 +156,38 @@ public class RelayServer : INetEventListener
 
     private void HandlePlayerInput(Player player, PlayerInputMessage input)
     {
-        var room = player.CurrentRoom;
-        if (room?.Game != null)
+        // Get player session to find their role
+        if (!_playerSessions.TryGetValue(input.PlayerId, out var session))
         {
-            // Verify that the player sending the input actually owns the role specified in the message
-            if (player.Role == input.Role)
-            {
-                room.Game.SetPlayerInput(player.Role, input.Direction);
-            }
-            else
-            {
-                _logger.LogWarning($"Player {player.Id} ({player.Name}) tried to send input for role {input.Role}, but is assigned role {player.Role}. Input ignored.");
-            }
+            _logger.LogWarning($"[SERVER] Received input from unknown player {input.PlayerId}");
+            return;
         }
+
+        if (session.Role == PlayerRole.None || session.Role == PlayerRole.Spectator)
+        {
+            _logger.LogWarning($"[SERVER] Player {input.PlayerId} has no controllable role");
+            return;
+        }
+
+        // Get the room
+        var room = player.CurrentRoom;
+        if (room == null || room.Id != session.RoomId)
+        {
+             _logger.LogWarning($"[SERVER] Player {input.PlayerId} room mismatch");
+             return;
+        }
+
+        // Get the room's game simulation
+        if (room.Game == null)
+        {
+            _logger.LogWarning($"[SERVER] No simulation found for room {session.RoomId}");
+            return;
+        }
+
+        // Forward input to simulation with the player's ROLE
+        room.Game.SetPlayerInput(session.Role, input.Direction);
+
+        _logger.LogDebug($"[SERVER] Player {input.PlayerId} ({session.Role}) input: {input.Direction}");
     }
 
     private void HandleCreateRoomRequest(Player player, CreateRoomRequest request)
@@ -172,6 +208,16 @@ public class RelayServer : INetEventListener
             {
                 room.AddPlayer(player);
                 player.CurrentRoom = room;
+
+                // Create session
+                _playerSessions[player.Id] = new PlayerSession
+                {
+                    PlayerId = player.Id,
+                    RoomId = room.Id,
+                    Role = player.Role,
+                    Peer = player.Peer,
+                    PlayerName = player.Name
+                };
 
                 response.Success = true;
                 response.Message = $"Room '{room.Name}' created successfully.";
@@ -231,6 +277,7 @@ public class RelayServer : INetEventListener
         {
             player.Name = request.PlayerName;
             player.CurrentRoom = room;
+            player.Role = PlayerRole.None; // Default, will be assigned
 
             // Handle mid-game join
             if (room.State == RoomState.Playing)
@@ -255,6 +302,17 @@ public class RelayServer : INetEventListener
                     _logger.LogInformation($"[INFO] Player {player.Name} joined mid-game as Spectator (Room full).");
                 }
             }
+
+            // Create session
+            _playerSessions[player.Id] = new PlayerSession
+            {
+                PlayerId = player.Id,
+                RoomId = room.Id,
+                Role = player.Role,
+                Peer = player.Peer,
+                PlayerName = player.Name
+            };
+            _logger.LogInformation($"[SERVER] Player {player.Id} session created for room {room.Id}");
 
             response.Success = true;
             response.Message = $"Joined room '{room.Name}' successfully.";
@@ -291,6 +349,9 @@ public class RelayServer : INetEventListener
 
             player.CurrentRoom = null;
             player.IsAdmin = false;
+
+            // Remove session
+            _playerSessions.TryRemove(player.Id, out _);
 
             SendMessageToPlayer(player, new LeaveRoomConfirmation());
 
@@ -330,6 +391,14 @@ public class RelayServer : INetEventListener
             if (targetPlayer != null)
             {
                 targetPlayer.Role = request.Role;
+
+                // Update session
+                if (_playerSessions.TryGetValue(targetPlayer.Id, out var session))
+                {
+                    session.Role = request.Role;
+                    _logger.LogInformation($"[SERVER] Player {targetPlayer.Id} assigned role: {request.Role}");
+                }
+
                 _logger.LogInformation($"Admin {player.Id} assigned role {request.Role} to player {request.PlayerId}");
                 BroadcastRoomState(room);
             }
@@ -346,6 +415,10 @@ public class RelayServer : INetEventListener
             {
                 room.RemovePlayer(playerToKick);
                 playerToKick.CurrentRoom = null;
+
+                // Remove session
+                _playerSessions.TryRemove(playerToKick.Id, out _);
+
                 _logger.LogInformation($"Admin {player.Id} kicked player {playerToKick.Id}");
                 SendMessageToPlayer(playerToKick, new KickedEvent { Reason = "Kicked by admin." });
                 BroadcastRoomState(room);

@@ -24,7 +24,7 @@ public class RoomLobbyViewModel : ViewModelBase
     private readonly IServiceProvider _serviceProvider;
 
     private readonly int _roomId;
-    private readonly int _myPlayerId;
+    private int _myPlayerId;
     private PlayerRole _myRole;
     private bool _isAdmin;
 
@@ -81,16 +81,18 @@ public class RoomLobbyViewModel : ViewModelBase
         _logger.LogDebug("Initial players count: {Count}", initialPlayers.Count);
 
         // Find the current player by matching name
-        _myPlayerId = initialPlayers.FirstOrDefault(p => p.Name == myProfile?.Name)?.PlayerId ?? -1;
+        var myPlayerState = initialPlayers.FirstOrDefault(p => p.Name == myProfile?.Name);
+        _myPlayerId = myPlayerState?.PlayerId ?? -1;
 
         if (_myPlayerId == -1)
         {
-            // If exact name match fails, use the first player (fallback)
-            _myPlayerId = initialPlayers.FirstOrDefault()?.PlayerId ?? -1;
-            _logger.LogWarning("Could not match player by name '{ProfileName}'. Using first player ID: {PlayerId}", myProfile?.Name, _myPlayerId);
+            _logger.LogWarning("Could not match player by name '{ProfileName}'.", myProfile?.Name);
         }
-
-        IsAdmin = initialPlayers.FirstOrDefault(p => p.PlayerId == _myPlayerId)?.IsAdmin ?? false;
+        else
+        {
+             _myRole = myPlayerState!.Role;
+             IsAdmin = myPlayerState.IsAdmin;
+        }
 
         _logger.LogInformation("My Player ID: {PlayerId}, IsAdmin: {IsAdmin}", _myPlayerId, IsAdmin);
 
@@ -119,8 +121,15 @@ public class RoomLobbyViewModel : ViewModelBase
     {
         Dispatcher.UIThread.Post(() =>
         {
-            var myPlayerState = playerStates.FirstOrDefault(p => p.PlayerId == _myPlayerId);
-            if (myPlayerState != null) _myRole = myPlayerState.Role;
+            var myProfile = _profileManager.GetActiveProfile();
+            var myPlayerState = playerStates.FirstOrDefault(p => p.Name == myProfile?.Name);
+
+            if (myPlayerState != null)
+            {
+                _myPlayerId = myPlayerState.PlayerId;
+                _myRole = myPlayerState.Role;
+                IsAdmin = myPlayerState.IsAdmin;
+            }
 
             var playersToRemove = Players.Where(p => !playerStates.Any(s => s.PlayerId == p.PlayerId)).ToList();
             foreach (var player in playersToRemove) Players.Remove(player);
@@ -144,10 +153,16 @@ public class RoomLobbyViewModel : ViewModelBase
                         IsYou = state.PlayerId == _myPlayerId
                     };
 
-                    if (IsAdmin && !newPlayer.IsYou)
+                    if (IsAdmin)
                     {
-                        newPlayer.WhenAnyValue(x => x.Role).Skip(1).Subscribe(newRole => AssignRole(newPlayer.PlayerId, newRole));
+                         newPlayer.WhenAnyValue(x => x.Role)
+                            .Skip(1)
+                            .Subscribe(newRole =>
+                            {
+                                AssignRole(newPlayer.PlayerId, newRole);
+                            });
                     }
+
                     Players.Add(newPlayer);
                 }
             }
@@ -157,20 +172,13 @@ public class RoomLobbyViewModel : ViewModelBase
 
             _logger.LogInformation("Room state updated: {PlayersWithRoles} players with roles, {SpectatorCount} spectators.", playersWithRoles, SpectatorCount);
 
-            CanStartGame = IsAdmin && playersWithRoles > 0;
+            bool hasPacman = Players.Any(p => p.Role == PlayerRole.Pacman);
+            CanStartGame = IsAdmin && hasPacman;
         });
     }
 
     private void AssignRole(int playerId, PlayerRole role)
     {
-        if (role != PlayerRole.None && Players.Any(p => p.PlayerId != playerId && p.Role == role))
-        {
-            _logger.LogWarning("Role '{Role}' is already taken. Cannot assign to player {PlayerId}.", role, playerId);
-            var player = Players.FirstOrDefault(p => p.PlayerId == playerId);
-            if (player != null) player.Role = PlayerRole.None;
-            return;
-        }
-
         _logger.LogInformation("Admin assigning role '{Role}' to player {PlayerId}.", role, playerId);
         _networkService.SendAssignRoleRequest(playerId, role);
     }
@@ -204,6 +212,15 @@ public class RoomLobbyViewModel : ViewModelBase
     {
         _logger.LogInformation("Game start signal received. Preparing assets and navigating to game view...");
 
+        var myProfile = _profileManager.GetActiveProfile();
+        var myState = gameStartEvent.PlayerStates.FirstOrDefault(p => p.Name == myProfile?.Name);
+        if (myState != null)
+        {
+            _myRole = myState.Role;
+            _myPlayerId = myState.PlayerId;
+            IsAdmin = myState.IsAdmin;
+        }
+
         var multiplayerGameViewModel = new MultiplayerGameViewModel(
             _mainWindowViewModel,
             _roomId,
@@ -212,13 +229,12 @@ public class RoomLobbyViewModel : ViewModelBase
             _serviceProvider.GetRequiredService<IGameEngine>(),
             _audioManager,
             _serviceProvider.GetRequiredService<ILogger<MultiplayerGameViewModel>>(),
-            _networkService
+            _networkService,
+            _myPlayerId
         );
 
         _mainWindowViewModel.NavigateTo(multiplayerGameViewModel);
     }
-
-
 
     private void HandleLeftRoom()
     {
