@@ -124,6 +124,7 @@ public class MultiplayerGameViewModel : ViewModelBase
     {
         _logger.LogInformation("[MULTIPLAYER] Initializing game for Room {RoomId} as {MyRole}", _roomId, _myRole);
         _gameEngine.LoadLevel(1);
+        _gameEngine.IsMultiplayerClient = true; // Enable multiplayer client mode
 
         // Disable local AI for all ghosts in multiplayer
         foreach (var ghost in _gameEngine.Ghosts)
@@ -209,9 +210,11 @@ public class MultiplayerGameViewModel : ViewModelBase
         {
             if (_gameEngine.Pacman != null)
             {
-                // Simple Lerp for smoothing
-                _gameEngine.Pacman.X = (int)Math.Round(_gameEngine.Pacman.X * 0.5f + state.PacmanPosition.X * 0.5f);
-                _gameEngine.Pacman.Y = (int)Math.Round(_gameEngine.Pacman.Y * 0.5f + state.PacmanPosition.Y * 0.5f);
+                // Snap to server position.
+                _gameEngine.Pacman.X = (int)state.PacmanPosition.X;
+                _gameEngine.Pacman.Y = (int)state.PacmanPosition.Y;
+                _gameEngine.Pacman.ExactX = state.PacmanPosition.X;
+                _gameEngine.Pacman.ExactY = state.PacmanPosition.Y;
                 _gameEngine.Pacman.CurrentDirection = (Models.Enums.Direction)state.PacmanPosition.Direction;
             }
         }
@@ -226,8 +229,10 @@ public class MultiplayerGameViewModel : ViewModelBase
             var ghost = _gameEngine.Ghosts.FirstOrDefault(g => g.Type.ToString() == ghostState.Type);
             if (ghost != null)
             {
-                ghost.X = (int)Math.Round(ghost.X * 0.5f + ghostState.Position.X * 0.5f);
-                ghost.Y = (int)Math.Round(ghost.Y * 0.5f + ghostState.Position.Y * 0.5f);
+                ghost.X = (int)ghostState.Position.X;
+                ghost.Y = (int)ghostState.Position.Y;
+                ghost.ExactX = ghostState.Position.X;
+                ghost.ExactY = ghostState.Position.Y;
                 ghost.CurrentDirection = (Models.Enums.Direction)ghostState.Position.Direction;
                 ghost.State = (Models.Enums.GhostState)ghostState.State;
             }

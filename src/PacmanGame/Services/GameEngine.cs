@@ -59,6 +59,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     public bool IsRunning => _isRunning;
     public bool IsPaused => _isPaused;
     public int CurrentLevel => _currentLevel;
+    public bool IsMultiplayerClient { get; set; }
 
     public GameEngine(ILogger<GameEngine> logger, ILoggerFactory loggerFactory, IMapLoader mapLoader, ISpriteManager spriteManager, IAudioManager audioManager, ICollisionDetector collisionDetector)
     {
@@ -234,6 +235,12 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     {
         if (!_isRunning || _isPaused)
             return;
+
+        if (IsMultiplayerClient)
+        {
+            UpdateTimers(deltaTime);
+            return;
+        }
 
         if (_pacman != null && _pacman.IsDying)
         {

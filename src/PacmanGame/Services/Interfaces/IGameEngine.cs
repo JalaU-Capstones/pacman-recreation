@@ -72,6 +72,11 @@ public interface IGameEngine
     int CurrentLevel { get; }
 
     /// <summary>
+    /// Gets or sets whether this engine is running as a multiplayer client
+    /// </summary>
+    bool IsMultiplayerClient { get; set; }
+
+    /// <summary>
     /// Load a specific level
     /// </summary>
     /// <param name="level">Level number to load</param>
