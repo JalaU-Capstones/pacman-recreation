@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Threading;
 using PacmanGame.Helpers;
 using PacmanGame.ViewModels;
+using PacmanGame.Shared;
 using System;
 
 namespace PacmanGame.Views;
@@ -28,15 +29,15 @@ public partial class MultiplayerGameView : UserControl
         // Map key to direction
         var direction = e.Key switch
         {
-            Key.Up => PacmanGame.Models.Enums.Direction.Up,
-            Key.Down => PacmanGame.Models.Enums.Direction.Down,
-            Key.Left => PacmanGame.Models.Enums.Direction.Left,
-            Key.Right => PacmanGame.Models.Enums.Direction.Right,
-            Key.Escape => PacmanGame.Models.Enums.Direction.None, // For pause/menu
-            _ => PacmanGame.Models.Enums.Direction.None
+            Key.Up => Direction.Up,
+            Key.Down => Direction.Down,
+            Key.Left => Direction.Left,
+            Key.Right => Direction.Right,
+            Key.Escape => Direction.None, // For pause/menu
+            _ => Direction.None
         };
 
-        if (direction != PacmanGame.Models.Enums.Direction.None)
+        if (direction != Direction.None)
         {
             // Execute the ReactiveCommand with the direction
             vm.SetDirectionCommand.Execute(direction);

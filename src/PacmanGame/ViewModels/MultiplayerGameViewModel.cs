@@ -86,7 +86,7 @@ public class MultiplayerGameViewModel : ViewModelBase
     public ICommand TogglePauseCommand { get; }
     public ICommand ReturnToMenuCommand { get; }
     public ICommand RestartGameCommand { get; }
-    public ReactiveCommand<PacmanGame.Models.Enums.Direction, Unit> SetDirectionCommand { get; }
+    public ReactiveCommand<Direction, Unit> SetDirectionCommand { get; }
 
     public IGameEngine Engine => _gameEngine;
 
@@ -114,7 +114,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         TogglePauseCommand = ReactiveCommand.Create(TogglePause);
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
         RestartGameCommand = ReactiveCommand.Create(() => { /* TODO: Implement restart for host */ });
-        SetDirectionCommand = ReactiveCommand.Create<PacmanGame.Models.Enums.Direction>(SetDirection);
+        SetDirectionCommand = ReactiveCommand.Create<Direction>(SetDirection);
 
         Initialize();
         StartInputPolling();
@@ -140,9 +140,9 @@ public class MultiplayerGameViewModel : ViewModelBase
         _logger.LogInformation("[MULTIPLAYER] Game initialized successfully");
     }
 
-    private void SetDirection(PacmanGame.Models.Enums.Direction direction)
+    private void SetDirection(Direction direction)
     {
-        _currentDirection = (Direction)direction;
+        _currentDirection = direction;
         _logger.LogInformation($"[CLIENT-VM] Direction set to: {direction}");
     }
 

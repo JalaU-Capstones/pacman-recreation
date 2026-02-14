@@ -7,6 +7,7 @@ namespace PacmanGame.Server.Models
         public GhostType Type { get; }
         public GhostStateEnum State { get; set; }
         public float RespawnTimer { get; set; }
+        public bool IsAIControlled { get; set; } = true;
 
         public Ghost(GhostType type, int row, int col)
         {
@@ -16,6 +17,7 @@ namespace PacmanGame.Server.Models
             State = GhostStateEnum.Normal;
             CurrentDirection = Direction.None;
             RespawnTimer = 0f;
+            IsAIControlled = true;
         }
     }
 }

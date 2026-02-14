@@ -108,7 +108,11 @@ public class GameSimulation
             if (_assignedRoles.Contains(role) && index < ghostSpawns.Count)
             {
                 var spawn = ghostSpawns[index];
-                var ghost = new Ghost(type, spawn.Row, spawn.Col) { CurrentDirection = Direction.None };
+                var ghost = new Ghost(type, spawn.Row, spawn.Col)
+                {
+                    CurrentDirection = Direction.None,
+                    IsAIControlled = false // Player controlled
+                };
                 _ghosts.Add(ghost);
                 _playerInputs[role] = Direction.None;
             }
@@ -163,27 +167,37 @@ public class GameSimulation
     {
         if (ghost.State == GhostStateEnum.Eaten) return;
 
-        PlayerRole ghostRole = GetRoleForGhost(ghost.Type);
-
-        // Check if this ghost has player input
-        if (!_playerInputs.TryGetValue(ghostRole, out var desiredDirection))
+        if (ghost.IsAIControlled)
         {
-            // NO INPUT -> Ghost must STOP
-            ghost.CurrentDirection = Direction.None;
-            ghost.X = (float)Math.Round(ghost.X);
-            ghost.Y = (float)Math.Round(ghost.Y);
-
-            _logger.LogDebug($"[SIMULATION] Ghost {ghost.Type} has no input - stopped at ({ghost.X}, {ghost.Y})");
-            return; // EXIT EARLY, do NOT move
+            // TODO: Implement AI logic here
+            // For now, do nothing or simple random movement if needed
+            return;
         }
+        else
+        {
+            // Player controlled logic
+            PlayerRole ghostRole = GetRoleForGhost(ghost.Type);
 
-        // Has input -> process movement
-        _logger.LogDebug($"[SIMULATION] Ghost {ghost.Type} received input: {desiredDirection}");
+            // Check if this ghost has player input
+            if (!_playerInputs.TryGetValue(ghostRole, out var desiredDirection))
+            {
+                // NO INPUT -> Ghost must STOP
+                ghost.CurrentDirection = Direction.None;
+                ghost.X = (float)Math.Round(ghost.X);
+                ghost.Y = (float)Math.Round(ghost.Y);
 
-        HandleTurning(ghost, ghostRole, desiredDirection);
+                _logger.LogDebug($"[SIMULATION] Ghost {ghost.Type} has no input - stopped at ({ghost.X}, {ghost.Y})");
+                return; // EXIT EARLY, do NOT move
+            }
 
-        float speed = GetGhostSpeed(ghost);
-        MoveEntity(ghost, speed, deltaTime);
+            // Has input -> process movement
+            _logger.LogDebug($"[SIMULATION] Ghost {ghost.Type} received input: {desiredDirection}");
+
+            HandleTurning(ghost, ghostRole, desiredDirection);
+
+            float speed = GetGhostSpeed(ghost);
+            MoveEntity(ghost, speed, deltaTime);
+        }
     }
 
     private void HandleTurning(Entity entity, PlayerRole role, Direction? overrideDirection = null)
@@ -218,20 +232,16 @@ public class GameSimulation
             if (isAtCenter || isOpposite)
             {
                 var (dx, dy) = GetDirectionDeltas(desiredDirection);
-                // Check if the target tile is valid
-                // If at center, we check the immediate neighbor in desired direction
-                // If opposite, we are just reversing, which is usually valid unless we just entered a wall (unlikely)
 
                 // For center turn, we need to ensure we are exactly at center to turn cleanly
                 if (isAtCenter)
                 {
-                    // Snap to center to avoid drift
-                    entity.X = roundedX;
-                    entity.Y = roundedY;
-
                     // Check if we can move in the new direction
-                    if (!IsCollision(roundedX + dx, roundedY + dy))
+                    if (IsValidMove(roundedX + dx, roundedY + dy))
                     {
+                        // Snap to center to avoid drift
+                        entity.X = roundedX;
+                        entity.Y = roundedY;
                         entity.CurrentDirection = desiredDirection;
                         _logger.LogDebug($"[SIMULATION] {role} turned to {desiredDirection} at ({entity.X}, {entity.Y})");
                     }
@@ -254,15 +264,8 @@ public class GameSimulation
         float nextX = entity.X + dx * speed * deltaTime;
         float nextY = entity.Y + dy * speed * deltaTime;
 
-        // Check collision at EXACT next position (center of the entity)
-        // We treat the entity as a point for wall collision in this simplified grid model
-        // But to be safe, we check the tile we are entering
-
-        // Calculate the tile we would be in
-        // If we are moving right, we check the right side of the entity
-        // But since we are point-based, let's check the target coordinate
-
-        if (!IsCollision(nextX, nextY))
+        // Strict collision enforcement: Check if the move is valid BEFORE updating
+        if (IsValidMove(nextX, nextY))
         {
             // Safe to move
             entity.X = nextX;
@@ -281,23 +284,28 @@ public class GameSimulation
         }
     }
 
-    private bool IsCollision(float x, float y)
+    private bool IsValidMove(float x, float y)
     {
+        if (_map.Length == 0)
+        {
+            _logger.LogCritical("[SIMULATION] Map is empty during IsValidMove check!");
+            return false;
+        }
+
         // Bounds check
         if (x < 0 || x >= _mapWidth || y < 0 || y >= _mapHeight)
-            return true;
+            return false;
 
         // Convert to tile coordinates
-        // We use a small epsilon to avoid floating point issues at boundaries
-        int tileX = (int)Math.Floor(x + 0.01f); // Add small epsilon
-        int tileY = (int)Math.Floor(y + 0.01f);
+        int tileX = (int)Math.Round(x);
+        int tileY = (int)Math.Round(y);
 
-        // Double-check bounds after Floor
+        // Double-check bounds after Round
         if (tileX < 0 || tileX >= _mapWidth || tileY < 0 || tileY >= _mapHeight)
-            return true;
+            return false;
 
         // Check tile type (Map is [row, col] = [y, x])
-        return _map[tileY, tileX] == TileType.Wall;
+        return _map[tileY, tileX] != TileType.Wall;
     }
 
     private float GetGhostSpeed(Ghost ghost)

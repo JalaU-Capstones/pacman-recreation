@@ -111,7 +111,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             _pacman = new Pacman(pacmanSpawn.Col, pacmanSpawn.Row, _loggerFactory.CreateLogger<Pacman>());
             _logger.LogInformation($"Pac-Man spawned at ({pacmanSpawn.Col}, {pacmanSpawn.Row})");
 
-            if (_pacman != null && _map[Pacman.Y, Pacman.X] == TileType.Wall)
+            if (_pacman != null && _map[_pacman.Y, _pacman.X] == TileType.Wall)
             {
                 _logger.LogError("[GAMEENGINE] CRITICAL: Pacman spawned inside a WALL!");
             }

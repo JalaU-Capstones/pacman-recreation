@@ -112,18 +112,17 @@ public partial class GameView : UserControl
         }
         else if (DataContext is MultiplayerGameViewModel mgvm)
         {
-            // Map Avalonia Key to LocalDirection (which is what the ViewModel expects)
-            // The ViewModel expects PacmanGame.Models.Enums.Direction
+            // Map Avalonia Key to SharedDirection (which is what the ViewModel expects)
             var direction = e.Key switch
             {
-                Key.Up => LocalDirection.Up,
-                Key.Down => LocalDirection.Down,
-                Key.Left => LocalDirection.Left,
-                Key.Right => LocalDirection.Right,
-                _ => LocalDirection.None
+                Key.Up => SharedDirection.Up,
+                Key.Down => SharedDirection.Down,
+                Key.Left => SharedDirection.Left,
+                Key.Right => SharedDirection.Right,
+                _ => SharedDirection.None
             };
 
-            if (direction != LocalDirection.None)
+            if (direction != SharedDirection.None)
             {
                 mgvm.SetDirectionCommand.Execute(direction).Subscribe();
                 e.Handled = true;
