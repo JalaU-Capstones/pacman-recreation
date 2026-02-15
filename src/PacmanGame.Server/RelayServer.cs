@@ -368,6 +368,7 @@ public class RelayServer : INetEventListener
         if (room != null)
         {
             var role = player.Role;
+            var playerName = player.Name;
             room.RemovePlayer(player);
             _logger.LogWarning($"[WARNING] Player {player.Name} left or lost connection. Removing entity {role}.");
 
@@ -409,9 +410,14 @@ public class RelayServer : INetEventListener
                         }
                         _logger.LogInformation($"Promoted spectator {spectator.Name} to {role}.");
 
-                        // Notify spectator they have a new role?
-                        // The RoomStateUpdate will handle it, but we might need to re-initialize their game view if they were just watching.
-                        // For now, just updating the role in the room and simulation.
+                        // Notify spectator they have a new role
+                        var promotionEvent = new SpectatorPromotionEvent
+                        {
+                            PreviousPlayerName = playerName,
+                            NewRole = role,
+                            PreparationTimeSeconds = 5
+                        };
+                        SendMessageToPlayer(spectator, promotionEvent);
                     }
                     else if (room.State == RoomState.Playing && room.Game != null)
                     {

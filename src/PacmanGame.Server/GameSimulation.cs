@@ -377,6 +377,7 @@ public class GameSimulation
                     OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.PacmanDied });
                     if (_lives <= 0)
                     {
+                        _lives = 0; // Prevent negative lives
                         OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.GameOver });
                     }
                     else

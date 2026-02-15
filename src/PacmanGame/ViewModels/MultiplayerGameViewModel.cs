@@ -22,7 +22,7 @@ public class MultiplayerGameViewModel : ViewModelBase
     private readonly NetworkService _networkService;
 
     private readonly int _roomId;
-    private readonly PlayerRole _myRole;
+    private PlayerRole _myRole;
     private bool _isAdmin;
     private int _myPlayerId;
     private Direction _currentDirection = Direction.None;
@@ -60,6 +60,15 @@ public class MultiplayerGameViewModel : ViewModelBase
     private bool _isVictory;
     public bool IsVictory { get => _isVictory; set => this.RaiseAndSetIfChanged(ref _isVictory, value); }
 
+    private bool _isSpectatorPromotion;
+    public bool IsSpectatorPromotion { get => _isSpectatorPromotion; set => this.RaiseAndSetIfChanged(ref _isSpectatorPromotion, value); }
+
+    private string _spectatorPromotionMessage = string.Empty;
+    public string SpectatorPromotionMessage { get => _spectatorPromotionMessage; set => this.RaiseAndSetIfChanged(ref _spectatorPromotionMessage, value); }
+
+    private int _spectatorPromotionTimer;
+    public int SpectatorPromotionTimer { get => _spectatorPromotionTimer; set => this.RaiseAndSetIfChanged(ref _spectatorPromotionTimer, value); }
+
     public bool IsAdmin { get => _isAdmin; set => this.RaiseAndSetIfChanged(ref _isAdmin, value); }
     public string PauseButtonText => IsPaused ? "RESUME" : "PAUSE";
 
@@ -83,6 +92,20 @@ public class MultiplayerGameViewModel : ViewModelBase
             "Objective: Catch Pac-Man! Make them lose all 3 lives.",
         PlayerRole.Spectator => "You are watching the game.",
         _ => ""
+    };
+
+    public string GameOverTitle => _myRole switch
+    {
+        PlayerRole.Pacman => "GAME OVER",
+        PlayerRole.Spectator => "GAME OVER",
+        _ => "VICTORY!"
+    };
+
+    public string GameOverMessage => _myRole switch
+    {
+        PlayerRole.Pacman => "You lost all your lives!",
+        PlayerRole.Spectator => "Pac-Man lost all lives.",
+        _ => "You caught Pac-Man!"
     };
 
     public ICommand TogglePauseCommand { get; }
@@ -139,6 +162,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         _networkService.OnGameStateUpdate += HandleGameStateUpdate;
         _networkService.OnGameEvent += HandleGameEvent;
         _networkService.OnGamePaused += HandleGamePaused;
+        _networkService.OnSpectatorPromotion += HandleSpectatorPromotion;
         IsGameRunning = true;
         _logger.LogInformation("[MULTIPLAYER] Game initialized successfully");
     }
@@ -330,6 +354,11 @@ public class MultiplayerGameViewModel : ViewModelBase
                 {
                     IsGameOver = true; // Pacman lost
                 }
+                else if (_myRole == PlayerRole.Spectator)
+                {
+                    IsGameOver = true; // Spectator sees game over
+                    FinalScore = Score;
+                }
                 else
                 {
                     IsVictory = true; // Ghosts won
@@ -343,6 +372,10 @@ public class MultiplayerGameViewModel : ViewModelBase
                 break;
         }
         _logger.LogInformation("[MULTIPLAYER] Game event: {EventType}", evt.EventType);
+
+        // Update UI properties based on role changes or game state
+        this.RaisePropertyChanged(nameof(GameOverTitle));
+        this.RaisePropertyChanged(nameof(GameOverMessage));
     }
 
     private void HandleGamePaused(bool isPaused)
@@ -358,5 +391,31 @@ public class MultiplayerGameViewModel : ViewModelBase
         {
             _audioManager.ResumeMusic();
         }
+    }
+
+    private void HandleSpectatorPromotion(SpectatorPromotionEvent evt)
+    {
+        _myRole = evt.NewRole;
+        IsSpectating = false;
+        IsSpectatorPromotion = true;
+        SpectatorPromotionMessage = $"You are taking over for {evt.PreviousPlayerName} as {evt.NewRole}!";
+        SpectatorPromotionTimer = evt.PreparationTimeSeconds;
+
+        this.RaisePropertyChanged(nameof(MyRoleText));
+        this.RaisePropertyChanged(nameof(ObjectiveText));
+
+        // Start countdown timer
+        var timer = new System.Timers.Timer(1000);
+        timer.Elapsed += (s, e) =>
+        {
+            SpectatorPromotionTimer--;
+            if (SpectatorPromotionTimer <= 0)
+            {
+                IsSpectatorPromotion = false;
+                timer.Stop();
+                timer.Dispose();
+            }
+        };
+        timer.Start();
     }
 }

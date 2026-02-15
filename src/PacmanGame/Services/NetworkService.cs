@@ -36,6 +36,7 @@ public class NetworkService : INetEventListener
     public event Action<GameStateMessage>? OnGameStateUpdate;
     public event Action<GameEventMessage>? OnGameEvent;
     public event Action<bool>? OnGamePaused;
+    public event Action<SpectatorPromotionEvent>? OnSpectatorPromotion;
 
     public NetworkService(ILogger<NetworkService> logger)
     {
@@ -247,6 +248,9 @@ public class NetworkService : INetEventListener
                 break;
             case GamePausedEvent gamePausedEvent:
                 OnGamePaused?.Invoke(gamePausedEvent.IsPaused);
+                break;
+            case SpectatorPromotionEvent promotionEvent:
+                OnSpectatorPromotion?.Invoke(promotionEvent);
                 break;
         }
     }

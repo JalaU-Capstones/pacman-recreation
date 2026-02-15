@@ -4,9 +4,9 @@ This guide provides step-by-step instructions for deploying the Pac-Man Multipla
 
 ## 1. Prerequisites
 
-- An AWS account eligible for the Free Tier.
-- An SSH client (e.g., OpenSSH, PuTTY).
-- The .NET 9.0 SDK installed on your local machine.
+* An AWS account eligible for the Free Tier.
+* An SSH client (e.g., OpenSSH, PuTTY).
+* The .NET 9.0 SDK installed on your local machine.
 
 ## 2. AWS Account Setup
 
@@ -161,62 +161,164 @@ You can find the public IP in the EC2 console, or by running this command on the
 curl http://checkip.amazonaws.com
 ```
 
-## 12. Update Client Configuration
+## 12. Setup DDNS with Cloudflare (Recommended - FREE Alternative to Elastic IP)
 
-In the client application source code, update the server IP in `src/PacmanGame/Helpers/Constants.cs`:
+**Problem:** AWS EC2 instances receive a new public IP address every time they are stopped and started. Elastic IPs incur charges (~$3.60/month) when the instance is stopped.
+**Solution:** Use Dynamic DNS (DDNS) with Cloudflare to automatically update a domain (e.g., `pacmanserver.codewithbotina.com`) whenever the instance starts.
 
-```csharp
-public const string MultiplayerServerIP = "<EC2_PUBLIC_IP>";
-public const int MultiplayerServerPort = 9050;
+### 12.1. Create DNS Record in Cloudflare
+
+1. Log in to the [Cloudflare Dashboard](https://dash.cloudflare.com).
+2. Select your domain.
+3. Navigate to **DNS settings** and add a new **A record**:
+* **Type:** `A`
+* **Name:** `pacmanserver`
+* **IPv4 address:** `1.1.1.1` (This is temporary; the script will update it).
+* **Proxy status:** **DNS Only** (⚠️ IMPORTANT: The cloud icon must be gray).
+* **TTL:** `Auto` or `1 minute`.
+
+
+4. Save the record.
+
+### 12.2. Get Cloudflare API Credentials
+
+1. **Zone ID:** Located on the domain **Overview** page in the right sidebar.
+2. **API Token:**
+* Go to **My Profile > API Tokens**.
+* Click **Create Token** and use the **Edit zone DNS** template.
+* **Permissions:** `Zone / DNS / Edit`.
+* **Zone Resources:** `Include / Specific zone / <your-domain>`.
+* Copy and store the token securely.
+
+
+
+### 12.3. Install DDNS Script on EC2
+
+Connect to your EC2 instance and create the update script:
+
+```bash
+sudo nano /usr/local/bin/update-cloudflare-dns.sh
+
 ```
 
-## 13. Update Server (After Code Changes)
+Paste the following content, replacing the placeholders with your actual credentials:
 
-To deploy a new version of the server:
+```bash
+#!/bin/bash
 
-1.  On your **local machine**, publish the updated server:
-    ```bash
-    cd src/PacmanGame.Server
-    dotnet publish -c Release -r linux-x64 --self-contained false -o publish
-    ```
-2.  Upload the new files:
-    ```bash
-    scp -i /path/to/your-key.pem -r publish/* ubuntu@<EC2_PUBLIC_IP>:~/pacman-server/
-    ```
-3.  On the **EC2 instance**, restart the service:
-    ```bash
-    sudo systemctl restart pacman-server
-    ```
+# Cloudflare credentials
+ZONE_ID="YOUR_ZONE_ID_HERE"
+API_TOKEN="YOUR_API_TOKEN_HERE"
+RECORD_NAME="pacmanserver.codewithbotina.com"
 
-## 14. Monitoring and Troubleshooting
+# 1. Get current public IP
+CURRENT_IP=$(curl -s https://api.ipify.org)
 
--   **System Logs:** `sudo journalctl -u pacman-server --no-pager -n 100`
--   **Resource Usage:** `htop`
--   **Disk Space:** `df -h`
--   **Connectivity Issues:** Double-check the security group rules in the AWS EC2 console.
+if [ -z "$CURRENT_IP" ]; then
+    echo "[ERROR] Could not detect public IP"
+    exit 1
+fi
 
-## 15. Cost Management
+echo "[INFO] Detected IP: $CURRENT_IP"
 
-The AWS Free Tier for EC2 includes:
-- 750 hours per month of a `t2.micro` or `t3.micro` instance.
-- 30 GB of EBS storage.
-- 15 GB of data transfer out per month.
+# 2. Get DNS Record ID from Cloudflare
+RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?name=$RECORD_NAME" \
+    -H "Authorization: Bearer $API_TOKEN" \
+    -H "Content-Type: application/json" | grep -Po '"id":"\K[^"]*' | head -1)
 
-**After 12 months, or if you exceed the free tier limits, you will be charged.** To avoid unexpected costs, you can stop the instance when it is not in use.
+if [ -z "$RECORD_ID" ]; then
+    echo "[ERROR] Could not find DNS record for $RECORD_NAME"
+    exit 1
+fi
 
-## 16. Optional: Elastic IP (Static IP)
+# 3. Update the DNS record in Cloudflare
+curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$RECORD_ID" \
+    -H "Authorization: Bearer $API_TOKEN" \
+    -H "Content-Type: application/json" \
+    --data "{\"type\":\"A\",\"name\":\"$RECORD_NAME\",\"content\":\"$CURRENT_IP\",\"ttl\":1,\"proxied\":false}"
 
-To get a static IP address that persists between instance restarts:
+echo ""
+echo "[SUCCESS] DNS updated: $RECORD_NAME -> $CURRENT_IP"
 
-1.  In the EC2 Console, navigate to **Elastic IPs** and allocate a new address.
-2.  Associate the Elastic IP with your EC2 instance.
+```
 
-An Elastic IP is free as long as it is associated with a running instance.
+Make the script executable:
 
-## 17. Backup Strategy
+```bash
+sudo chmod +x /usr/local/bin/update-cloudflare-dns.sh
 
-Create a snapshot of your instance's volume for backup:
+```
 
-1.  In the EC2 Console, select your instance.
-2.  Go to **Actions > Image and templates > Create image**.
-3.  This creates an Amazon Machine Image (AMI) which can be used to restore your server.
+### 12.4. Automate DNS Update on Boot
+
+Create a systemd service to run the script at startup:
+
+```bash
+sudo nano /etc/systemd/system/cloudflare-ddns.service
+
+```
+
+Paste the following configuration:
+
+```ini
+[Unit]
+Description=Cloudflare DDNS Update Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 10
+ExecStart=/usr/local/bin/update-cloudflare-dns.sh
+
+[Install]
+WantedBy=multi-user.target
+
+```
+
+Enable the service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable cloudflare-ddns.service
+
+```
+
+## 13. Update Client Configuration
+
+Update `src/PacmanGame/Helpers/Constants.cs` in the client application to use your domain name instead of a static IP address:
+
+```csharp
+// The domain name will resolve to the correct IP even after server restarts.
+public const string MultiplayerServerIP = "pacmanserver.codewithbotina.com";
+public const int MultiplayerServerPort = 9050;
+
+```
+
+## 14. Update Server (After Code Changes)
+
+To deploy updates, publish the server locally and upload the files to the EC2 instance. Then, restart the server service:
+
+```bash
+sudo systemctl restart pacman-server
+
+```
+
+## 15. Monitoring and Troubleshooting
+
+* **Check DDNS Logs:** `sudo journalctl -u cloudflare-ddns.service`
+* **Verify DNS Resolution:** `dig +short pacmanserver.codewithbotina.com`
+* **Server Logs:** `sudo journalctl -u pacman-server -f`
+
+## 16. Cost Management
+
+* **DDNS Savings:** Using this script instead of an Elastic IP avoids the $0.005/hour charge incurred when the instance is stopped.
+* **Free Tier:** Monitor usage to stay within the 750 hours/month limit for `t2.micro` instances.
+
+## 17. (Optional) Elastic IP (Static IP)
+
+📌 **Note:** If you configured DDNS in Section 12, an Elastic IP is **not** required. This section is only for users who prefer a static IP over a dynamic domain setup.
+
+## 18. Backup Strategy
+
+Create snapshots of your instance volume periodically to prevent data loss.

@@ -26,6 +26,7 @@ namespace PacmanGame.Shared;
 [Union(19, typeof(GameStartEvent))]
 [Union(20, typeof(GamePausedEvent))]
 [Union(21, typeof(RestartGameRequest))]
+[Union(22, typeof(SpectatorPromotionEvent))]
 public abstract class NetworkMessageBase
 {
     [IgnoreMember]
@@ -209,6 +210,19 @@ public class RoleAssignedEvent : NetworkMessageBase
     public int PlayerId { get; set; }
     [Key(1)]
     public PlayerRole Role { get; set; }
+}
+
+[MessagePackObject]
+public class SpectatorPromotionEvent : NetworkMessageBase
+{
+    [IgnoreMember]
+    public override MessageType Type => MessageType.SpectatorPromotionEvent;
+    [Key(0)]
+    public string PreviousPlayerName { get; set; } = string.Empty;
+    [Key(1)]
+    public PlayerRole NewRole { get; set; }
+    [Key(2)]
+    public int PreparationTimeSeconds { get; set; }
 }
 
 #endregion
