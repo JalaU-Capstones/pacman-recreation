@@ -347,6 +347,7 @@ public class RelayServer : INetEventListener
                 response.RoomName = room.Name;
                 response.Visibility = room.Visibility;
                 response.Players = room.GetPlayerStates();
+                response.IsGameStarted = room.State == RoomState.Playing;
 
                 _logger.LogInformation($"Player {player.Id} ({player.Name}) joined room '{room.Name}'");
                 BroadcastRoomState(room);

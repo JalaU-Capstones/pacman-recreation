@@ -92,7 +92,7 @@ public class CreateRoomViewModel : ViewModelBase
         _networkService.SendCreateRoomRequest(request);
     }
 
-    private void HandleJoinedRoom(int roomId, string roomName, RoomVisibility visibility, List<PlayerState> players)
+    private void HandleJoinedRoom(int roomId, string roomName, RoomVisibility visibility, List<PlayerState> players, bool isGameStarted)
     {
         _logger.LogInformation($"[CreateRoomViewModel] Joined room '{roomName}' successfully. Navigating to lobby.");
         _mainWindowViewModel.NavigateToRoomLobby(roomId, roomName, visibility, players);

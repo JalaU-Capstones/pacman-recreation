@@ -412,7 +412,7 @@ tile_wall_horizontal  -> Wall tile
 | **AudioManager** | Completed | ~200 | SFML.Audio integration |
 | **Score/Profile Persistence** | Completed | ~250 | SQLite database management |
 | **Advanced Ghost AI** | Completed | ~400 | Unique AI for all 4 ghosts |
-| **Multiplayer Mode** | Completed | ~1000 | Client-Server architecture, Room management, Game synchronization |
+| **Multiplayer Mode** | Completed | ~1000 | Client-Server architecture, Room management, Game synchronization, Direct join logic |
 
 **Total Code:** ~4,500 lines
 

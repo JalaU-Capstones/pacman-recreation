@@ -110,6 +110,8 @@ public class JoinRoomResponse : NetworkMessageBase
     public List<PlayerState> Players { get; set; } = new();
     [Key(6)]
     public bool CanJoinAsSpectator { get; set; } // New field to prompt user
+    [Key(7)]
+    public bool IsGameStarted { get; set; }
 }
 
 [MessagePackObject]

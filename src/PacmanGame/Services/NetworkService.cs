@@ -23,7 +23,7 @@ public class NetworkService : INetEventListener
     private readonly MessagePackSerializerOptions _serializerOptions;
 
     // Room events
-    public event Action<int, string, RoomVisibility, List<PlayerState>>? OnJoinedRoom;
+    public event Action<int, string, RoomVisibility, List<PlayerState>, bool>? OnJoinedRoom;
     public event Action<string>? OnJoinRoomFailed;
     public event Action<string>? OnJoinRoomSpectatorPrompt;
     public event Action? OnLeftRoom;
@@ -195,7 +195,7 @@ public class NetworkService : INetEventListener
                 if (createResponse.Success)
                 {
                     _logger.LogInformation("Successfully created and joined room '{RoomName}'", createResponse.RoomName);
-                    OnJoinedRoom?.Invoke(createResponse.RoomId, createResponse.RoomName!, createResponse.Visibility, createResponse.Players);
+                    OnJoinedRoom?.Invoke(createResponse.RoomId, createResponse.RoomName!, createResponse.Visibility, createResponse.Players, false);
                 }
                 else
                 {
@@ -207,7 +207,7 @@ public class NetworkService : INetEventListener
                 if (joinResponse.Success)
                 {
                     _logger.LogInformation("Successfully joined room '{RoomName}'", joinResponse.RoomName);
-                    OnJoinedRoom?.Invoke(joinResponse.RoomId, joinResponse.RoomName!, joinResponse.Visibility, joinResponse.Players);
+                    OnJoinedRoom?.Invoke(joinResponse.RoomId, joinResponse.RoomName!, joinResponse.Visibility, joinResponse.Players, joinResponse.IsGameStarted);
                 }
                 else if (joinResponse.CanJoinAsSpectator)
                 {

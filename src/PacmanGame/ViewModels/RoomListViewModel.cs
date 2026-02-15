@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using PacmanGame.Services;
@@ -9,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace PacmanGame.ViewModels;
 
@@ -19,6 +21,7 @@ public class RoomListViewModel : ViewModelBase
     private readonly IAudioManager _audioManager;
     private readonly ILogger<RoomListViewModel> _logger;
     private readonly IProfileManager _profileManager;
+    private readonly IServiceProvider _serviceProvider;
 
     public ObservableCollection<RoomInfo> Rooms { get; } = new();
 
@@ -68,13 +71,14 @@ public class RoomListViewModel : ViewModelBase
     public ICommand JoinAsSpectatorCommand { get; }
     public ICommand CancelSpectatorJoinCommand { get; }
 
-    public RoomListViewModel(MainWindowViewModel mainWindowViewModel, NetworkService networkService, IAudioManager audioManager, ILogger<RoomListViewModel> logger, IProfileManager profileManager)
+    public RoomListViewModel(MainWindowViewModel mainWindowViewModel, NetworkService networkService, IAudioManager audioManager, ILogger<RoomListViewModel> logger, IProfileManager profileManager, IServiceProvider serviceProvider)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _networkService = networkService;
         _audioManager = audioManager;
         _logger = logger;
         _profileManager = profileManager;
+        _serviceProvider = serviceProvider;
 
         _networkService.OnJoinedRoom += HandleJoinedRoom;
         _networkService.OnJoinRoomFailed += HandleJoinRoomFailed;
@@ -168,12 +172,40 @@ public class RoomListViewModel : ViewModelBase
         });
     }
 
-    private void HandleJoinedRoom(int roomId, string roomName, RoomVisibility visibility, List<PlayerState> players)
+    private void HandleJoinedRoom(int roomId, string roomName, RoomVisibility visibility, List<PlayerState> players, bool isGameStarted)
     {
         Dispatcher.UIThread.Post(() =>
         {
-            _logger.LogInformation($"Successfully joined room '{roomName}'. Navigating to lobby.");
-            _mainWindowViewModel.NavigateToRoomLobby(roomId, roomName, visibility, players);
+            _logger.LogInformation($"Successfully joined room '{roomName}'. GameStarted: {isGameStarted}");
+
+            if (isGameStarted)
+            {
+                // Navigate directly to game view
+                var myProfile = _profileManager.GetActiveProfile();
+                var myState = players.FirstOrDefault(p => p.Name == myProfile?.Name);
+                var myRole = myState?.Role ?? PlayerRole.Spectator;
+                var myPlayerId = myState?.PlayerId ?? -1;
+                var isAdmin = myState?.IsAdmin ?? false;
+
+                var multiplayerGameViewModel = new MultiplayerGameViewModel(
+                    _mainWindowViewModel,
+                    roomId,
+                    myRole,
+                    isAdmin,
+                    _serviceProvider.GetRequiredService<IGameEngine>(),
+                    _audioManager,
+                    _serviceProvider.GetRequiredService<ILogger<MultiplayerGameViewModel>>(),
+                    _networkService,
+                    myPlayerId
+                );
+
+                _mainWindowViewModel.NavigateTo(multiplayerGameViewModel);
+            }
+            else
+            {
+                // Navigate to lobby
+                _mainWindowViewModel.NavigateToRoomLobby(roomId, roomName, visibility, players);
+            }
         });
     }
 
