@@ -164,6 +164,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         _networkService.OnGamePaused += HandleGamePaused;
         _networkService.OnSpectatorPromotion += HandleSpectatorPromotion;
         _networkService.OnGameStart += HandleGameStart; // Handle restart/new game start
+        _networkService.OnRoomStateUpdate += HandleRoomStateUpdate; // Listen for admin changes
         IsGameRunning = true;
         _logger.LogInformation("[MULTIPLAYER] Game initialized successfully");
     }
@@ -445,5 +446,15 @@ public class MultiplayerGameViewModel : ViewModelBase
         }
 
         _logger.LogInformation($"[CLIENT-VM] Game restarted. New role: {_myRole}");
+    }
+
+    private void HandleRoomStateUpdate(System.Collections.Generic.List<PlayerState> players)
+    {
+        var myState = players.FirstOrDefault(p => p.PlayerId == _myPlayerId);
+        if (myState != null)
+        {
+            IsAdmin = myState.IsAdmin;
+            _logger.LogInformation($"[CLIENT-VM] Room state updated. IsAdmin: {IsAdmin}");
+        }
     }
 }
