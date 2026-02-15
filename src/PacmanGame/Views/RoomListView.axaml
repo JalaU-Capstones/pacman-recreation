@@ -9,66 +9,94 @@
              x:DataType="vm:RoomListViewModel"
              x:Name="PageRoot"
              Background="Black">
-    <StackPanel Spacing="20" Margin="20" HorizontalAlignment="Center" VerticalAlignment="Center">
-        <TextBlock Text="PUBLIC ROOMS" FontSize="36" Foreground="#FFFF00" HorizontalAlignment="Center"/>
+    <Grid>
+        <StackPanel Spacing="20" Margin="20" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Text="PUBLIC ROOMS" FontSize="36" Foreground="#FFFF00" HorizontalAlignment="Center"/>
 
-        <Border BorderBrush="#FFFF00" BorderThickness="2" CornerRadius="8" Padding="10" MinWidth="600">
-            <Panel>
-                <TextBlock Text="No public rooms available." IsVisible="{Binding !Rooms.Count}"
-                           Foreground="Gray" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <ListBox ItemsSource="{Binding Rooms}" Background="Transparent" IsVisible="{Binding Rooms.Count}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="shared:RoomInfo" x:CompileBindings="False">
-                            <Grid ColumnDefinitions="*,Auto,Auto" Margin="5">
-                                <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="White" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="{Binding PlayerCount, StringFormat='{}{0}/5 Players'}" Foreground="Gray" VerticalAlignment="Center" Margin="20,0"/>
-                                <Button Grid.Column="2" Content="JOIN"
-                                        Command="{Binding $parent[ListBox].DataContext.JoinPublicRoomCommand}"
-                                        CommandParameter="{Binding}"
-                                        Classes="arcade"/>
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Panel>
+            <Border BorderBrush="#FFFF00" BorderThickness="2" CornerRadius="8" Padding="10" MinWidth="600">
+                <Panel>
+                    <TextBlock Text="No public rooms available." IsVisible="{Binding !Rooms.Count}"
+                               Foreground="Gray" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <ListBox ItemsSource="{Binding Rooms}" Background="Transparent" IsVisible="{Binding Rooms.Count}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="shared:RoomInfo" x:CompileBindings="False">
+                                <Grid ColumnDefinitions="*,Auto,Auto" Margin="5">
+                                    <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="White" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding PlayerCount, StringFormat='{}{0}/5 Players'}" Foreground="Gray" VerticalAlignment="Center" Margin="20,0"/>
+                                    <Button Grid.Column="2" Content="JOIN"
+                                            Command="{Binding $parent[ListBox].DataContext.JoinPublicRoomCommand}"
+                                            CommandParameter="{Binding}"
+                                            Classes="arcade"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Panel>
+            </Border>
+
+            <Button Content="REFRESH" Command="{Binding RefreshCommand}" Classes="arcade" HorizontalAlignment="Center"/>
+
+            <Button Content="JOIN PRIVATE ROOM"
+                    Command="{Binding ShowPrivateJoinFormCommand}"
+                    Classes="arcade"
+                    Margin="0,20,0,0"
+                    HorizontalAlignment="Center"/>
+
+            <Border IsVisible="{Binding IsPrivateJoinFormVisible}"
+                    Background="#1A1A1A"
+                    BorderBrush="#FFFF00"
+                    BorderThickness="2"
+                    CornerRadius="8"
+                    Padding="20"
+                    Margin="0,10,0,0">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="JOIN PRIVATE ROOM" FontSize="24" Foreground="#FFFF00" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="Red" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Room Name:" Foreground="White"/>
+                        <TextBox Text="{Binding PrivateRoomName}" Watermark="Enter room name..." MinWidth="300"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Password:" Foreground="White"/>
+                        <TextBox Text="{Binding PrivateRoomPassword}" PasswordChar="●" Watermark="Enter password..." MinWidth="300"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,10,0,0">
+                        <Button Content="CANCEL" Command="{Binding CancelPrivateJoinCommand}" Classes="arcade" MinWidth="120"/>
+                        <Button Content="JOIN" Command="{Binding JoinPrivateRoomCommand}" Classes="arcade" MinWidth="120"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Button Content="BACK" Command="{Binding BackCommand}" Classes="arcade" HorizontalAlignment="Center" Margin="0,20,0,0"/>
+        </StackPanel>
+
+        <!-- Spectator Join Prompt Modal -->
+        <Border IsVisible="{Binding ShowSpectatorPrompt}"
+                Background="#CC000000"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch">
+            <Border Background="#1A1A1A"
+                    BorderBrush="#FFFF00"
+                    BorderThickness="2"
+                    CornerRadius="8"
+                    Padding="20"
+                    MaxWidth="400"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <StackPanel Spacing="15">
+                    <TextBlock Text="JOIN ROOM" FontSize="24" Foreground="#FFFF00" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="White" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,10,0,0">
+                        <Button Content="JOIN AS SPECTATOR" Command="{Binding JoinAsSpectatorCommand}" Classes="arcade" MinWidth="150"
+                                IsVisible="{Binding CanJoinAsSpectatorOption}"/>
+                        <Button Content="BROWSE OTHER ROOMS" Command="{Binding CancelSpectatorJoinCommand}" Classes="arcade" MinWidth="150"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </Border>
-
-        <Button Content="REFRESH" Command="{Binding RefreshCommand}" Classes="arcade" HorizontalAlignment="Center"/>
-
-        <Button Content="JOIN PRIVATE ROOM"
-                Command="{Binding ShowPrivateJoinFormCommand}"
-                Classes="arcade"
-                Margin="0,20,0,0"
-                HorizontalAlignment="Center"/>
-
-        <Border IsVisible="{Binding IsPrivateJoinFormVisible}"
-                Background="#1A1A1A"
-                BorderBrush="#FFFF00"
-                BorderThickness="2"
-                CornerRadius="8"
-                Padding="20"
-                Margin="0,10,0,0">
-            <StackPanel Spacing="15">
-                <TextBlock Text="JOIN PRIVATE ROOM" FontSize="24" Foreground="#FFFF00" HorizontalAlignment="Center"/>
-                <TextBlock Text="{Binding ErrorMessage}" Foreground="Red" HorizontalAlignment="Center" TextWrapping="Wrap"/>
-
-                <StackPanel Spacing="5">
-                    <TextBlock Text="Room Name:" Foreground="White"/>
-                    <TextBox Text="{Binding PrivateRoomName}" Watermark="Enter room name..." MinWidth="300"/>
-                </StackPanel>
-
-                <StackPanel Spacing="5">
-                    <TextBlock Text="Password:" Foreground="White"/>
-                    <TextBox Text="{Binding PrivateRoomPassword}" PasswordChar="●" Watermark="Enter password..." MinWidth="300"/>
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,10,0,0">
-                    <Button Content="CANCEL" Command="{Binding CancelPrivateJoinCommand}" Classes="arcade" MinWidth="120"/>
-                    <Button Content="JOIN" Command="{Binding JoinPrivateRoomCommand}" Classes="arcade" MinWidth="120"/>
-                </StackPanel>
-            </StackPanel>
-        </Border>
-
-        <Button Content="BACK" Command="{Binding BackCommand}" Classes="arcade" HorizontalAlignment="Center" Margin="0,20,0,0"/>
-    </StackPanel>
+    </Grid>
 </UserControl>

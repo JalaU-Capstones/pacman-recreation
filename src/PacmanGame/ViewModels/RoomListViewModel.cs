@@ -60,6 +60,13 @@ public class RoomListViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _showSpectatorPrompt, value);
     }
 
+    private bool _canJoinAsSpectatorOption;
+    public bool CanJoinAsSpectatorOption
+    {
+        get => _canJoinAsSpectatorOption;
+        set => this.RaiseAndSetIfChanged(ref _canJoinAsSpectatorOption, value);
+    }
+
     private RoomInfo? _pendingJoinRoom;
 
     public ICommand JoinPublicRoomCommand { get; }
@@ -213,11 +220,12 @@ public class RoomListViewModel : ViewModelBase
     {
         Dispatcher.UIThread.Post(() =>
         {
-            ErrorMessage = $"Failed to join room: {message}";
-            _logger.LogError(ErrorMessage);
+            ErrorMessage = message;
+            _logger.LogError($"Failed to join room: {message}");
 
-            if (canJoinAsSpectator)
+            if (reason == JoinRoomFailureReason.RoomFull || reason == JoinRoomFailureReason.DuplicateUsername)
             {
+                CanJoinAsSpectatorOption = canJoinAsSpectator;
                 ShowSpectatorPrompt = true;
             }
         });
