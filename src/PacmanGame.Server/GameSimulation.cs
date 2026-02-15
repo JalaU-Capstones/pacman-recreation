@@ -24,6 +24,7 @@ public class GameSimulation
     private int _score = 0;
     private int _lives = 3;
     private ulong _frameCount = 0;
+    private bool _isGameOver = false;
 
     private readonly Dictionary<PlayerRole, Direction> _playerInputs = new();
     private List<PlayerRole> _assignedRoles = new();
@@ -51,6 +52,7 @@ public class GameSimulation
         }
         LoadLevel(1);
         _frameCount = 0;
+        _isGameOver = false;
         _logger.LogInformation($"[SIMULATION] Game initialized. Roles: {string.Join(", ", assignedRoles)}");
     }
 
@@ -133,6 +135,8 @@ public class GameSimulation
 
     public void SetPlayerInput(PlayerRole role, Direction direction)
     {
+        if (_isGameOver) return; // Ignore input if game is over
+
         if (role == PlayerRole.None || role == PlayerRole.Spectator)
         {
             _logger.LogWarning($"[SIMULATION] Ignoring input for non-playable role: {role}");
@@ -145,7 +149,7 @@ public class GameSimulation
 
     public void Update(float deltaTime)
     {
-        if (_map.Length == 0) return;
+        if (_map.Length == 0 || _isGameOver) return;
         _frameCount++;
 
         UpdateTimers(deltaTime);
@@ -335,6 +339,7 @@ public class GameSimulation
         bool allDotsCollected = !_collectibles.Any(c => c.IsActive && (c.Type == CollectibleType.SmallDot || c.Type == CollectibleType.PowerPellet));
         if (allDotsCollected)
         {
+            _isGameOver = true;
             OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.LevelComplete });
             return;
         }
@@ -386,6 +391,7 @@ public class GameSimulation
                     if (_lives <= 0)
                     {
                         _lives = 0; // Prevent negative lives
+                        _isGameOver = true;
                         OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.GameOver });
                     }
                     else
