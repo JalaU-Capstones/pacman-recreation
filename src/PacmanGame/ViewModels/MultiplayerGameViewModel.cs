@@ -163,6 +163,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         _networkService.OnGameEvent += HandleGameEvent;
         _networkService.OnGamePaused += HandleGamePaused;
         _networkService.OnSpectatorPromotion += HandleSpectatorPromotion;
+        _networkService.OnGameStart += HandleGameStart; // Handle restart/new game start
         IsGameRunning = true;
         _logger.LogInformation("[MULTIPLAYER] Game initialized successfully");
     }
@@ -225,6 +226,7 @@ public class MultiplayerGameViewModel : ViewModelBase
             IsGameOver = false;
             IsVictory = false;
             IsLevelComplete = false;
+            _currentDirection = Direction.None; // Reset direction on restart request
         }
     }
 
@@ -422,5 +424,26 @@ public class MultiplayerGameViewModel : ViewModelBase
             }
         };
         timer.Start();
+    }
+
+    private void HandleGameStart(GameStartEvent evt)
+    {
+        // Reset local state for new game
+        IsGameOver = false;
+        IsVictory = false;
+        IsLevelComplete = false;
+        _currentDirection = Direction.None; // Reset direction
+
+        // Update role from the event
+        var myState = evt.PlayerStates.FirstOrDefault(p => p.PlayerId == _myPlayerId);
+        if (myState != null)
+        {
+            _myRole = myState.Role;
+            IsSpectating = _myRole == PlayerRole.Spectator;
+            this.RaisePropertyChanged(nameof(MyRoleText));
+            this.RaisePropertyChanged(nameof(ObjectiveText));
+        }
+
+        _logger.LogInformation($"[CLIENT-VM] Game restarted. New role: {_myRole}");
     }
 }

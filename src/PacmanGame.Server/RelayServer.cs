@@ -321,8 +321,12 @@ public class RelayServer : INetEventListener
                     }
                     else
                     {
+                        // If no roles available, force spectator or prompt
+                        // The client logic handles the prompt if we return CanJoinAsSpectator = true, but here we are already adding them.
+                        // If we are here, it means room.AddPlayer succeeded.
+                        // If no roles are free, they MUST be a spectator.
                         player.Role = PlayerRole.Spectator;
-                        _logger.LogInformation($"[INFO] Player {player.Name} joined mid-game as Spectator (Room full).");
+                        _logger.LogInformation($"[INFO] Player {player.Name} joined mid-game as Spectator (No roles free).");
                     }
                 }
 
@@ -402,6 +406,9 @@ public class RelayServer : INetEventListener
                         // If the exiting admin was Pacman, assign Pacman role to the new admin
                         if (role == PlayerRole.Pacman)
                         {
+                            // Store the new admin's OLD role to potentially fill it later
+                            var oldRole = newAdmin.Role;
+
                             newAdmin.Role = PlayerRole.Pacman;
                             if (_playerSessions.TryGetValue(newAdmin.Id, out var session))
                             {
@@ -412,6 +419,16 @@ public class RelayServer : INetEventListener
                             // Notify the new admin/Pacman
                             var roleEvent = new RoleAssignedEvent { PlayerId = newAdmin.Id, Role = PlayerRole.Pacman };
                             BroadcastToRoom(room, roleEvent);
+
+                            // Now the role that needs filling is the new admin's OLD role (if it wasn't spectator/none)
+                            if (oldRole != PlayerRole.Spectator && oldRole != PlayerRole.None)
+                            {
+                                role = oldRole; // Update 'role' variable so the spectator promotion logic below uses it
+                            }
+                            else
+                            {
+                                role = PlayerRole.None; // Nothing to fill
+                            }
                         }
                     }
                 }
@@ -422,29 +439,6 @@ public class RelayServer : INetEventListener
 
                 // Re-evaluate role to fill
                 var roleToFill = role;
-                if (wasAdmin && role == PlayerRole.Pacman)
-                {
-                    // We already gave Pacman to the new admin.
-                    // Now the new admin's OLD role is free.
-                    // But wait, we need to know what the new admin's old role was.
-                    // This is getting complicated. Let's simplify:
-                    // 1. Admin leaves.
-                    // 2. New admin is picked.
-                    // 3. If old admin was Pacman, new admin BECOMES Pacman.
-                    // 4. The role that is now "empty" is the new admin's OLD role (unless they were spectator).
-
-                    // For now, let's stick to the requested logic:
-                    // "If the exiting admin was Pacman, automatically assign the new admin to be Pacman"
-                    // This implies the new admin drops their current role.
-                    // So the role that needs filling is actually the new admin's OLD role.
-
-                    // However, the prompt also says: "If one of the players leaves... the first spectator... will take their place."
-                    // These two rules might conflict if we are not careful.
-
-                    // Let's implement the Admin Handover strictly as requested first.
-                    // The spectator promotion logic is already there for normal leaves.
-                    // We just need to ensure the Admin Handover happens BEFORE spectator promotion if the leaver was Admin.
-                }
 
                 // If we didn't fill the role with the new admin, try spectator
                 // (Logic remains similar to before, but we need to be careful about the role)
@@ -476,6 +470,7 @@ public class RelayServer : INetEventListener
                         }
                         else if (room.State == RoomState.Playing && room.Game != null)
                         {
+                            // No spectator to take over, remove entity
                             room.Game.RemovePlayerRole(roleToFill);
                         }
                      }
