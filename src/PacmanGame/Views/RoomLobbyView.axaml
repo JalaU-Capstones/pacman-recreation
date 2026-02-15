@@ -36,36 +36,42 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:PlayerViewModel" x:CompileBindings="False">
                                     <Border BorderBrush="#FFFF00" BorderThickness="0,0,0,1" Padding="10">
-                                        <Grid ColumnDefinitions="*,Auto,Auto">
-                                            <StackPanel Grid.Column="0" Spacing="5">
-                                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                                    <TextBlock Text="{Binding Name}" Foreground="White" FontSize="18" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="[YOU]" Foreground="Cyan" IsVisible="{Binding IsYou}" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="[ADMIN]" Foreground="Yellow" IsVisible="{Binding IsAdmin}" VerticalAlignment="Center"/>
-                                                </StackPanel>
+                                        <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto">
+                                            <!-- Player Info -->
+                                            <StackPanel Grid.Column="0" Grid.Row="0" Spacing="5" VerticalAlignment="Center">
+                                                <WrapPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Name}" Foreground="White" FontSize="18" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    <TextBlock Text="[YOU]" Foreground="Cyan" IsVisible="{Binding IsYou}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    <TextBlock Text="[ADMIN]" Foreground="Yellow" IsVisible="{Binding IsAdmin}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                </WrapPanel>
                                                 <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding !$parent[UserControl].DataContext.IsAdmin}">
                                                     <TextBlock Text="Role:" Foreground="Gray"/>
                                                     <TextBlock Text="{Binding Role}" Foreground="White"/>
                                                 </StackPanel>
-                                                <TextBlock Text="This character is already assigned." Foreground="Red" FontSize="12"
-                                                           IsVisible="{Binding HasRoleConflict}"/>
                                             </StackPanel>
 
-                                            <ComboBox Grid.Column="1"
-                                                      ItemsSource="{Binding $parent[UserControl].DataContext.Roles}"
-                                                      SelectedItem="{Binding Role}"
-                                                      IsVisible="{Binding $parent[UserControl].DataContext.IsAdmin}"
-                                                      MinWidth="120"
-                                                      Margin="10,0"
-                                                      Classes.error="{Binding HasRoleConflict}"/>
+                                            <!-- Role Selection (Admin Only) -->
+                                            <StackPanel Grid.Column="1" Grid.Row="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                                <ComboBox ItemsSource="{Binding $parent[UserControl].DataContext.Roles}"
+                                                          SelectedItem="{Binding Role}"
+                                                          IsVisible="{Binding $parent[UserControl].DataContext.IsAdmin}"
+                                                          MinWidth="120"
+                                                          Classes.error="{Binding HasRoleConflict}"/>
 
-                                            <Button Grid.Column="2"
-                                                    Content="KICK"
-                                                    Classes="arcade"
-                                                    Command="{Binding $parent[UserControl].DataContext.KickPlayerCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    IsVisible="{Binding $parent[UserControl].DataContext.IsAdmin}"
-                                                    Foreground="Red"/>
+                                                <Button Content="KICK"
+                                                        Classes="arcade"
+                                                        Command="{Binding $parent[UserControl].DataContext.KickPlayerCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        IsVisible="{Binding $parent[UserControl].DataContext.IsAdmin}"
+                                                        Foreground="Red"/>
+                                            </StackPanel>
+
+                                            <!-- Error Message -->
+                                            <TextBlock Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="1"
+                                                       Text="This character is already assigned."
+                                                       Foreground="Red" FontSize="12"
+                                                       IsVisible="{Binding HasRoleConflict}"
+                                                       Margin="0,5,0,0"/>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

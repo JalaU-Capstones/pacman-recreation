@@ -83,18 +83,22 @@
                     BorderThickness="2"
                     CornerRadius="8"
                     Padding="20"
-                    MaxWidth="400"
+                    MaxWidth="450"
+                    Margin="20"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center">
                 <StackPanel Spacing="15">
                     <TextBlock Text="JOIN ROOM" FontSize="24" Foreground="#FFFF00" HorizontalAlignment="Center"/>
                     <TextBlock Text="{Binding ErrorMessage}" Foreground="White" HorizontalAlignment="Center" TextWrapping="Wrap"/>
 
-                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,10,0,0">
-                        <Button Content="JOIN AS SPECTATOR" Command="{Binding JoinAsSpectatorCommand}" Classes="arcade" MinWidth="150"
-                                IsVisible="{Binding CanJoinAsSpectatorOption}"/>
-                        <Button Content="BROWSE OTHER ROOMS" Command="{Binding CancelSpectatorJoinCommand}" Classes="arcade" MinWidth="150"/>
-                    </StackPanel>
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
+                          HorizontalAlignment="Center"
+                          Margin="0,10,0,0"
+                          Classes="responsive-buttons">
+                        <Button Grid.Column="0" Content="JOIN AS SPECTATOR" Command="{Binding JoinAsSpectatorCommand}" Classes="arcade" MinWidth="150"
+                                IsVisible="{Binding CanJoinAsSpectatorOption}" Margin="5"/>
+                        <Button Grid.Column="1" Content="BROWSE OTHER ROOMS" Command="{Binding CancelSpectatorJoinCommand}" Classes="arcade" MinWidth="150" Margin="5"/>
+                    </Grid>
                 </StackPanel>
             </Border>
         </Border>
