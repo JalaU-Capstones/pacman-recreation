@@ -491,4 +491,13 @@ public class GameSimulation
             CurrentLevel = _currentLevel
         };
     }
+
+    public void TriggerGameOver()
+    {
+        if (!_isGameOver)
+        {
+            _isGameOver = true;
+            OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.GameOver });
+        }
+    }
 }

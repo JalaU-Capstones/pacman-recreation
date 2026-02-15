@@ -80,7 +80,6 @@ public class RoomLobbyViewModel : ViewModelBase
         _logger.LogDebug("Active profile: {ProfileName}", myProfile?.Name ?? "null");
         _logger.LogDebug("Initial players count: {Count}", initialPlayers.Count);
 
-        // Find the current player by matching name
         var myPlayerState = initialPlayers.FirstOrDefault(p => p.Name == myProfile?.Name);
         _myPlayerId = myPlayerState?.PlayerId ?? -1;
 
@@ -167,13 +166,26 @@ public class RoomLobbyViewModel : ViewModelBase
                 }
             }
 
+            var duplicateRoles = Players
+                .Where(p => p.Role != PlayerRole.None && p.Role != PlayerRole.Spectator)
+                .GroupBy(p => p.Role)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            foreach (var player in Players)
+            {
+                player.HasRoleConflict = duplicateRoles.Contains(player.Role);
+            }
+
             var playersWithRoles = Players.Count(p => p.Role != PlayerRole.None);
             SpectatorCount = Players.Count - playersWithRoles;
 
             _logger.LogInformation("Room state updated: {PlayersWithRoles} players with roles, {SpectatorCount} spectators.", playersWithRoles, SpectatorCount);
 
             bool hasPacman = Players.Any(p => p.Role == PlayerRole.Pacman);
-            CanStartGame = IsAdmin && hasPacman;
+            bool hasRoleConflict = Players.Any(p => p.HasRoleConflict);
+            CanStartGame = IsAdmin && hasPacman && !hasRoleConflict;
         });
     }
 
@@ -230,7 +242,8 @@ public class RoomLobbyViewModel : ViewModelBase
             _audioManager,
             _serviceProvider.GetRequiredService<ILogger<MultiplayerGameViewModel>>(),
             _networkService,
-            _myPlayerId
+            _myPlayerId,
+            _serviceProvider
         );
 
         _mainWindowViewModel.NavigateTo(multiplayerGameViewModel);

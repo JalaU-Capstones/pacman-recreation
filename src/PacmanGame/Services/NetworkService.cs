@@ -24,8 +24,7 @@ public class NetworkService : INetEventListener
 
     // Room events
     public event Action<int, string, RoomVisibility, List<PlayerState>, bool>? OnJoinedRoom;
-    public event Action<string>? OnJoinRoomFailed;
-    public event Action<string>? OnJoinRoomSpectatorPrompt;
+    public event Action<string, JoinRoomFailureReason, bool>? OnJoinRoomFailed;
     public event Action? OnLeftRoom;
     public event Action<List<PlayerState>>? OnRoomStateUpdate;
     public event Action<string>? OnKicked;
@@ -37,6 +36,8 @@ public class NetworkService : INetEventListener
     public event Action<GameEventMessage>? OnGameEvent;
     public event Action<bool>? OnGamePaused;
     public event Action<SpectatorPromotionEvent>? OnSpectatorPromotion;
+    public event Action<NewPlayerJoinedEvent>? OnNewPlayerJoined;
+    public event Action<SpectatorPromotionFailedEvent>? OnSpectatorPromotionFailed;
 
     public NetworkService(ILogger<NetworkService> logger)
     {
@@ -200,7 +201,7 @@ public class NetworkService : INetEventListener
                 else
                 {
                     _logger.LogError("Failed to create room: {Message}", createResponse.Message);
-                    OnJoinRoomFailed?.Invoke(createResponse.Message ?? "Unknown error");
+                    OnJoinRoomFailed?.Invoke(createResponse.Message ?? "Unknown error", JoinRoomFailureReason.None, false);
                 }
                 break;
             case JoinRoomResponse joinResponse:
@@ -209,15 +210,10 @@ public class NetworkService : INetEventListener
                     _logger.LogInformation("Successfully joined room '{RoomName}'", joinResponse.RoomName);
                     OnJoinedRoom?.Invoke(joinResponse.RoomId, joinResponse.RoomName!, joinResponse.Visibility, joinResponse.Players, joinResponse.IsGameStarted);
                 }
-                else if (joinResponse.CanJoinAsSpectator)
-                {
-                    _logger.LogInformation("Room full, prompting for spectator join.");
-                    OnJoinRoomSpectatorPrompt?.Invoke(joinResponse.Message ?? "Room is full. Join as Spectator?");
-                }
                 else
                 {
                     _logger.LogError("Failed to join room: {Message}", joinResponse.Message);
-                    OnJoinRoomFailed?.Invoke(joinResponse.Message ?? "Unknown error");
+                    OnJoinRoomFailed?.Invoke(joinResponse.Message ?? "Unknown error", joinResponse.FailureReason, joinResponse.CanJoinAsSpectator);
                 }
                 break;
             case GetRoomListResponse roomListResponse:
@@ -251,6 +247,14 @@ public class NetworkService : INetEventListener
                 break;
             case SpectatorPromotionEvent promotionEvent:
                 OnSpectatorPromotion?.Invoke(promotionEvent);
+                break;
+            case NewPlayerJoinedEvent newPlayerEvent:
+                _logger.LogInformation("New player joined: {PlayerName}", newPlayerEvent.PlayerName);
+                OnNewPlayerJoined?.Invoke(newPlayerEvent);
+                break;
+            case SpectatorPromotionFailedEvent promotionFailedEvent:
+                _logger.LogWarning("Spectator promotion failed: {Reason}", promotionFailedEvent.Reason);
+                OnSpectatorPromotionFailed?.Invoke(promotionFailedEvent);
                 break;
         }
     }

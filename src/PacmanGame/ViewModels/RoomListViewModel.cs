@@ -83,7 +83,6 @@ public class RoomListViewModel : ViewModelBase
         _networkService.OnJoinedRoom += HandleJoinedRoom;
         _networkService.OnJoinRoomFailed += HandleJoinRoomFailed;
         _networkService.OnRoomListReceived += HandleRoomListReceived;
-        _networkService.OnJoinRoomSpectatorPrompt += HandleJoinRoomSpectatorPrompt;
 
         JoinPublicRoomCommand = ReactiveCommand.Create<RoomInfo>(JoinPublicRoom);
         RefreshCommand = ReactiveCommand.Create(RefreshRooms);
@@ -196,7 +195,8 @@ public class RoomListViewModel : ViewModelBase
                     _audioManager,
                     _serviceProvider.GetRequiredService<ILogger<MultiplayerGameViewModel>>(),
                     _networkService,
-                    myPlayerId
+                    myPlayerId,
+                    _serviceProvider
                 );
 
                 _mainWindowViewModel.NavigateTo(multiplayerGameViewModel);
@@ -209,21 +209,17 @@ public class RoomListViewModel : ViewModelBase
         });
     }
 
-    private void HandleJoinRoomFailed(string message)
+    private void HandleJoinRoomFailed(string message, JoinRoomFailureReason reason, bool canJoinAsSpectator)
     {
         Dispatcher.UIThread.Post(() =>
         {
             ErrorMessage = $"Failed to join room: {message}";
             _logger.LogError(ErrorMessage);
-        });
-    }
 
-    private void HandleJoinRoomSpectatorPrompt(string message)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            ErrorMessage = message;
-            ShowSpectatorPrompt = true;
+            if (canJoinAsSpectator)
+            {
+                ShowSpectatorPrompt = true;
+            }
         });
     }
 
@@ -238,6 +234,5 @@ public class RoomListViewModel : ViewModelBase
         _networkService.OnJoinedRoom -= HandleJoinedRoom;
         _networkService.OnJoinRoomFailed -= HandleJoinRoomFailed;
         _networkService.OnRoomListReceived -= HandleRoomListReceived;
-        _networkService.OnJoinRoomSpectatorPrompt -= HandleJoinRoomSpectatorPrompt;
     }
 }

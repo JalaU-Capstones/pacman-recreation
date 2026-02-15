@@ -28,6 +28,7 @@ namespace PacmanGame.Shared;
 [Union(21, typeof(RestartGameRequest))]
 [Union(22, typeof(SpectatorPromotionEvent))]
 [Union(23, typeof(NewPlayerJoinedEvent))]
+[Union(24, typeof(SpectatorPromotionFailedEvent))]
 public abstract class NetworkMessageBase
 {
     [IgnoreMember]
@@ -92,6 +93,16 @@ public class JoinRoomRequest : NetworkMessageBase
     public bool JoinAsSpectator { get; set; } // New field to request spectator join explicitly
 }
 
+public enum JoinRoomFailureReason
+{
+    None,
+    RoomNotFound,
+    IncorrectPassword,
+    RoomFull,
+    DuplicateUsername,
+    AlreadyInRoom
+}
+
 [MessagePackObject]
 public class JoinRoomResponse : NetworkMessageBase
 {
@@ -113,6 +124,8 @@ public class JoinRoomResponse : NetworkMessageBase
     public bool CanJoinAsSpectator { get; set; } // New field to prompt user
     [Key(7)]
     public bool IsGameStarted { get; set; }
+    [Key(8)]
+    public JoinRoomFailureReason FailureReason { get; set; }
 }
 
 [MessagePackObject]
@@ -226,6 +239,15 @@ public class SpectatorPromotionEvent : NetworkMessageBase
     public PlayerRole NewRole { get; set; }
     [Key(2)]
     public int PreparationTimeSeconds { get; set; }
+}
+
+[MessagePackObject]
+public class SpectatorPromotionFailedEvent : NetworkMessageBase
+{
+    [IgnoreMember]
+    public override MessageType Type => MessageType.SpectatorPromotionFailedEvent;
+    [Key(0)]
+    public string Reason { get; set; } = string.Empty;
 }
 
 #endregion

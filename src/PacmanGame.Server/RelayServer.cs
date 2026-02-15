@@ -7,6 +7,9 @@ using MessagePack;
 using System.Collections.Concurrent;
 using PacmanGame.Server.Services;
 using Microsoft.Extensions.Logging;
+using System.Linq;
+using System.Collections.Generic;
+using System;
 
 namespace PacmanGame.Server;
 
@@ -247,65 +250,69 @@ public class RelayServer : INetEventListener
         {
             response.Success = false;
             response.Message = "Already in a room.";
+            response.FailureReason = JoinRoomFailureReason.AlreadyInRoom;
         }
         else if (room == null)
         {
             response.Success = false;
             response.Message = "Room not found.";
+            response.FailureReason = JoinRoomFailureReason.RoomNotFound;
         }
         else if (room.Visibility == RoomVisibility.Private && room.Password != request.Password)
         {
             response.Success = false;
             response.Message = "Incorrect password.";
+            response.FailureReason = JoinRoomFailureReason.IncorrectPassword;
         }
-        else if (room.Players.Any(p => p.Name.Equals(request.PlayerName, StringComparison.OrdinalIgnoreCase)))
+        else if (room.Players.Any(p => p.Role != PlayerRole.Spectator && p.Name.Equals(request.PlayerName, StringComparison.OrdinalIgnoreCase)))
         {
             response.Success = false;
-            response.Message = "Name already taken.";
+            response.Message = "Username already in use by a player.";
+            response.FailureReason = JoinRoomFailureReason.DuplicateUsername;
+            response.CanJoinAsSpectator = room.Players.Count(p => p.Role == PlayerRole.Spectator) < 5;
         }
         else
         {
-            // Check capacity
             int playerCount = room.Players.Count(p => p.Role != PlayerRole.Spectator && p.Role != PlayerRole.None);
             int spectatorCount = room.Players.Count(p => p.Role == PlayerRole.Spectator);
-            bool roomFull = playerCount >= 5;
+            bool playablesFull = playerCount >= 5;
             bool spectatorsFull = spectatorCount >= 5;
 
-            if (roomFull && !request.JoinAsSpectator)
+            if (playablesFull && !request.JoinAsSpectator)
             {
                 if (!spectatorsFull)
                 {
-                    // Prompt user to join as spectator
                     response.Success = false;
-                    response.Message = "Room is full. Join as Spectator?";
+                    response.Message = "All player slots are full. Would you like to join as a spectator?";
                     response.CanJoinAsSpectator = true;
+                    response.FailureReason = JoinRoomFailureReason.RoomFull;
                 }
                 else
                 {
                     response.Success = false;
                     response.Message = "Room is completely full (Players & Spectators).";
+                    response.FailureReason = JoinRoomFailureReason.RoomFull;
                 }
             }
             else if (!room.AddPlayer(player))
             {
                 response.Success = false;
                 response.Message = "Room is full.";
+                response.FailureReason = JoinRoomFailureReason.RoomFull;
             }
             else
             {
                 player.Name = request.PlayerName;
                 player.CurrentRoom = room;
-                player.Role = PlayerRole.None; // Default
+                player.Role = PlayerRole.None;
 
-                // Handle mid-game join or explicit spectator request
-                if (request.JoinAsSpectator)
+                if (request.JoinAsSpectator || playablesFull)
                 {
                     player.Role = PlayerRole.Spectator;
                     _logger.LogInformation($"[INFO] Player {player.Name} joined as Spectator.");
                 }
                 else if (room.State == RoomState.Playing)
                 {
-                    // Try to assign an available role
                     var assignedRoles = room.Players.Select(p => p.Role).ToList();
                     var availableRoles = new List<PlayerRole> { PlayerRole.Pacman, PlayerRole.Blinky, PlayerRole.Pinky, PlayerRole.Inky, PlayerRole.Clyde }
                         .Except(assignedRoles)
@@ -314,18 +321,9 @@ public class RelayServer : INetEventListener
                     if (availableRoles.Any())
                     {
                         player.Role = availableRoles.First();
-                        _logger.LogInformation($"[INFO] Player {player.Name} re-joined mid-game. Assigning role {player.Role}.");
-
-                        // Update simulation with new role
+                        _logger.LogInformation($"[INFO] Player {player.Name} joined mid-game. Assigning role {player.Role}.");
                         room.Game?.AddPlayerRole(player.Role);
-
-                        // Broadcast to all players that a new player has joined
-                        var newPlayerEvent = new NewPlayerJoinedEvent
-                        {
-                            PlayerId = player.Id,
-                            PlayerName = player.Name,
-                            Role = player.Role
-                        };
+                        var newPlayerEvent = new NewPlayerJoinedEvent { PlayerId = player.Id, PlayerName = player.Name, Role = player.Role };
                         BroadcastToRoom(room, newPlayerEvent);
                     }
                     else
@@ -335,15 +333,7 @@ public class RelayServer : INetEventListener
                     }
                 }
 
-                // Create session
-                _playerSessions[player.Id] = new PlayerSession
-                {
-                    PlayerId = player.Id,
-                    RoomId = room.Id,
-                    Role = player.Role,
-                    Peer = player.Peer,
-                    PlayerName = player.Name
-                };
+                _playerSessions[player.Id] = new PlayerSession { PlayerId = player.Id, RoomId = room.Id, Role = player.Role, Peer = player.Peer, PlayerName = player.Name };
                 _logger.LogInformation($"[SERVER] Player {player.Id} session created for room {room.Id}");
 
                 response.Success = true;
@@ -357,14 +347,9 @@ public class RelayServer : INetEventListener
                 _logger.LogInformation($"Player {player.Id} ({player.Name}) joined room '{room.Name}'");
                 BroadcastRoomState(room);
 
-                // If game is running, send game start event to the new player so they load the map
                 if (room.State == RoomState.Playing)
                 {
-                    var gameStartEvent = new GameStartEvent
-                    {
-                        PlayerStates = room.GetPlayerStates(),
-                        MapName = "level1.txt"
-                    };
+                    var gameStartEvent = new GameStartEvent { PlayerStates = room.GetPlayerStates(), MapName = "level1.txt" };
                     SendMessageToPlayer(player, gameStartEvent);
                 }
             }
@@ -387,7 +372,6 @@ public class RelayServer : INetEventListener
             player.CurrentRoom = null;
             player.IsAdmin = false;
 
-            // Remove session
             _playerSessions.TryRemove(player.Id, out _);
 
             SendMessageToPlayer(player, new LeaveRoomConfirmation());
@@ -399,109 +383,75 @@ public class RelayServer : INetEventListener
             }
             else
             {
-                // Admin handover logic
                 if (wasAdmin)
                 {
-                    // Find the next oldest player (first in the list)
                     var newAdmin = room.Players.FirstOrDefault();
                     if (newAdmin != null)
                     {
                         newAdmin.IsAdmin = true;
                         _logger.LogInformation($"Admin left. New admin is Player {newAdmin.Id} ({newAdmin.Name}).");
 
-                        // If the exiting admin was Pacman, assign Pacman role to the new admin
                         if (role == PlayerRole.Pacman)
                         {
-                            // Store the new admin's OLD role to potentially fill it later
                             var oldRole = newAdmin.Role;
-
                             newAdmin.Role = PlayerRole.Pacman;
                             if (_playerSessions.TryGetValue(newAdmin.Id, out var session))
                             {
                                 session.Role = PlayerRole.Pacman;
                             }
                             _logger.LogInformation($"Assigned Pacman role to new admin {newAdmin.Name}.");
-
-                            // Notify the new admin/Pacman
                             var roleEvent = new RoleAssignedEvent { PlayerId = newAdmin.Id, Role = PlayerRole.Pacman };
                             BroadcastToRoom(room, roleEvent);
-
-                            // Now the role that needs filling is the new admin's OLD role (if it wasn't spectator/none)
-                            if (oldRole != PlayerRole.Spectator && oldRole != PlayerRole.None)
-                            {
-                                role = oldRole; // Update 'role' variable so the spectator promotion logic below uses it
-                            }
-                            else
-                            {
-                                role = PlayerRole.None; // Nothing to fill
-                            }
+                            role = oldRole != PlayerRole.Spectator && oldRole != PlayerRole.None ? oldRole : PlayerRole.None;
                         }
                     }
                 }
 
-                // Promote spectator if available (only if role wasn't already taken by new admin)
-                // If the role was Pacman and we just gave it to the new admin, we don't need to promote a spectator to it.
-                // But if the role was a Ghost, or if we didn't give Pacman to the admin (e.g. admin wasn't Pacman), we might need to fill it.
-
-                // Re-evaluate role to fill
-                var roleToFill = role;
-
-                // If we didn't fill the role with the new admin, try spectator
-                // (Logic remains similar to before, but we need to be careful about the role)
-
-                if (roleToFill != PlayerRole.Spectator && roleToFill != PlayerRole.None)
+                if (role != PlayerRole.Spectator && role != PlayerRole.None && !room.Players.Any(p => p.Role == role))
                 {
-                     // Check if the role is still empty (it might have been taken by the new admin)
-                     bool roleTaken = room.Players.Any(p => p.Role == roleToFill);
-
-                     if (!roleTaken)
-                     {
-                        var spectator = room.Players.FirstOrDefault(p => p.Role == PlayerRole.Spectator);
-                        if (spectator != null)
-                        {
-                            spectator.Role = roleToFill;
-                            if (_playerSessions.TryGetValue(spectator.Id, out var session))
-                            {
-                                session.Role = roleToFill;
-                            }
-                            _logger.LogInformation($"Promoted spectator {spectator.Name} to {roleToFill}.");
-
-                            var promotionEvent = new SpectatorPromotionEvent
-                            {
-                                PreviousPlayerName = playerName,
-                                NewRole = roleToFill,
-                                PreparationTimeSeconds = 5
-                            };
-                            SendMessageToPlayer(spectator, promotionEvent);
-                        }
-                        else if (room.State == RoomState.Playing && room.Game != null)
-                        {
-                            // No spectator to take over, remove entity
-                            room.Game.RemovePlayerRole(roleToFill);
-                        }
-                     }
+                    PromoteNextSpectator(room, role, playerName);
                 }
 
                 if (room.State == RoomState.Playing && room.Game != null)
                 {
-                    // Update roles in simulation
                     room.Game.UpdateAssignedRoles(room.Players.Select(p => p.Role).ToList());
-
-                    // Check if Pacman exists
                     if (!room.Players.Any(p => p.Role == PlayerRole.Pacman))
                     {
-                         // No Pacman left (and no admin/spectator took over?) -> End Game
-                         // This shouldn't happen if the admin handover logic works, but as a fallback:
-                         _logger.LogWarning("No Pacman player remaining. Ending game.");
-                         // We can trigger a game over or just stop the game.
-                         // Let's trigger Game Over so clients know.
-                         // But we need a GameEvent for that.
-                         // room.Game.TriggerGameOver(); // We'd need to add this method.
+                        _logger.LogWarning("No Pacman player remaining. Ending game.");
+                        room.Game.TriggerGameOver();
                     }
                 }
 
                 BroadcastRoomState(room);
             }
+        }
+    }
+
+    private void PromoteNextSpectator(Room room, PlayerRole roleToFill, string previousPlayerName)
+    {
+        var spectators = room.Players.Where(p => p.Role == PlayerRole.Spectator).ToList();
+        foreach (var spectator in spectators)
+        {
+            if (room.Players.Any(p => p.Role != PlayerRole.Spectator && p.Name.Equals(spectator.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                SendMessageToPlayer(spectator, new SpectatorPromotionFailedEvent { Reason = "You cannot take this player spot because your username matches an existing player's. Skipping to next spectator." });
+                continue;
+            }
+
+            spectator.Role = roleToFill;
+            if (_playerSessions.TryGetValue(spectator.Id, out var session))
+            {
+                session.Role = roleToFill;
+            }
+            _logger.LogInformation($"Promoted spectator {spectator.Name} to {roleToFill}.");
+            var promotionEvent = new SpectatorPromotionEvent { PreviousPlayerName = previousPlayerName, NewRole = roleToFill, PreparationTimeSeconds = 5 };
+            SendMessageToPlayer(spectator, promotionEvent);
+            return;
+        }
+
+        if (room.State == RoomState.Playing && room.Game != null)
+        {
+            room.Game.RemovePlayerRole(roleToFill);
         }
     }
 
@@ -513,17 +463,15 @@ public class RelayServer : INetEventListener
             var targetPlayer = room.Players.FirstOrDefault(p => p.Id == request.PlayerId);
             if (targetPlayer != null)
             {
-                // Check if the role is already taken by another player
-                if (room.Players.Any(p => p.Id != targetPlayer.Id && p.Role == request.Role && request.Role != PlayerRole.Spectator && request.Role != PlayerRole.None))
+                if (request.Role != PlayerRole.Spectator && request.Role != PlayerRole.None && room.Players.Any(p => p.Id != targetPlayer.Id && p.Role == request.Role))
                 {
                     _logger.LogWarning($"Admin {player.Id} failed to assign role {request.Role} to player {request.PlayerId}: role already taken.");
-                    // Optionally, send a failure message back to the admin
+                    // Here you could send a message back to the admin to inform them of the failure.
                     return;
                 }
 
                 targetPlayer.Role = request.Role;
 
-                // Update session
                 if (_playerSessions.TryGetValue(targetPlayer.Id, out var session))
                 {
                     session.Role = request.Role;
@@ -547,7 +495,6 @@ public class RelayServer : INetEventListener
                 room.RemovePlayer(playerToKick);
                 playerToKick.CurrentRoom = null;
 
-                // Remove session
                 _playerSessions.TryRemove(playerToKick.Id, out _);
 
                 _logger.LogInformation($"Admin {player.Id} kicked player {playerToKick.Id}");
@@ -566,25 +513,19 @@ public class RelayServer : INetEventListener
             room.State = RoomState.Playing;
             room.Game = new GameSimulation(_mapLoader, _loggerFactory.CreateLogger<GameSimulation>());
 
-            // Subscribe to game events
             room.Game.OnGameEvent += (evt) =>
             {
                 BroadcastToRoom(room, evt);
                 if (evt.EventType == GameEventType.GameOver || evt.EventType == GameEventType.Victory)
                 {
-                    room.IsPaused = true; // Pause game logic on game over
+                    room.IsPaused = true;
                 }
             };
 
-            // Get all assigned roles
             var assignedRoles = room.Players.Select(p => p.Role).Where(r => r != PlayerRole.None && r != PlayerRole.Spectator).ToList();
             room.Game.Initialize(room.Id, assignedRoles);
 
-            var gameStartEvent = new GameStartEvent
-            {
-                PlayerStates = room.GetPlayerStates(),
-                MapName = "level1.txt"
-            };
+            var gameStartEvent = new GameStartEvent { PlayerStates = room.GetPlayerStates(), MapName = "level1.txt" };
             BroadcastToRoom(room, gameStartEvent);
         }
     }
@@ -595,57 +536,46 @@ public class RelayServer : INetEventListener
         if (room != null && player.IsAdmin)
         {
             _logger.LogInformation($"Admin {player.Id} is restarting game in room '{room.Name}'");
-
-            // Unpause if it was paused
             room.IsPaused = false;
 
-            // Shuffle roles among current players (excluding spectators)
-            var players = room.Players.Where(p => p.Role != PlayerRole.Spectator && p.Role != PlayerRole.None).ToList();
-            var roles = players.Select(p => p.Role).ToList();
-
-            // Simple shuffle
+            var allUsers = room.Players.ToList();
+            var roles = new List<PlayerRole> { PlayerRole.Pacman, PlayerRole.Blinky, PlayerRole.Pinky, PlayerRole.Inky, PlayerRole.Clyde };
             var rng = new Random();
-            int n = roles.Count;
-            while (n > 1)
-            {
-                n--;
-                int k = rng.Next(n + 1);
-                (roles[k], roles[n]) = (roles[n], roles[k]);
-            }
+            var shuffledRoles = roles.OrderBy(r => rng.Next()).ToList();
 
-            for (int i = 0; i < players.Count; i++)
+            for (int i = 0; i < allUsers.Count; i++)
             {
-                players[i].Role = roles[i];
-                if (_playerSessions.TryGetValue(players[i].Id, out var session))
+                var user = allUsers[i];
+                if (i < shuffledRoles.Count)
                 {
-                    session.Role = roles[i];
+                    user.Role = shuffledRoles[i];
+                }
+                else
+                {
+                    user.Role = PlayerRole.Spectator;
+                }
+
+                if (_playerSessions.TryGetValue(user.Id, out var session))
+                {
+                    session.Role = user.Role;
                 }
             }
 
-            // Re-initialize game
             room.Game = new GameSimulation(_mapLoader, _loggerFactory.CreateLogger<GameSimulation>());
-
-            // Subscribe to game events
             room.Game.OnGameEvent += (evt) =>
             {
                 BroadcastToRoom(room, evt);
                 if (evt.EventType == GameEventType.GameOver || evt.EventType == GameEventType.Victory)
                 {
-                    room.IsPaused = true; // Pause game logic on game over
+                    room.IsPaused = true;
                 }
             };
 
             var assignedRoles = room.Players.Select(p => p.Role).Where(r => r != PlayerRole.None && r != PlayerRole.Spectator).ToList();
             room.Game.Initialize(room.Id, assignedRoles);
 
-            // Broadcast new state and start event
             BroadcastRoomState(room);
-
-            var gameStartEvent = new GameStartEvent
-            {
-                PlayerStates = room.GetPlayerStates(),
-                MapName = "level1.txt"
-            };
+            var gameStartEvent = new GameStartEvent { PlayerStates = room.GetPlayerStates(), MapName = "level1.txt" };
             BroadcastToRoom(room, gameStartEvent);
         }
     }

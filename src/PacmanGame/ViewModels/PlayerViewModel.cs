@@ -34,4 +34,11 @@ public class PlayerViewModel : ViewModelBase
         get => _isAdmin;
         set => this.RaiseAndSetIfChanged(ref _isAdmin, value);
     }
+
+    private bool _hasRoleConflict;
+    public bool HasRoleConflict
+    {
+        get => _hasRoleConflict;
+        set => this.RaiseAndSetIfChanged(ref _hasRoleConflict, value);
+    }
 }

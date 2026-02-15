@@ -98,7 +98,7 @@ public class CreateRoomViewModel : ViewModelBase
         _mainWindowViewModel.NavigateToRoomLobby(roomId, roomName, visibility, players);
     }
 
-    private void HandleJoinRoomFailed(string message)
+    private void HandleJoinRoomFailed(string message, JoinRoomFailureReason reason, bool canJoinAsSpectator)
     {
         var errorMessage = $"Failed to create room: {message}";
         _logger.LogError($"[CreateRoomViewModel] {errorMessage}");

@@ -10,6 +10,8 @@ using PacmanGame.Services.Interfaces;
 using PacmanGame.Shared;
 using ReactiveUI;
 using Direction = PacmanGame.Shared.Direction;
+using PacmanGame.Models.Entities;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace PacmanGame.ViewModels;
 
@@ -20,6 +22,7 @@ public class MultiplayerGameViewModel : ViewModelBase
     private readonly IAudioManager _audioManager;
     private readonly ILogger<MultiplayerGameViewModel> _logger;
     private readonly NetworkService _networkService;
+    private readonly IServiceProvider _serviceProvider;
 
     private readonly int _roomId;
     private PlayerRole _myRole;
@@ -124,7 +127,8 @@ public class MultiplayerGameViewModel : ViewModelBase
         IAudioManager audioManager,
         ILogger<MultiplayerGameViewModel> logger,
         NetworkService networkService,
-        int myPlayerId)
+        int myPlayerId,
+        IServiceProvider serviceProvider)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _roomId = roomId;
@@ -135,6 +139,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         _logger = logger;
         _networkService = networkService;
         _myPlayerId = myPlayerId;
+        _serviceProvider = serviceProvider;
 
         TogglePauseCommand = ReactiveCommand.Create(TogglePause);
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
@@ -165,6 +170,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         _networkService.OnSpectatorPromotion += HandleSpectatorPromotion;
         _networkService.OnGameStart += HandleGameStart; // Handle restart/new game start
         _networkService.OnRoomStateUpdate += HandleRoomStateUpdate; // Listen for admin changes
+        _networkService.OnNewPlayerJoined += HandleNewPlayerJoined;
         IsGameRunning = true;
         _logger.LogInformation("[MULTIPLAYER] Game initialized successfully");
     }
@@ -455,6 +461,31 @@ public class MultiplayerGameViewModel : ViewModelBase
         {
             IsAdmin = myState.IsAdmin;
             _logger.LogInformation($"[CLIENT-VM] Room state updated. IsAdmin: {IsAdmin}");
+        }
+    }
+
+    private void HandleNewPlayerJoined(NewPlayerJoinedEvent evt)
+    {
+        _logger.LogInformation($"[CLIENT-VM] New player {evt.PlayerName} joined as {evt.Role}");
+
+        if (evt.Role == PlayerRole.Pacman)
+        {
+            if (_gameEngine.Pacman == null)
+            {
+                var pacmanLogger = _serviceProvider.GetRequiredService<ILogger<Pacman>>();
+                _gameEngine.Pacman = new Pacman(0, 0, pacmanLogger); // Position will be updated by GameState
+                _logger.LogInformation("[CLIENT-VM] Spawned new Pacman for new player.");
+            }
+        }
+        else if (evt.Role != PlayerRole.Spectator && evt.Role != PlayerRole.None)
+        {
+            var ghostType = (Models.Enums.GhostType)Enum.Parse(typeof(Models.Enums.GhostType), evt.Role.ToString());
+            if (!_gameEngine.Ghosts.Any(g => g.Type == ghostType))
+            {
+                var newGhost = new Ghost(0, 0, ghostType) { IsAIControlled = false };
+                _gameEngine.Ghosts.Add(newGhost);
+                _logger.LogInformation($"[CLIENT-VM] Spawned new ghost {ghostType} for new player.");
+            }
         }
     }
 }

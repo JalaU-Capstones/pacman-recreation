@@ -25,5 +25,6 @@ public enum MessageType
     GamePausedEvent,
     RestartGameRequest,
     SpectatorPromotionEvent,
-    NewPlayerJoinedEvent
+    NewPlayerJoinedEvent,
+    SpectatorPromotionFailedEvent
 }
