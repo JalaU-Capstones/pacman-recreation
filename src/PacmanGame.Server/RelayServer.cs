@@ -317,14 +317,19 @@ public class RelayServer : INetEventListener
                         _logger.LogInformation($"[INFO] Player {player.Name} re-joined mid-game. Assigning role {player.Role}.");
 
                         // Update simulation with new role
-                        room.Game?.UpdateAssignedRoles(room.Players.Select(p => p.Role).ToList());
+                        room.Game?.AddPlayerRole(player.Role);
+
+                        // Broadcast to all players that a new player has joined
+                        var newPlayerEvent = new NewPlayerJoinedEvent
+                        {
+                            PlayerId = player.Id,
+                            PlayerName = player.Name,
+                            Role = player.Role
+                        };
+                        BroadcastToRoom(room, newPlayerEvent);
                     }
                     else
                     {
-                        // If no roles available, force spectator or prompt
-                        // The client logic handles the prompt if we return CanJoinAsSpectator = true, but here we are already adding them.
-                        // If we are here, it means room.AddPlayer succeeded.
-                        // If no roles are free, they MUST be a spectator.
                         player.Role = PlayerRole.Spectator;
                         _logger.LogInformation($"[INFO] Player {player.Name} joined mid-game as Spectator (No roles free).");
                     }
@@ -508,6 +513,14 @@ public class RelayServer : INetEventListener
             var targetPlayer = room.Players.FirstOrDefault(p => p.Id == request.PlayerId);
             if (targetPlayer != null)
             {
+                // Check if the role is already taken by another player
+                if (room.Players.Any(p => p.Id != targetPlayer.Id && p.Role == request.Role && request.Role != PlayerRole.Spectator && request.Role != PlayerRole.None))
+                {
+                    _logger.LogWarning($"Admin {player.Id} failed to assign role {request.Role} to player {request.PlayerId}: role already taken.");
+                    // Optionally, send a failure message back to the admin
+                    return;
+                }
+
                 targetPlayer.Role = request.Role;
 
                 // Update session

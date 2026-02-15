@@ -82,6 +82,77 @@ public class GameSimulation
         }
     }
 
+    public void AddPlayerRole(PlayerRole role)
+    {
+        if (_assignedRoles.Contains(role))
+        {
+            _logger.LogWarning($"[SIMULATION] Role {role} is already assigned.");
+            return;
+        }
+
+        _assignedRoles.Add(role);
+        _playerInputs[role] = Direction.None;
+
+        _logger.LogInformation($"[SIMULATION] Adding player with role: {role}");
+
+        if (role == PlayerRole.Pacman)
+        {
+            if (_pacman == null)
+            {
+                var pacmanSpawn = _mapLoader.GetPacmanSpawn($"level{_currentLevel}.txt");
+                _pacman = new Pacman(pacmanSpawn.Row, pacmanSpawn.Col) { CurrentDirection = Direction.None };
+                _logger.LogInformation($"[SIMULATION] Created Pacman entity.");
+            }
+        }
+        else
+        {
+            GhostType? ghostType = GetGhostTypeForRole(role);
+            if (ghostType.HasValue)
+            {
+                if (!_ghosts.Any(g => g.Type == ghostType.Value))
+                {
+                    var ghostSpawnsData = _mapLoader.GetGhostSpawns($"level{_currentLevel}.txt");
+                    int ghostIndex = GetGhostIndex(ghostType.Value);
+
+                    if (ghostIndex != -1 && ghostIndex < ghostSpawnsData.Count)
+                    {
+                        var spawn = ghostSpawnsData[ghostIndex];
+                        if (!_ghostSpawns.ContainsKey(ghostType.Value))
+                        {
+                            _ghostSpawns[ghostType.Value] = spawn;
+                        }
+
+                        var ghost = new Ghost(ghostType.Value, spawn.Row, spawn.Col)
+                        {
+                            CurrentDirection = Direction.None,
+                            IsAIControlled = false
+                        };
+                        _ghosts.Add(ghost);
+                        _logger.LogInformation($"[SIMULATION] Created {ghostType.Value} entity.");
+                    }
+                }
+            }
+        }
+    }
+
+    private GhostType? GetGhostTypeForRole(PlayerRole role) => role switch
+    {
+        PlayerRole.Blinky => GhostType.Blinky,
+        PlayerRole.Pinky => GhostType.Pinky,
+        PlayerRole.Inky => GhostType.Inky,
+        PlayerRole.Clyde => GhostType.Clyde,
+        _ => null
+    };
+
+    private int GetGhostIndex(GhostType type) => type switch
+    {
+        GhostType.Blinky => 0,
+        GhostType.Pinky => 1,
+        GhostType.Inky => 2,
+        GhostType.Clyde => 3,
+        _ => -1
+    };
+
     private void LoadLevel(int level)
     {
         _map = _mapLoader.LoadMap($"level{level}.txt");
