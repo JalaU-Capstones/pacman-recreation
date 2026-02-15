@@ -490,6 +490,9 @@ public class RelayServer : INetEventListener
             room.State = RoomState.Playing;
             room.Game = new GameSimulation(_mapLoader, _loggerFactory.CreateLogger<GameSimulation>());
 
+            // Subscribe to game events
+            room.Game.OnGameEvent += (evt) => BroadcastToRoom(room, evt);
+
             // Get all assigned roles
             var assignedRoles = room.Players.Select(p => p.Role).Where(r => r != PlayerRole.None && r != PlayerRole.Spectator).ToList();
             room.Game.Initialize(room.Id, assignedRoles);
@@ -535,6 +538,10 @@ public class RelayServer : INetEventListener
 
             // Re-initialize game
             room.Game = new GameSimulation(_mapLoader, _loggerFactory.CreateLogger<GameSimulation>());
+
+            // Subscribe to game events
+            room.Game.OnGameEvent += (evt) => BroadcastToRoom(room, evt);
+
             var assignedRoles = room.Players.Select(p => p.Role).Where(r => r != PlayerRole.None && r != PlayerRole.Spectator).ToList();
             room.Game.Initialize(room.Id, assignedRoles);
 
