@@ -343,6 +343,11 @@ public class MultiplayerGameViewModel : ViewModelBase
                     IsVictory = true;
                     FinalScore = Score;
                 }
+                else if (_myRole == PlayerRole.Spectator)
+                {
+                    IsVictory = true; // Spectator sees victory if Pacman wins
+                    FinalScore = Score;
+                }
                 else
                 {
                     IsGameOver = true; // Ghosts lost

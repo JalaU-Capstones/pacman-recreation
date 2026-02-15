@@ -331,6 +331,14 @@ public class GameSimulation
     {
         if (_pacman == null) return;
 
+        // Check for victory condition (all dots collected)
+        bool allDotsCollected = !_collectibles.Any(c => c.IsActive && (c.Type == CollectibleType.SmallDot || c.Type == CollectibleType.PowerPellet));
+        if (allDotsCollected)
+        {
+            OnGameEvent?.Invoke(new GameEventMessage { EventType = GameEventType.LevelComplete });
+            return;
+        }
+
         for (int i = _collectibles.Count - 1; i >= 0; i--)
         {
             var c = _collectibles[i];
