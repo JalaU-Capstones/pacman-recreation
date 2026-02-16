@@ -4,7 +4,6 @@ using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using PacmanGame.Helpers;
 using PacmanGame.Services.Pathfinding;
-using PacmanGame.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Services.AI;
@@ -21,7 +20,6 @@ public class ClydeAI : IGhostAI
     /// </summary>
     public Direction GetNextMove(Ghost ghost, Pacman pacman, TileType[,] map, List<Ghost> allGhosts, bool isChaseMode, ILogger logger)
     {
-        logger.LogInformation("Calculating next move for Clyde.");
         int targetY, targetX;
 
         if (isChaseMode)
@@ -41,19 +39,15 @@ public class ClydeAI : IGhostAI
                 targetY = Constants.ClydeScatterY;
                 targetX = Constants.ClydeScatterX;
             }
-
-            logger.LogDebug($"Clyde distance={distance} target=({targetY},{targetX}) mode=Chase");
         }
         else
         {
             // Scatter Mode: Target is the bottom-left corner.
             targetY = Constants.ClydeScatterY;
             targetX = Constants.ClydeScatterX;
-            logger.LogDebug($"Clyde target=({targetY},{targetX}) mode=Scatter");
         }
 
         var next = _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost, logger);
-        logger.LogDebug($"Clyde NextMove={next}");
         return next;
     }
 }

@@ -148,11 +148,12 @@ public class GameViewModel : ViewModelBase
 
     private void SetPacmanDirection(Direction direction)
     {
-        _logger.LogDebug("ViewModel received direction: {Direction}", direction);
+        // _logger.LogDebug("ViewModel received direction: {Direction}", direction);
         _engine.SetPacmanDirection(direction);
     }
 
-    public void GameOver()
+    // Renamed to avoid confusion with event handler
+    private void HandleGameOver()
     {
         IsGameRunning = false;
         _engine.Stop();
@@ -187,7 +188,7 @@ public class GameViewModel : ViewModelBase
         Lives--;
         if (Lives <= 0)
         {
-            GameOver();
+            HandleGameOver();
         }
     }
 
@@ -206,7 +207,7 @@ public class GameViewModel : ViewModelBase
 
     private void OnGameOver()
     {
-        GameOver();
+        HandleGameOver();
     }
 
     private void OnVictory()

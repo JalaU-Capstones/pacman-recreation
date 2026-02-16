@@ -3,7 +3,6 @@ using System.Linq;
 using System.Reactive;
 using System.Windows.Input;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Microsoft.Extensions.Logging;
 using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
@@ -197,13 +196,7 @@ public class MultiplayerGameViewModel : ViewModelBase
                 Direction = _currentDirection,
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
-
             _networkService.SendPlayerInput(inputMessage);
-
-            if (_currentDirection != Direction.None)
-            {
-                _logger.LogDebug($"[CLIENT-VM] Sending input: {_currentDirection}");
-            }
         };
         inputTimer.Start();
 
@@ -229,11 +222,10 @@ public class MultiplayerGameViewModel : ViewModelBase
         if (IsAdmin)
         {
             _networkService.SendRestartGameRequest();
-            // Reset local UI state
             IsGameOver = false;
             IsVictory = false;
             IsLevelComplete = false;
-            _currentDirection = Direction.None; // Reset direction on restart request
+            _currentDirection = Direction.None;
         }
     }
 

@@ -4,7 +4,6 @@ using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using PacmanGame.Helpers;
 using PacmanGame.Services.Pathfinding;
-using PacmanGame.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Services.AI;
@@ -33,9 +32,6 @@ public class PinkyAI : IGhostAI
             {
                 case Direction.Up:
                     targetY -= 4;
-                    // Original Pac-Man bug: when Pac-Man faces up, Pinky targets 4 tiles up and 4 tiles left.
-                    // For this project, we simplify to just 4 tiles up.
-                    // targetX -= 4;
                     break;
                 case Direction.Down:
                     targetY += 4;
@@ -47,7 +43,6 @@ public class PinkyAI : IGhostAI
                     targetX += 4;
                     break;
                 case Direction.None:
-                    // If Pac-Man is not moving, target his current position (like Blinky)
                     break;
             }
 
@@ -62,9 +57,7 @@ public class PinkyAI : IGhostAI
             targetX = Constants.PinkyScatterX;
         }
 
-        logger.LogDebug($"Pinky target=({targetY},{targetX}) mode={(isChaseMode ? "Chase" : "Scatter")}");
         var next = _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost, logger);
-        logger.LogDebug($"Pinky NextMove={next}");
         return next;
     }
 }

@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
-using PacmanGame.Services.Interfaces;
 
 namespace PacmanGame.Services.AI;
 

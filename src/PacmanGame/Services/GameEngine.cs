@@ -97,24 +97,20 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         try
         {
             _currentLevel = level;
-            _logger.LogInformation($"Loading level {level}...");
             string fileName = "level" + level + ".txt";
 
             _map = _mapLoader.LoadMap(fileName);
-            _logger.LogInformation($"Map loaded: {_map.GetLength(0)} rows × {_map.GetLength(1)} cols");
 
             _collectibles = _mapLoader.GetCollectibles(fileName)
                 .Select(c => new Collectible(c.Col, c.Row, c.Type))
                 .ToList();
-            _logger.LogInformation($"{_collectibles.Count} collectibles loaded");
 
             var pacmanSpawn = _mapLoader.GetPacmanSpawn(fileName);
             _pacman = new Pacman(pacmanSpawn.Col, pacmanSpawn.Row, _loggerFactory.CreateLogger<Pacman>());
-            _logger.LogInformation($"Pac-Man spawned at ({pacmanSpawn.Col}, {pacmanSpawn.Row})");
 
             if (_pacman != null && _map[_pacman.Y, _pacman.X] == TileType.Wall)
             {
-                _logger.LogError("[GAMEENGINE] CRITICAL: Pacman spawned inside a WALL!");
+                // Log error if needed, but removed for production cleanup
             }
 
             var ghostSpawns = _mapLoader.GetGhostSpawns(fileName);
@@ -133,7 +129,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
                 ghost.ReleaseTimer = 0.5f + i * Constants.GhostReleaseInterval;
                 _ghosts.Add(ghost);
             }
-            _logger.LogInformation($"{_ghosts.Count} ghosts spawned (in house)");
 
             _ghostsEatenThisRound = 0;
             _modeTimer = 0f;
@@ -155,7 +150,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         if (_pacman != null)
         {
             _pacman.PowerPelletDuration = Constants.Level1PowerPelletDuration;
-            _pacman.Speed = Constants.PacmanSpeed;
+            _pacman.Speed = 3.0f;
         }
         _chaseDuration = Constants.Level1ChaseDuration;
         _scatterDuration = Constants.Level1ScatterDuration;
@@ -164,7 +159,11 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         if (level == 2)
         {
             speedMultiplier = Constants.Level2GhostSpeedMultiplier;
-            if (_pacman != null) _pacman.PowerPelletDuration = Constants.Level2PowerPelletDuration;
+            if (_pacman != null)
+            {
+                _pacman.PowerPelletDuration = Constants.Level2PowerPelletDuration;
+                _pacman.Speed = 3.4f;
+            }
             _chaseDuration = Constants.Level2ChaseDuration;
             _scatterDuration = Constants.Level2ScatterDuration;
             _ghostRespawnTime = Constants.Level2GhostRespawnTime;
@@ -175,7 +174,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             if (_pacman != null)
             {
                 _pacman.PowerPelletDuration = Constants.Level3PowerPelletDuration;
-                _pacman.Speed *= Constants.Level3PacmanSpeedMultiplier;
+                _pacman.Speed = 3.6f;
             }
             _chaseDuration = Constants.Level3ChaseDuration;
             _scatterDuration = Constants.Level3ScatterDuration;
@@ -184,7 +183,14 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
         foreach (var ghost in _ghosts)
         {
-            ghost.SpeedMultiplier = speedMultiplier;
+            float baseGhostSpeed = level switch
+            {
+                1 => 3.2f,
+                2 => 3.6f,
+                _ => 3.8f
+            };
+
+            ghost.SpeedMultiplier = baseGhostSpeed / Constants.GhostNormalSpeed;
         }
     }
 
@@ -192,14 +198,12 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     {
         _isRunning = true;
         _isPaused = false;
-        _logger.LogInformation("Game started");
     }
 
     public void Stop()
     {
         _isRunning = false;
         _isPaused = false;
-        _logger.LogInformation("Game stopped");
     }
 
     public void Pause()
@@ -207,7 +211,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         if (_isRunning && !_isPaused)
         {
             _isPaused = true;
-            _logger.LogInformation("Game paused");
         }
     }
 
@@ -216,7 +219,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         if (_isRunning && _isPaused)
         {
             _isPaused = false;
-            _logger.LogInformation("Game resumed");
         }
     }
 
@@ -224,7 +226,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     {
         if (Pacman == null)
         {
-            // _logger.LogError("[GAMEENGINE] Pacman is NULL!");
             return;
         }
 
@@ -288,11 +289,9 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     {
         if (Pacman == null)
         {
-            // _logger.LogError("[GAMEENGINE] Pacman is NULL in UpdatePacman!");
             return;
         }
 
-        // Try to change direction
         if (Pacman.NextDirection != Direction.None)
         {
             var (newX, newY) = GetNextPosition(Pacman.X, Pacman.Y, Pacman.NextDirection);
@@ -303,7 +302,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             }
         }
 
-        // Move in current direction
         if (Pacman.CurrentDirection != Direction.None)
         {
             var (moveX, moveY) = GetNextPosition(Pacman.X, Pacman.Y, Pacman.CurrentDirection);
@@ -334,13 +332,11 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
     private bool CanMoveTo(int x, int y)
     {
-        // Check bounds
         if (x < 0 || x >= Constants.MapWidth || y < 0 || y >= Constants.MapHeight)
         {
             return false;
         }
 
-        // CRITICAL: Map is indexed as [row, col] = [y, x], NOT [x, y]
         var tile = _map[y, x];
 
         if (tile == TileType.Wall)
@@ -387,16 +383,43 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         if (ghost.CurrentDirection != Direction.None)
         {
             (int dx, int dy) = GetDirectionDeltas(ghost.CurrentDirection);
-            ghost.ExactX += dx * ghost.GetSpeed() * deltaTime;
-            ghost.ExactY += dy * ghost.GetSpeed() * deltaTime;
+            float nextX = ghost.ExactX + dx * ghost.GetSpeed() * deltaTime;
+            float nextY = ghost.ExactY + dy * ghost.GetSpeed() * deltaTime;
 
-            if (ghost.ExactX < 0) ghost.ExactX = Constants.MapWidth - 1;
-            else if (ghost.ExactX >= Constants.MapWidth) ghost.ExactX = 0;
-            if (ghost.ExactY < 0) ghost.ExactY = Constants.MapHeight - 1;
-            else if (ghost.ExactY >= Constants.MapHeight) ghost.ExactY = 0;
+            // Validate movement to prevent passing through walls
+            // Check the tile ahead based on direction
+            int checkX = (int)Math.Round(nextX);
+            int checkY = (int)Math.Round(nextY);
 
-            ghost.X = (int)Math.Round(ghost.ExactX);
-            ghost.Y = (int)Math.Round(ghost.ExactY);
+            // Special handling for ghost house gate
+            bool isGate = false;
+            if (checkX >= 0 && checkX < Constants.MapWidth && checkY >= 0 && checkY < Constants.MapHeight)
+            {
+                isGate = _map[checkY, checkX] == TileType.GhostDoor;
+            }
+
+            // Allow movement if valid tile OR if it's the gate and ghost is entering/exiting
+            bool canPass = CanMoveTo(checkX, checkY) || (isGate && (ghost.State == GhostState.Eaten || ghost.State == GhostState.ExitingHouse));
+
+            if (canPass)
+            {
+                ghost.ExactX = nextX;
+                ghost.ExactY = nextY;
+
+                if (ghost.ExactX < 0) ghost.ExactX = Constants.MapWidth - 1;
+                else if (ghost.ExactX >= Constants.MapWidth) ghost.ExactX = 0;
+                if (ghost.ExactY < 0) ghost.ExactY = Constants.MapHeight - 1;
+                else if (ghost.ExactY >= Constants.MapHeight) ghost.ExactY = 0;
+
+                ghost.X = (int)Math.Round(ghost.ExactX);
+                ghost.Y = (int)Math.Round(ghost.ExactY);
+            }
+            else
+            {
+                // Hit a wall, snap to grid
+                ghost.ExactX = ghost.X;
+                ghost.ExactY = ghost.Y;
+            }
         }
 
         ghost.UpdateVulnerability(deltaTime, _logger);
@@ -484,7 +507,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
         if (nextMove == Direction.None || !ghost.CanMove(nextMove, _map))
         {
-            _logger.LogWarning($"Ghost pathfinding failed for {ghost.Type} - using fallback random move");
             if (ghost.CanMove(ghost.CurrentDirection, _map))
             {
                 return ghost.CurrentDirection;
@@ -515,7 +537,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             collected.IsActive = false;
             if (collected.Type == CollectibleType.PowerPellet)
             {
-                _logger.LogInformation($"Power pellet collected - Ghosts vulnerable for {_pacman.PowerPelletDuration} seconds");
                 _pacman.ActivatePowerPellet();
                 _ghostsEatenThisRound = 0;
                 foreach (var ghost in _ghosts.Where(g => g.State == GhostState.Normal))
@@ -553,11 +574,9 @@ public class GameEngine : IGameEngine, IGameEngineInternal
                 _ghostsEatenThisRound++;
                 int points = Constants.GhostPoints * (1 << (_ghostsEatenThisRound - 1));
                 ScoreChanged?.Invoke(points);
-                _logger.LogInformation($"Eaten ghost {hitGhost.Type} for {points} points");
             }
             else if (hitGhost.State == GhostState.Normal)
             {
-                _logger.LogInformation("Ghost collision detected - Life lost");
                 _audioManager.PlaySoundEffect("death");
                 _pacman.IsDying = true;
             }
@@ -566,7 +585,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
     private void ResetPositions()
     {
-        _logger.LogInformation("Resetting entity positions after life lost");
         var pacmanSpawn = _mapLoader.GetPacmanSpawn($"level{_currentLevel}.txt");
         if (_pacman != null)
         {
@@ -620,7 +638,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         {
             _isChaseMode = !_isChaseMode;
             _modeTimer = 0f;
-            _logger.LogInformation($"Ghost mode switched to: {(_isChaseMode ? "Chase" : "Scatter")}");
         }
     }
 

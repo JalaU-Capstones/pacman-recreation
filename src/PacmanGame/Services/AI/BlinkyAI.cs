@@ -1,10 +1,8 @@
-using System;
 using System.Collections.Generic;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using PacmanGame.Helpers;
 using PacmanGame.Services.Pathfinding;
-using PacmanGame.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Services.AI;
@@ -15,6 +13,9 @@ namespace PacmanGame.Services.AI;
 public class BlinkyAI : IGhostAI
 {
     private readonly AStarPathfinder _pathfinder = new AStarPathfinder();
+    private Direction _cachedDirection = Direction.None;
+    private float _lastPathCalculationTime = 0f;
+    private const float PathCalculationInterval = 0.5f; // Calculate path every 0.5 seconds
 
     /// <summary>
     /// Blinky's behavior is to directly chase Pac-Man.
@@ -35,10 +36,7 @@ public class BlinkyAI : IGhostAI
             targetY = Constants.BlinkyScatterY;
             targetX = Constants.BlinkyScatterX;
         }
-
-        logger.LogDebug($"Blinky target=({targetY},{targetX}) mode={(isChaseMode ? "Chase" : "Scatter")}");
         var next = _pathfinder.FindPath(ghost.Y, ghost.X, targetY, targetX, map, ghost, logger);
-        logger.LogDebug($"Blinky NextMove={next}");
         return next;
     }
 }

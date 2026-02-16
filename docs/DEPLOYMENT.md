@@ -111,9 +111,11 @@ After=network.target
 Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/pacman-server
-ExecStart=/usr/bin/dotnet /home/ubuntu/pacman-server/PacmanGame.Server.dll
+ExecStart=/home/ubuntu/.dotnet/dotnet /home/ubuntu/pacman-server/PacmanGame.Server.dll
 Restart=always
 RestartSec=10
+Environment=DOTNET_ROOT=/home/ubuntu/.dotnet
+Environment=PATH=/home/ubuntu/.dotnet:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 Environment=ASPNETCORE_ENVIRONMENT=Production
 
 [Install]
