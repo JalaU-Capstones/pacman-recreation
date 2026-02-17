@@ -2,10 +2,7 @@
 generate-nuget-sources.py
 
 Generates generated-sources.json for offline NuGet restore inside Flatpak builds.
-
-IMPORTANT: Each entry in the output JSON has "dest": "nuget-sources" so that
-flatpak-builder places the .nupkg files in the nuget-sources/ directory,
-which dotnet restore reads with --source nuget-sources.
+Includes both app packages AND .NET 9 runtime packs required for --self-contained builds.
 
 Usage:
     cd /path/to/flathub-repo
@@ -15,7 +12,7 @@ Requirements:
     pip install aiohttp
 
 Output:
-    generated-sources.json  (include this directly in your manifest sources)
+    generated-sources.json
 """
 
 import asyncio
@@ -36,6 +33,18 @@ except ImportError:
 NUGET_DEST = "nuget-sources"
 NUGET_BASE_URL = "https://api.nuget.org/v3-flatcontainer"
 SCRIPT_DIR = Path(__file__).parent.resolve()
+
+# .NET 9 runtime packs required for --self-contained linux-x64 publish.
+# These are NOT in packages.lock.json because dotnet resolves them at publish time.
+# Version must match the .NET SDK version used in the Flatpak build.
+# Check with: dotnet --version  (in the build environment)
+DOTNET_VERSION = "9.0.3"  # Update if SDK extension uses a different patch version
+
+RUNTIME_PACKS = [
+    f"microsoft.netcore.app.runtime.linux-x64",
+    f"microsoft.aspnetcore.app.runtime.linux-x64",
+    f"microsoft.netcore.app.host.linux-x64",
+]
 
 CANDIDATE_CSPROJ = [
     SCRIPT_DIR / "src" / "PacmanGame" / "PacmanGame.csproj",
@@ -76,7 +85,6 @@ def get_packages_via_restore(csproj_path):
              "--verbosity", "quiet"],
             check=False,
         )
-
         packages = {}
         for root, dirs, files in os.walk(tmpdir):
             for filename in files:
@@ -88,15 +96,18 @@ def get_packages_via_restore(csproj_path):
                         key = name_part.lower()
                         if key not in packages:
                             packages[key] = (name_part, version_part)
-
         return list(packages.values())
 
 
-async def fetch_sha512(session, name, version, semaphore):
+async def fetch_package(session, name, version, semaphore):
+    """Download a NuGet package and return its source entry."""
     url = f"{NUGET_BASE_URL}/{name.lower()}/{version.lower()}/{name.lower()}.{version.lower()}.nupkg"
     async with semaphore:
         try:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=60)) as resp:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=120)) as resp:
+                if resp.status == 404:
+                    print(f"  NOT FOUND: {name} {version}")
+                    return None
                 if resp.status != 200:
                     print(f"  SKIP {name} {version} (HTTP {resp.status})")
                     return None
@@ -121,66 +132,72 @@ async def main():
     csproj = find_csproj()
     if not csproj:
         print("Error: PacmanGame.csproj not found.")
-        print("Run this script from the flathub repo or project root.")
         sys.exit(1)
 
     print(f"Project: {csproj}")
 
+    # Step 1: Get app packages
     lock_file = csproj.parent / "packages.lock.json"
-
     if lock_file.exists():
-        packages = get_packages_from_lock_file(lock_file)
+        app_packages = get_packages_from_lock_file(lock_file)
     else:
-        print("\nNo packages.lock.json found. To create it:")
-        print("  1. Add to PacmanGame.csproj:")
-        print("     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>")
-        print("  2. Run: dotnet restore src/PacmanGame/PacmanGame.csproj")
-        print("  3. Commit packages.lock.json to the repo")
-        print("\nFalling back to dotnet restore scan (less reliable)...")
-        packages = get_packages_via_restore(csproj)
+        print("\nNo packages.lock.json found. Add this to PacmanGame.csproj:")
+        print("  <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>")
+        print("Then run: dotnet restore src/PacmanGame/PacmanGame.csproj\n")
+        app_packages = get_packages_via_restore(csproj)
 
-    if not packages:
-        print("Error: No packages found.")
-        sys.exit(1)
+    # Step 2: Add .NET runtime packs (required for --self-contained linux-x64)
+    runtime_packages = [(name, DOTNET_VERSION) for name in RUNTIME_PACKS]
 
-    print(f"\nFound {len(packages)} unique packages.")
-    print("Downloading and computing SHA512 hashes (this may take a few minutes)...")
+    all_packages = app_packages + runtime_packages
+
+    # Deduplicate
+    seen = set()
+    unique = []
+    for name, version in all_packages:
+        key = f"{name.lower()}.{version.lower()}"
+        if key not in seen:
+            seen.add(key)
+            unique.append((name, version))
+
+    print(f"\nApp packages:     {len(app_packages)}")
+    print(f"Runtime packs:    {len(runtime_packages)}")
+    print(f"Total unique:     {len(unique)}")
+    print(f"\nDownloading and hashing (this takes a few minutes)...")
 
     semaphore = asyncio.Semaphore(8)
     connector = aiohttp.TCPConnector(limit=16)
 
     async with aiohttp.ClientSession(connector=connector) as session:
-        tasks = [
-            fetch_sha512(session, name, version, semaphore)
-            for name, version in packages
-        ]
+        tasks = [fetch_package(session, name, version, semaphore) for name, version in unique]
         results = await asyncio.gather(*tasks)
 
+    # Separate found vs not-found
     sources = sorted(
         [r for r in results if r is not None],
         key=lambda x: x["dest-filename"]
     )
+    missing = [unique[i] for i, r in enumerate(results) if r is None]
 
     output_path = SCRIPT_DIR / "generated-sources.json"
     with open(output_path, "w") as f:
         json.dump(sources, f, indent=2)
         f.write("\n")
 
-    print(f"\nDone. Written {len(sources)} entries to: {output_path}")
-    print()
+    print(f"\nWrote {len(sources)} entries to: {output_path}")
 
-    # Verify output has correct dest
-    with open(output_path) as f:
-        check = json.load(f)
-    wrong_dest = [e for e in check if e.get("dest") != NUGET_DEST]
-    if wrong_dest:
-        print(f"WARNING: {len(wrong_dest)} entries have wrong dest field!")
+    if missing:
+        print(f"\nWARNING: {len(missing)} packages not found on NuGet:")
+        for name, version in missing:
+            print(f"  {name} {version}")
+        print("\nIf these are runtime packs, update DOTNET_VERSION in this script.")
+        print("Check the actual .NET version in the SDK extension:")
+        print("  flatpak run --command=dotnet org.freedesktop.Sdk//24.08 --version")
     else:
-        print(f"All entries have correct dest: {NUGET_DEST!r}")
+        print("All packages found and hashed.")
 
     print()
-    print("Next steps:")
-    print("  flatpak install flathub org.freedesktop.Sdk.Extension.dotnet9//24.08")
+    print("Next step:")
     print("  flatpak-builder --force-clean --user --install build-dir manifest.yaml")
 
 

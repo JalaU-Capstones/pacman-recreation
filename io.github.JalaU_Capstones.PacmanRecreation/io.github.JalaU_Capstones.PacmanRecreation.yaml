@@ -13,6 +13,7 @@ build-options:
     PKG_CONFIG_PATH: /app/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
     DOTNET_CLI_TELEMETRY_OPTOUT: '1'
     DOTNET_NOLOGO: '1'
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
     HOME: /root
 
 finish-args:
@@ -28,28 +29,21 @@ modules:
   - name: pacman-recreation
     buildsystem: simple
     build-commands:
-      # Restore using the local nuget-sources directory
-      # The .nupkg files are placed here by flatpak-builder
-      # reading generated-sources.json (which must have "dest": "nuget-sources")
-      - dotnet restore src/PacmanGame/PacmanGame.csproj
-        --runtime linux-x64
-        --source "$PWD/nuget-sources"
-        --packages "$PWD/nuget-cache"
-        /p:RestoreDisableParallel=true
-
-      # Publish self-contained
+      # This is the canonical pattern used by all .NET apps on Flathub.
+      # --source ./nuget-sources includes BOTH app packages AND runtime packs.
+      # Runtime packs (Microsoft.NETCore.App.Runtime.linux-x64, etc.) must be
+      # present in nuget-sources — generate them with generate-nuget-sources.py.
       - dotnet publish src/PacmanGame/PacmanGame.csproj
         -c Release
         -r linux-x64
         --self-contained true
-        --no-restore
-        --packages "$PWD/nuget-cache"
+        --source ./nuget-sources
         -o /app/lib/pacman-recreation
         /p:PublishSingleFile=false
         /p:DebugType=None
         /p:DebugSymbols=false
 
-      # Create launcher script via temp file (avoids heredoc issues in flatpak)
+      # Create launcher script
       - |
         cat > /tmp/launcher.sh << 'LAUNCHER'
         #!/bin/bash
@@ -84,6 +78,6 @@ modules:
       - type: git
         url: https://github.com/JalaU-Capstones/pacman-recreation.git
         tag: v1.0.0
-        commit: 9aa32e302279a2c9e85500651b6049acff766af6
+        commit: 7ba6dd5df50f41e5a19fadf77e30555c2b61c755
 
       - generated-sources.json
