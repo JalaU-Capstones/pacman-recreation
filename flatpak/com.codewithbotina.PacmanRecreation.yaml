@@ -1,0 +1,48 @@
+app-id: com.codewithbotina.PacmanRecreation
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.dotnet9
+command: pacman-recreation
+
+finish-args:
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --socket=pulseaudio
+  - --filesystem=xdg-data/pacman-recreation:create
+
+modules:
+  - name: dotnet
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 dotnet /app/bin/dotnet
+      - mkdir -p /app/lib/dotnet
+      - cp -r sdk host shared /app/lib/dotnet/
+      - ln -s /app/lib/dotnet/dotnet /app/bin/dotnet
+    sources:
+      - type: archive
+        url: https://dotnetcli.azureedge.net/dotnet/Sdk/9.0.200/dotnet-sdk-9.0.200-linux-x64.tar.gz
+        sha256: c07281a0abbd2c3200e70fc94d374baeadfbb43c9c3fe90c6038253555b84335
+        dest: dotnet
+    cleanup:
+      - /lib/dotnet/sdk/*/Sdks/Microsoft.NET.Sdk.WebAssembly.Pack
+
+  - name: pacman-recreation
+    buildsystem: simple
+    build-commands:
+      - dotnet publish src/PacmanGame/PacmanGame.csproj -c Release -r linux-x64 --self-contained -o /app/bin
+      - install -Dm644 flatpak/com.codewithbotina.PacmanRecreation.desktop /app/share/applications/com.codewithbotina.PacmanRecreation.desktop
+      - install -Dm644 flatpak/com.codewithbotina.PacmanRecreation.metainfo.xml /app/share/metainfo/com.codewithbotina.PacmanRecreation.metainfo.xml
+      - install -Dm644 flatpak/icons/64x64/com.codewithbotina.PacmanRecreation.png /app/share/icons/hicolor/64x64/apps/com.codewithbotina.PacmanRecreation.png
+      - install -Dm644 flatpak/icons/128x128/com.codewithbotina.PacmanRecreation.png /app/share/icons/hicolor/128x128/apps/com.codewithbotina.PacmanRecreation.png
+      - install -Dm644 flatpak/icons/256x256/com.codewithbotina.PacmanRecreation.png /app/share/icons/hicolor/256x256/apps/com.codewithbotina.PacmanRecreation.png
+      - install -Dm644 flatpak/icons/512x512/com.codewithbotina.PacmanRecreation.png /app/share/icons/hicolor/512x512/apps/com.codewithbotina.PacmanRecreation.png
+      - mkdir -p /app/share/pacman-recreation
+      - cp -r src/PacmanGame/Assets /app/share/pacman-recreation/
+    sources:
+      - type: git
+        url: https://github.com/JalaU-Capstones/pacman-recreation.git
+        tag: v1.0.0

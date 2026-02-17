@@ -20,7 +20,23 @@ public class MapLoader : IMapLoader
     public MapLoader(ILogger<MapLoader> logger)
     {
         _logger = logger;
-        _mapsPath = Path.Combine(AppContext.BaseDirectory, Constants.MapsPath);
+        _mapsPath = Path.Combine(GetAssetsBasePath(), "Maps");
+        _logger.LogInformation($"MapLoader initialized. Maps path: {_mapsPath}");
+    }
+
+    private string GetAssetsBasePath()
+    {
+        // Check if running in Flatpak
+        var flatpakId = Environment.GetEnvironmentVariable("FLATPAK_ID");
+
+        if (!string.IsNullOrEmpty(flatpakId))
+        {
+            // Flatpak: Assets are in /app/share/pacman-recreation/Assets
+            return "/app/share/pacman-recreation/Assets";
+        }
+
+        // Normal: Assets are in the application directory
+        return Path.Combine(AppContext.BaseDirectory, "Assets");
     }
 
     /// <summary>

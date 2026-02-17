@@ -546,3 +546,6 @@ FodyWeavers.xsd
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# Flatpak builder
+.flatpak-builder/

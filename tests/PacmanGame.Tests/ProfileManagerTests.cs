@@ -6,11 +6,12 @@ using PacmanGame.Services.Interfaces;
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace PacmanGame.Tests;
 
-public class ProfileManagerTests : IDisposable
+public class ProfileManagerTests : IAsyncLifetime
 {
     private readonly ProfileManager _sut;
     private readonly string _testDbPath;
@@ -23,15 +24,28 @@ public class ProfileManagerTests : IDisposable
         _sut = new ProfileManager(_mockLogger.Object, _testDbPath);
     }
 
-    public void Dispose()
+    public async Task InitializeAsync()
+    {
+        await _sut.InitializeAsync();
+    }
+
+    public Task DisposeAsync()
     {
         // A bit of a hack to make sure the connection is closed before deleting.
         GC.Collect();
         GC.WaitForPendingFinalizers();
         if (File.Exists(_testDbPath))
         {
-            File.Delete(_testDbPath);
+            try
+            {
+                File.Delete(_testDbPath);
+            }
+            catch
+            {
+                // Ignore if file is locked
+            }
         }
+        return Task.CompletedTask;
     }
 
     [Fact]

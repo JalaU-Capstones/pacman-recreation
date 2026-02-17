@@ -1,0 +1,107 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Publish Windows
+        run: |
+          dotnet publish src/PacmanGame/PacmanGame.csproj \
+            -c Release \
+            -r win-x64 \
+            --self-contained \
+            -p:PublishSingleFile=true \
+            -o artifacts/windows
+
+      - name: Create Windows ZIP
+        run: |
+          cd artifacts/windows
+          zip -r ../../PacmanRecreation-Windows-${{ github.ref_name }}.zip *
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: PacmanRecreation-Windows-${{ github.ref_name }}.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Publish Linux
+        run: |
+          dotnet publish src/PacmanGame/PacmanGame.csproj \
+            -c Release \
+            -r linux-x64 \
+            --self-contained \
+            -o artifacts/linux
+
+      - name: Create Linux Archive
+        run: |
+          cd artifacts/linux
+          tar -czf ../../PacmanRecreation-Linux-${{ github.ref_name }}.tar.gz *
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: PacmanRecreation-Linux-${{ github.ref_name }}.tar.gz
+
+  create-release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            PacmanRecreation-Windows-${{ github.ref_name }}.zip
+            PacmanRecreation-Linux-${{ github.ref_name }}.tar.gz
+          body: |
+            See [CHANGELOG.md](https://github.com/JalaU-Capstones/pacman-recreation/blob/main/CHANGELOG.md) for details.
+
+            ## Installation
+
+            ### Windows
+            ```powershell
+            winget install CodeWithBotina.PacmanRecreation
+            ```
+
+            ### Linux
+            ```bash
+            flatpak install flathub com.codewithbotina.PacmanRecreation
+            ```
+          draft: false
+          prerelease: false

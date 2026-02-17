@@ -22,6 +22,14 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _currentViewModel, value);
     }
 
+    // Default constructor for Moq
+    public MainWindowViewModel()
+    {
+        _serviceProvider = null!;
+        _logger = null!;
+        _currentViewModel = new ViewModelBase();
+    }
+
     public MainWindowViewModel(IServiceProvider serviceProvider, ILogger<MainWindowViewModel> logger)
     {
         _serviceProvider = serviceProvider;
@@ -29,7 +37,7 @@ public class MainWindowViewModel : ViewModelBase
         _currentViewModel = new ViewModelBase(); // Placeholder
     }
 
-    public async Task InitializeAsync()
+    public virtual async Task InitializeAsync()
     {
         try
         {
@@ -68,17 +76,17 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
 
-    public void NavigateTo<TViewModel>() where TViewModel : ViewModelBase
+    public virtual void NavigateTo<TViewModel>() where TViewModel : ViewModelBase
     {
         CurrentViewModel = _serviceProvider.GetRequiredService<TViewModel>();
     }
 
-    public void NavigateTo(ViewModelBase viewModel)
+    public virtual void NavigateTo(ViewModelBase viewModel)
     {
         CurrentViewModel = viewModel;
     }
 
-    public void NavigateToRoomLobby(int roomId, string roomName, RoomVisibility visibility, List<PlayerState> players)
+    public virtual void NavigateToRoomLobby(int roomId, string roomName, RoomVisibility visibility, List<PlayerState> players)
     {
         var lobbyViewModel = new RoomLobbyViewModel(roomId, roomName, visibility, players, this,
             _serviceProvider.GetRequiredService<NetworkService>(),

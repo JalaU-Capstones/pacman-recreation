@@ -28,6 +28,21 @@ public class SpriteManager : ISpriteManager
         _logger = logger;
     }
 
+    private string GetAssetsBasePath()
+    {
+        // Check if running in Flatpak
+        var flatpakId = Environment.GetEnvironmentVariable("FLATPAK_ID");
+
+        if (!string.IsNullOrEmpty(flatpakId))
+        {
+            // Flatpak: Assets are in /app/share/pacman-recreation/Assets
+            return "/app/share/pacman-recreation/Assets";
+        }
+
+        // Normal: Assets are in the application directory
+        return Path.Combine(AppContext.BaseDirectory, "Assets");
+    }
+
     /// <summary>
     /// Initialize and load all sprite sheets and their mappings
     /// </summary>
@@ -57,13 +72,15 @@ public class SpriteManager : ISpriteManager
     {
         try
         {
-            var uri = new Uri($"avares://PacmanGame/{Constants.SpritesPath}/{imageFileName}");
-            var asset = AssetLoader.Open(uri);
-            _spriteSheets[name] = new Bitmap(asset);
+            var spritesPath = Path.Combine(GetAssetsBasePath(), "Sprites");
+            var imagePath = Path.Combine(spritesPath, imageFileName);
+            var mapPath = Path.Combine(spritesPath, mapFileName);
 
-            var mapUri = new Uri($"avares://PacmanGame/{Constants.SpritesPath}/{mapFileName}");
-            var mapAsset = AssetLoader.Open(mapUri);
-            using var reader = new StreamReader(mapAsset);
+            // Use file stream instead of AssetLoader for cross-platform compatibility with external assets
+            using var imageStream = File.OpenRead(imagePath);
+            _spriteSheets[name] = new Bitmap(imageStream);
+
+            using var reader = new StreamReader(mapPath);
             string json = reader.ReadToEnd();
 
             var spriteSize = 32;

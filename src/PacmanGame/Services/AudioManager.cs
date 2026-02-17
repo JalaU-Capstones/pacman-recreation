@@ -36,9 +36,24 @@ public class AudioManager : IAudioManager, IDisposable
     public AudioManager(ILogger<AudioManager> logger)
     {
         _logger = logger;
-        _musicPath = Path.Combine(AppContext.BaseDirectory, Constants.MusicPath);
-        _sfxPath = Path.Combine(AppContext.BaseDirectory, Constants.SfxPath);
+        _musicPath = Path.Combine(GetAssetsBasePath(), "Audio", "Music");
+        _sfxPath = Path.Combine(GetAssetsBasePath(), "Audio", "SFX");
         _isMuted = false;
+    }
+
+    private string GetAssetsBasePath()
+    {
+        // Check if running in Flatpak
+        var flatpakId = Environment.GetEnvironmentVariable("FLATPAK_ID");
+
+        if (!string.IsNullOrEmpty(flatpakId))
+        {
+            // Flatpak: Assets are in /app/share/pacman-recreation/Assets
+            return "/app/share/pacman-recreation/Assets";
+        }
+
+        // Normal: Assets are in the application directory
+        return Path.Combine(AppContext.BaseDirectory, "Assets");
     }
 
     /// <summary>

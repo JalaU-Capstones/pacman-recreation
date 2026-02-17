@@ -1,87 +1,132 @@
-# Testing Documentation
+# Testing Guide
 
-## Overview
+This document describes the testing strategy and how to run tests.
 
-This project maintains a comprehensive unit test suite to ensure the reliability of core game logic and services. The testing strategy focuses on business logic, algorithms, and data management, with less emphasis on UI components which are better tested manually or via integration tests.
+## Test Coverage Goals
 
-## Testing Stack
+- Minimum 70% code coverage for production code
+- 100% coverage for critical paths (game logic, multiplayer, data persistence)
+- All public APIs tested
+- Integration tests for key workflows
 
-- **Framework:** [xUnit](https://xunit.net/) - The industry standard unit testing framework for .NET.
-- **Mocking:** [Moq](https://github.com/moq/moq4) - Used to mock dependencies (interfaces) for isolated unit testing.
-- **Assertions:** [FluentAssertions](https://fluentassertions.com/) - Provides a fluent syntax for writing readable assertions.
-- **Coverage:** [coverlet](https://github.com/coverlet-coverage/coverlet) - Collects code coverage information.
+## Test Categories
 
-## Test Project Structure
+### Unit Tests
 
-The test project is located in `tests/PacmanGame.Tests/`.
+**Client Tests (`tests/PacmanGame.Tests/`):**
+- Game engine logic (collision, movement, scoring)
+- Ghost AI (pathfinding, behavior modes)
+- ViewModels (navigation, commands, state management)
+- Services (audio, sprites, profiles, networking)
 
-```
-tests/PacmanGame.Tests/
-├── GameEngineTests.cs          # Tests for the main game loop and state
-├── CollisionDetectorTests.cs   # Tests for collision logic
-├── MapLoaderTests.cs           # Tests for map parsing
-├── AStarPathfinderTests.cs     # Tests for pathfinding algorithm
-├── BlinkyAITests.cs            # Tests for Blinky's AI
-├── PinkyAITests.cs             # Tests for Pinky's AI
-├── InkyAITests.cs              # Tests for Inky's AI
-├── ClydeAITests.cs             # Tests for Clyde's AI
-├── PacmanTests.cs              # Tests for Pac-Man entity logic
-├── GhostTests.cs               # Tests for Ghost entity logic
-└── ProfileManagerTests.cs      # Tests for database operations
-```
+**Server Tests (`tests/PacmanGame.Server.Tests/`):**
+- Relay server (room management, message handling)
+- Game simulation (entity movement, collision, state updates)
+- Room manager (player management, role assignment)
+
+### Integration Tests
+
+- Complete multiplayer flows (create → join → play → leave)
+- Client-server communication
+- Database persistence
+- Cross-platform compatibility
 
 ## Running Tests
 
-To run all tests from the command line:
+### Run All Tests
 
 ```bash
 dotnet test
 ```
 
-To run tests with coverage reporting:
+### Run Specific Test Project
+
+```bash
+dotnet test tests/PacmanGame.Tests
+dotnet test tests/PacmanGame.Server.Tests
+```
+
+### Run Specific Test Class
+
+```bash
+dotnet test --filter FullyQualifiedName~GameEngineTests
+```
+
+### Generate Coverage Report
 
 ```bash
 dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
 ```
 
-## Coverage Goals
+## Test Structure
 
-The project aims for **70%+ code coverage** on core business logic.
+### Naming Conventions
 
-### Key Areas & Targets
-
-| Component | Target Coverage | Description |
-|-----------|----------------|-------------|
-| **GameEngine** | 70% | Main game loop, state transitions, level loading |
-| **CollisionDetector** | 80% | Entity-entity and entity-wall collisions |
-| **MapLoader** | 70% | Parsing map files and spawning entities |
-| **Ghost AI** | 60% | Target calculation and movement logic for all ghosts |
-| **Pathfinding** | 65% | A* algorithm correctness |
-| **Entities** | 60% | State management (Pac-Man, Ghosts) |
-| **ProfileManager** | 50% | Database CRUD operations |
-
-## Writing New Tests
-
-When adding new features, follow these guidelines for writing tests:
-
-1. **Arrange-Act-Assert:** Structure tests clearly using the AAA pattern.
-2. **Isolation:** Mock all external dependencies (interfaces) to test the unit in isolation.
-3. **Naming:** Use descriptive names like `MethodName_State_ExpectedBehavior`.
-4. **Edge Cases:** Test boundary conditions and error states, not just the happy path.
+- Test files: `{ClassUnderTest}Tests.cs`
+- Test methods: `{MethodUnderTest}_{Scenario}_{ExpectedResult}`
 
 Example:
+```csharp
+[Fact]
+public void CreateRoom_WithDuplicateName_Fails()
+```
+
+### Arrange-Act-Assert Pattern
+
+All tests follow the AAA pattern:
 
 ```csharp
 [Fact]
-public void CalculateScore_ShouldReturnCorrectValue_WhenGhostEaten()
+public void Example_Test()
 {
-    // Arrange
-    var scorer = new ScoreCalculator();
+    // Arrange - Set up test data and mocks
+    var service = new MyService();
+    var input = "test";
     
-    // Act
-    int score = scorer.CalculateGhostScore(combo: 2);
+    // Act - Execute the method under test
+    var result = service.Process(input);
     
-    // Assert
-    score.Should().Be(400);
+    // Assert - Verify the result
+    Assert.Equal("expected", result);
 }
 ```
+
+## Mocking
+
+We use Moq for mocking dependencies:
+
+```csharp
+var mockLogger = new Mock<ILogger<MyClass>>();
+var mockService = new Mock<IMyService>();
+mockService.Setup(s => s.DoSomething()).Returns(true);
+```
+
+## CI/CD Integration
+
+Tests run automatically on:
+- Every push to main branch
+- Every pull request
+- Before creating releases
+
+Failed tests block merges and deployments.
+
+## Writing New Tests
+
+When adding new functionality:
+1. Write tests first (TDD approach recommended)
+2. Ensure tests cover happy path and error cases
+3. Mock external dependencies
+4. Keep tests fast (< 100ms per test)
+5. Make tests deterministic (no random behavior)
+
+## Test Data
+
+Test data files are located in:
+- `tests/TestData/` - Shared test resources
+- Each test project can have its own `TestData/` folder
+
+## Known Limitations
+
+- Audio tests are limited (SFML requires audio device)
+- Rendering tests are not implemented (Avalonia UI tests complex)
+- Network tests require mock server or local server instance

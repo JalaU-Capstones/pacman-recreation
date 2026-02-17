@@ -6,7 +6,7 @@
         mc:Ignorable="d" d:DesignWidth="1156" d:DesignHeight="1020"
         x:Class="PacmanGame.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Icon="/Assets/pacman-recreation.ico"
+        Icon="/Assets/icon.ico"
         Title="Pac-Man - Educational Recreation"
         Width="1156" Height="1020"
         MinWidth="1156" MinHeight="1020"

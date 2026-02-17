@@ -19,16 +19,59 @@ public class ProfileManager : IProfileManager
     public ProfileManager(ILogger<ProfileManager> logger, string? dbPath = null)
     {
         _logger = logger;
-        if (string.IsNullOrEmpty(dbPath))
+        string path = dbPath ?? GetDatabasePath();
+        _connectionString = $"Data Source={path}";
+        _logger.LogInformation("ProfileManager initialized with database at {DbPath}", path);
+    }
+
+    private string GetDatabasePath()
+    {
+        string dataDirectory;
+
+        if (OperatingSystem.IsWindows())
         {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var folder = Path.Combine(appData, "PacmanGame");
-            Directory.CreateDirectory(folder);
-            dbPath = Path.Combine(folder, "profiles.db");
+            // Windows: %APPDATA%\PacmanRecreation
+            dataDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "PacmanRecreation"
+            );
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            // Check if running in Flatpak
+            var flatpakId = Environment.GetEnvironmentVariable("FLATPAK_ID");
+
+            if (!string.IsNullOrEmpty(flatpakId))
+            {
+                // Flatpak: XDG_DATA_HOME is already set to the sandboxed location
+                dataDirectory = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "pacman-recreation"
+                );
+            }
+            else
+            {
+                // Normal Linux: ~/.local/share/pacman-recreation
+                var xdgDataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+                if (string.IsNullOrEmpty(xdgDataHome))
+                {
+                    xdgDataHome = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                        ".local", "share"
+                    );
+                }
+                dataDirectory = Path.Combine(xdgDataHome, "pacman-recreation");
+            }
+        }
+        else
+        {
+            // macOS or other: fallback to current directory
+            dataDirectory = AppContext.BaseDirectory;
         }
 
-        _connectionString = $"Data Source={dbPath}";
-        _logger.LogInformation("ProfileManager created with database at {DbPath}", dbPath);
+        Directory.CreateDirectory(dataDirectory);
+
+        return Path.Combine(dataDirectory, "profiles.db");
     }
 
     public async Task InitializeAsync()

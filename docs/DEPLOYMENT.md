@@ -324,3 +324,200 @@ sudo systemctl restart pacman-server
 ## 18. Backup Strategy
 
 Create snapshots of your instance volume periodically to prevent data loss.
+
+---
+
+#### Section: Linux Distribution via Flathub
+
+**Complete step-by-step guide for submitting to Flathub:**
+
+1. **Prerequisites**
+   - Flatpak and flatpak-builder installed
+   - GitHub account
+   - Fork of flathub/flathub repository
+
+2. **Create Flatpak Manifest**
+   - File location: `flatpak/com.codewithbotina.PacmanRecreation.yaml`
+   - Include complete manifest with:
+     - App ID: `com.codewithbotina.PacmanRecreation`
+     - Runtime: `org.freedesktop.Platform` version `24.08` (current LTS)
+     - SDK: `org.freedesktop.Sdk`
+     - Runtime version: Latest stable
+     - Command: `pacman-recreation`
+     - Finish args (permissions):
+       - `--share=network` (multiplayer UDP)
+       - `--socket=wayland` (rendering)
+       - `--socket=fallback-x11` (X11 fallback)
+       - `--device=dri` (GPU acceleration)
+       - `--socket=pulseaudio` (audio)
+       - `--filesystem=xdg-data/pacman-recreation:create` (SQLite database)
+     - Modules:
+       - .NET 9.0 SDK download
+       - Build commands for `dotnet publish -r linux-x64 --self-contained`
+       - Install commands to copy files to `/app/bin`
+
+3. **Create Desktop Entry**
+   - File location: `flatpak/com.codewithbotina.PacmanRecreation.desktop`
+   - Include:
+     - Name: Pacman Recreation
+     - Comment: Classic Pac-Man game with multiplayer
+     - Exec: `pacman-recreation`
+     - Icon: `com.codewithbotina.PacmanRecreation`
+     - Categories: Game;ArcadeGame;
+     - Terminal: false
+
+4. **Create AppStream Metadata**
+   - File location: `flatpak/com.codewithbotina.PacmanRecreation.metainfo.xml`
+   - Include:
+     - Name, summary, description
+     - Screenshots (at least 2)
+     - Releases section (version history)
+     - Content rating (OARS)
+     - Developer info
+
+5. **Prepare Icons**
+   - Required sizes: 64x64, 128x128, 256x256, 512x512
+   - Location: `flatpak/icons/`
+   - Format: PNG
+   - Naming: `com.codewithbotina.PacmanRecreation.png`
+
+6. **Test Locally**
+   ```bash
+   # Install required runtime and SDK (if not already installed)
+   flatpak install -y flathub org.freedesktop.Platform//24.08
+   flatpak install -y flathub org.freedesktop.Sdk//24.08
+
+   # Build and install the application
+   flatpak-builder --force-clean --user --install build-dir \
+     flatpak/com.codewithbotina.PacmanRecreation.yaml
+   
+   # Run the application
+   flatpak run com.codewithbotina.PacmanRecreation
+   ```
+   **Note:** The flatpak-builder command will automatically download the runtime and SDK if not already installed, but manually installing them first can provide better error messages.
+
+7. **Submit to Flathub**
+   - Fork https://github.com/flathub/flathub
+   - Create branch: `add-pacman-recreation`
+   - Add manifest to root of fork
+   - Open Pull Request to flathub/flathub
+   - Title: "Add Pacman Recreation"
+   - Description: Brief description of the app
+   - Wait for review (typically 1-2 weeks)
+   - Address reviewer feedback
+   - Once merged, app appears on Flathub within 24 hours
+
+8. **Update Process**
+   - For updates, open PR to your app's repo in flathub org
+   - Update manifest with new version and commit hash
+   - No need to fork flathub/flathub again
+
+---
+
+#### Section: Windows Distribution via Winget
+
+**Complete step-by-step guide for submitting to Winget:**
+
+1. **Prerequisites**
+   - GitHub account
+   - Fork of microsoft/winget-pkgs repository
+   - Published release on GitHub with Windows executable
+
+2. **Build Windows Executable**
+   ```bash
+   dotnet publish src/PacmanGame/PacmanGame.csproj \
+     -c Release \
+     -r win-x64 \
+     --self-contained \
+     -o artifacts/windows
+   
+   cd artifacts/windows
+   zip -r PacmanRecreation-Windows-v1.0.0.zip *
+   ```
+
+3. **Create GitHub Release**
+   - Go to GitHub repository → Releases → Create new release
+   - Tag: `v1.0.0`
+   - Title: `Pacman Recreation v1.0.0`
+   - Description: Changelog for v1.0.0
+   - Upload `PacmanRecreation-Windows-v1.0.0.zip`
+   - Publish release
+   - Copy download URL of the zip file
+
+4. **Calculate SHA256 Hash**
+   ```bash
+   sha256sum PacmanRecreation-Windows-v1.0.0.zip
+   ```
+   Save this hash for the manifest.
+
+5. **Create Winget Manifest**
+   - Fork https://github.com/microsoft/winget-pkgs
+   - Create directory: `manifests/c/CodeWithBotina/PacmanRecreation/1.0.0/`
+   - Create 4 YAML files:
+     - `CodeWithBotina.PacmanRecreation.yaml` (version manifest)
+     - `CodeWithBotina.PacmanRecreation.installer.yaml` (installer details)
+     - `CodeWithBotina.PacmanRecreation.locale.en-US.yaml` (English metadata)
+     - `CodeWithBotina.PacmanRecreation.locale.es-CO.yaml` (Spanish metadata)
+
+6. **Manifest Content**
+   
+   **Version Manifest:**
+   ```yaml
+   PackageIdentifier: CodeWithBotina.PacmanRecreation
+   PackageVersion: 1.0.0
+   DefaultLocale: en-US
+   ManifestType: version
+   ManifestVersion: 1.6.0
+   ```
+   
+   **Installer Manifest:**
+   ```yaml
+   PackageIdentifier: CodeWithBotina.PacmanRecreation
+   PackageVersion: 1.0.0
+   InstallerType: zip
+   InstallerSha256: <SHA256_HASH_HERE>
+   Installers:
+     - Architecture: x64
+       InstallerUrl: https://github.com/JalaU-Capstones/pacman-recreation/releases/download/v1.0.0/PacmanRecreation-Windows-v1.0.0.zip
+   ManifestType: installer
+   ManifestVersion: 1.6.0
+   ```
+   
+   **Locale Manifest (en-US):**
+   ```yaml
+   PackageIdentifier: CodeWithBotina.PacmanRecreation
+   PackageVersion: 1.0.0
+   PackageLocale: en-US
+   Publisher: Code With Botina
+   PackageName: Pacman Recreation
+   License: MIT
+   ShortDescription: Classic Pac-Man game with multiplayer support
+   Description: A faithful recreation of the classic Pac-Man arcade game...
+   Moniker: pacman-recreation
+   Tags:
+     - game
+     - pacman
+     - multiplayer
+     - arcade
+   ManifestType: defaultLocale
+   ManifestVersion: 1.6.0
+   ```
+
+7. **Validate Manifest**
+   ```bash
+   winget validate manifests/c/CodeWithBotina/PacmanRecreation/1.0.0/
+   ```
+
+8. **Submit to Winget**
+   - Commit manifests to your fork
+   - Open Pull Request to microsoft/winget-pkgs
+   - Title: "New package: CodeWithBotina.PacmanRecreation version 1.0.0"
+   - Description: Brief description of the package
+   - Wait for automated validation (passes in minutes)
+   - Wait for human review (typically 1-3 days)
+   - Once merged, package is available via `winget install CodeWithBotina.PacmanRecreation`
+
+9. **Update Process**
+   - For updates, create new directory for new version
+   - Update all 4 YAML files with new version, URL, hash
+   - Open PR with title: "Update: CodeWithBotina.PacmanRecreation version X.Y.Z"
