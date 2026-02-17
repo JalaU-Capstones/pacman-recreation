@@ -28,10 +28,14 @@ modules:
   - name: pacman-recreation
     buildsystem: simple
     build-commands:
-      # Restore from pre-downloaded NuGet packages (no internet needed)
+      # Restore using the local nuget-sources directory
+      # The .nupkg files are placed here by flatpak-builder
+      # reading generated-sources.json (which must have "dest": "nuget-sources")
       - dotnet restore src/PacmanGame/PacmanGame.csproj
         --runtime linux-x64
-        --source nuget-sources
+        --source "$PWD/nuget-sources"
+        --packages "$PWD/nuget-cache"
+        /p:RestoreDisableParallel=true
 
       # Publish self-contained
       - dotnet publish src/PacmanGame/PacmanGame.csproj
@@ -39,19 +43,22 @@ modules:
         -r linux-x64
         --self-contained true
         --no-restore
+        --packages "$PWD/nuget-cache"
         -o /app/lib/pacman-recreation
         /p:PublishSingleFile=false
         /p:DebugType=None
         /p:DebugSymbols=false
 
-      # Launcher script
-      - install -Dm755 /dev/stdin /app/bin/pacman-recreation << 'LAUNCHER'
+      # Create launcher script via temp file (avoids heredoc issues in flatpak)
+      - |
+        cat > /tmp/launcher.sh << 'LAUNCHER'
         #!/bin/bash
         export ASSETS_PATH=/app/share/pacman-recreation/Assets
         export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
         mkdir -p "$XDG_DATA_HOME/pacman-recreation"
         exec /app/lib/pacman-recreation/PacmanGame "$@"
         LAUNCHER
+      - install -Dm755 /tmp/launcher.sh /app/bin/pacman-recreation
 
       # Install game assets
       - install -d /app/share/pacman-recreation
@@ -60,7 +67,7 @@ modules:
       # Install desktop integration
       - install -Dm644 io.github.JalaU_Capstones.PacmanRecreation.desktop
         /app/share/applications/io.github.JalaU_Capstones.PacmanRecreation.desktop
-      - install -Dm644 io.github.JalaU_Capstones.PacmanRecreation.metainfo.xml
+      - install -Dm644 io.github.JalaU_Capstones.PacmanRecreation.xml
         /app/share/metainfo/io.github.JalaU_Capstones.PacmanRecreation.metainfo.xml
 
       # Install icons
@@ -77,6 +84,6 @@ modules:
       - type: git
         url: https://github.com/JalaU-Capstones/pacman-recreation.git
         tag: v1.0.0
-        commit: REPLACE_WITH_ACTUAL_COMMIT_HASH
+        commit: 9aa32e302279a2c9e85500651b6049acff766af6
 
       - generated-sources.json

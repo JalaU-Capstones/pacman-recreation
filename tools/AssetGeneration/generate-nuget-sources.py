@@ -1,10 +1,11 @@
 """
 generate-nuget-sources.py
-Generates generated-sources.json with all NuGet packages pre-downloaded
-for offline Flatpak builds.
 
-This is the standard approach used by all .NET apps on Flathub.
-Run this script BEFORE building or submitting to Flathub.
+Generates generated-sources.json for offline NuGet restore inside Flatpak builds.
+
+IMPORTANT: Each entry in the output JSON has "dest": "nuget-sources" so that
+flatpak-builder places the .nupkg files in the nuget-sources/ directory,
+which dotnet restore reads with --source nuget-sources.
 
 Usage:
     cd /path/to/flathub-repo
@@ -14,7 +15,7 @@ Requirements:
     pip install aiohttp
 
 Output:
-    generated-sources.json  (add this as a source in your manifest)
+    generated-sources.json  (include this directly in your manifest sources)
 """
 
 import asyncio
@@ -24,141 +25,93 @@ import os
 import subprocess
 import sys
 import tempfile
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
 try:
     import aiohttp
 except ImportError:
-    print("Error: aiohttp not installed.")
-    print("Run: pip install aiohttp")
+    print("Error: aiohttp not installed. Run: pip install aiohttp")
     sys.exit(1)
 
-NUGET_URL = "https://api.nuget.org/v3-flatcontainer"
-NUGET_SOURCE_DIR = "nuget-sources"
-
-# Detect project root relative to this script
+NUGET_DEST = "nuget-sources"
+NUGET_BASE_URL = "https://api.nuget.org/v3-flatcontainer"
 SCRIPT_DIR = Path(__file__).parent.resolve()
-# This script lives in flathub repo root tools/ or directly in root
-PROJECT_CSPROJ = None
 
-# Try to find the csproj - adjust path as needed
-CANDIDATE_PATHS = [
-    SCRIPT_DIR / "nuget-packages-lock.json",
-    SCRIPT_DIR.parent / "src" / "PacmanGame" / "packages.lock.json",
-]
-
-
-async def get_package_sha512(session, name, version):
-    """Download package and compute SHA512."""
-    url = f"{NUGET_URL}/{name.lower()}/{version.lower()}/{name.lower()}.{version.lower()}.nupkg"
-    async with session.get(url) as response:
-        if response.status != 200:
-            print(f"  Warning: Could not download {name} {version} (HTTP {response.status})")
-            return None, None
-        data = await response.read()
-        sha512 = hashlib.sha512(data).hexdigest()
-        return url, sha512
-
-
-async def process_packages(packages):
-    """Download all packages and collect their metadata."""
-    sources = []
-    connector = aiohttp.TCPConnector(limit=10)
-    async with aiohttp.ClientSession(connector=connector) as session:
-        tasks = []
-        for name, version in packages:
-            tasks.append((name, version, get_package_sha512(session, name, version)))
-
-        for name, version, coro in tasks:
-            print(f"  Processing {name} {version}...")
-            url, sha512 = await coro
-            if url and sha512:
-                sources.append({
-                    "type": "file",
-                    "url": url,
-                    "sha512": sha512,
-                    "dest": NUGET_SOURCE_DIR,
-                    "dest-filename": f"{name.lower()}.{version.lower()}.nupkg"
-                })
-
-    return sources
-
-
-def get_packages_from_lock_file(lock_file_path):
-    """Parse packages.lock.json to get package list."""
-    with open(lock_file_path) as f:
-        lock_data = json.load(f)
-
-    packages = []
-    dependencies = lock_data.get("dependencies", {})
-    for runtime_key, deps in dependencies.items():
-        for package_name, package_info in deps.items():
-            resolved = package_info.get("resolved", "")
-            if resolved:
-                packages.append((package_name, resolved))
-
-    return packages
-
-
-def get_packages_from_dotnet_restore(project_path):
-    """Run dotnet restore and collect packages from the NuGet cache."""
-    print("Running dotnet restore to collect package list...")
-    with tempfile.TemporaryDirectory() as tmpdir:
-        result = subprocess.run(
-            [
-                "dotnet", "restore",
-                str(project_path),
-                "--runtime", "linux-x64",
-                "--packages", tmpdir,
-                "--verbosity", "normal"
-            ],
-            capture_output=True,
-            text=True
-        )
-
-        packages = []
-        for root, dirs, files in os.walk(tmpdir):
-            for filename in files:
-                if filename.endswith(".nupkg"):
-                    parts = filename[:-6].rsplit(".", 2)
-                    if len(parts) >= 2:
-                        # Convention: name.version.nupkg
-                        # Find split point between name and version
-                        full = filename[:-6]
-                        # Version starts with digit
-                        idx = full.rfind(".")
-                        version = full[idx+1:]
-                        name = full[:idx]
-                        packages.append((name, version))
-
-        return packages
-
-
-def generate_sources_from_csproj(csproj_path):
-    """Parse csproj and lock files to build package list."""
-    lock_file = csproj_path.parent / "packages.lock.json"
-
-    if lock_file.exists():
-        print(f"Found lock file: {lock_file}")
-        return get_packages_from_lock_file(lock_file)
-
-    print(f"No lock file found at {lock_file}")
-    print("Falling back to dotnet restore...")
-    return get_packages_from_dotnet_restore(csproj_path)
+CANDIDATE_CSPROJ = [
+    SCRIPT_DIR / "src" / "PacmanGame" / "PacmanGame.csproj",
+    SCRIPT_DIR.parent / "src" / "PacmanGame" / "PacmanGame.csproj",
+    Path.cwd() / "src" / "PacmanGame" / "PacmanGame.csproj",
+    ]
 
 
 def find_csproj():
-    """Search for PacmanGame.csproj relative to script location."""
-    search_paths = [
-        SCRIPT_DIR / "src" / "PacmanGame" / "PacmanGame.csproj",
-        SCRIPT_DIR.parent / "src" / "PacmanGame" / "PacmanGame.csproj",
-        Path.cwd() / "src" / "PacmanGame" / "PacmanGame.csproj",
-    ]
-    for path in search_paths:
+    for path in CANDIDATE_CSPROJ:
         if path.exists():
             return path
     return None
+
+
+def get_packages_from_lock_file(lock_path):
+    print(f"Reading lock file: {lock_path}")
+    with open(lock_path) as f:
+        data = json.load(f)
+
+    packages = {}
+    for _runtime, deps in data.get("dependencies", {}).items():
+        for name, info in deps.items():
+            version = info.get("resolved", "")
+            if version:
+                packages[name.lower()] = (name, version)
+
+    return list(packages.values())
+
+
+def get_packages_via_restore(csproj_path):
+    print("Running dotnet restore to collect packages...")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        subprocess.run(
+            ["dotnet", "restore", str(csproj_path),
+             "--runtime", "linux-x64",
+             "--packages", tmpdir,
+             "--verbosity", "quiet"],
+            check=False,
+        )
+
+        packages = {}
+        for root, dirs, files in os.walk(tmpdir):
+            for filename in files:
+                if filename.endswith(".nupkg"):
+                    stem = filename[:-6]
+                    parts = stem.rsplit(".", 1)
+                    if len(parts) == 2 and parts[1][0].isdigit():
+                        name_part, version_part = parts
+                        key = name_part.lower()
+                        if key not in packages:
+                            packages[key] = (name_part, version_part)
+
+        return list(packages.values())
+
+
+async def fetch_sha512(session, name, version, semaphore):
+    url = f"{NUGET_BASE_URL}/{name.lower()}/{version.lower()}/{name.lower()}.{version.lower()}.nupkg"
+    async with semaphore:
+        try:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=60)) as resp:
+                if resp.status != 200:
+                    print(f"  SKIP {name} {version} (HTTP {resp.status})")
+                    return None
+                data = await resp.read()
+                sha512 = hashlib.sha512(data).hexdigest()
+                return {
+                    "type": "file",
+                    "url": url,
+                    "sha512": sha512,
+                    "dest": NUGET_DEST,
+                    "dest-filename": f"{name.lower()}.{version.lower()}.nupkg"
+                }
+        except Exception as e:
+            print(f"  ERROR {name} {version}: {e}")
+            return None
 
 
 async def main():
@@ -167,32 +120,68 @@ async def main():
 
     csproj = find_csproj()
     if not csproj:
-        print("Error: Could not find PacmanGame.csproj")
-        print("Run this script from the flathub repo root or the project root.")
+        print("Error: PacmanGame.csproj not found.")
+        print("Run this script from the flathub repo or project root.")
         sys.exit(1)
 
     print(f"Project: {csproj}")
 
-    packages = generate_sources_from_csproj(csproj)
+    lock_file = csproj.parent / "packages.lock.json"
+
+    if lock_file.exists():
+        packages = get_packages_from_lock_file(lock_file)
+    else:
+        print("\nNo packages.lock.json found. To create it:")
+        print("  1. Add to PacmanGame.csproj:")
+        print("     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>")
+        print("  2. Run: dotnet restore src/PacmanGame/PacmanGame.csproj")
+        print("  3. Commit packages.lock.json to the repo")
+        print("\nFalling back to dotnet restore scan (less reliable)...")
+        packages = get_packages_via_restore(csproj)
 
     if not packages:
         print("Error: No packages found.")
-        print("Make sure the project builds locally first:")
-        print("  dotnet restore src/PacmanGame/PacmanGame.csproj")
         sys.exit(1)
 
-    print(f"Found {len(packages)} packages. Downloading and hashing...")
-    sources = await process_packages(packages)
+    print(f"\nFound {len(packages)} unique packages.")
+    print("Downloading and computing SHA512 hashes (this may take a few minutes)...")
 
-    output_file = SCRIPT_DIR / "generated-sources.json"
-    with open(output_file, "w") as f:
+    semaphore = asyncio.Semaphore(8)
+    connector = aiohttp.TCPConnector(limit=16)
+
+    async with aiohttp.ClientSession(connector=connector) as session:
+        tasks = [
+            fetch_sha512(session, name, version, semaphore)
+            for name, version in packages
+        ]
+        results = await asyncio.gather(*tasks)
+
+    sources = sorted(
+        [r for r in results if r is not None],
+        key=lambda x: x["dest-filename"]
+    )
+
+    output_path = SCRIPT_DIR / "generated-sources.json"
+    with open(output_path, "w") as f:
         json.dump(sources, f, indent=2)
+        f.write("\n")
 
-    print(f"\nDone. Generated {output_file} with {len(sources)} sources.")
-    print("\nNext steps:")
-    print("  1. Add 'generated-sources.json' as a source in your manifest")
-    print("  2. Add '--source nuget-sources' to dotnet restore command")
-    print("  3. Test with: flatpak-builder --force-clean --user --install build-dir manifest.yaml")
+    print(f"\nDone. Written {len(sources)} entries to: {output_path}")
+    print()
+
+    # Verify output has correct dest
+    with open(output_path) as f:
+        check = json.load(f)
+    wrong_dest = [e for e in check if e.get("dest") != NUGET_DEST]
+    if wrong_dest:
+        print(f"WARNING: {len(wrong_dest)} entries have wrong dest field!")
+    else:
+        print(f"All entries have correct dest: {NUGET_DEST!r}")
+
+    print()
+    print("Next steps:")
+    print("  flatpak install flathub org.freedesktop.Sdk.Extension.dotnet9//24.08")
+    print("  flatpak-builder --force-clean --user --install build-dir manifest.yaml")
 
 
 if __name__ == "__main__":
