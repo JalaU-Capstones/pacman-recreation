@@ -1,5 +1,0 @@
-[Runtime]
-name=com.codewithbotina.PacmanRecreation.Debug
-
-[ExtensionOf]
-ref=app/com.codewithbotina.PacmanRecreation/x86_64/master
