@@ -38,7 +38,7 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 # These are NOT in packages.lock.json because dotnet resolves them at publish time.
 # Version must match the .NET SDK version used in the Flatpak build.
 # Check with: dotnet --version  (in the build environment)
-DOTNET_VERSION = "9.0.3"  # Update if SDK extension uses a different patch version
+DOTNET_VERSION = "9.0.13"  # Update if SDK extension uses a different patch version
 
 RUNTIME_PACKS = [
     f"microsoft.netcore.app.runtime.linux-x64",
