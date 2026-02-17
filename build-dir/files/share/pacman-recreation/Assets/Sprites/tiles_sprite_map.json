@@ -1,0 +1,77 @@
+{
+  "sprite_size": 32,
+  "sprites": {
+    "walls": {
+      "horizontal": {
+        "x": 0,
+        "y": 0
+      },
+      "vertical": {
+        "x": 32,
+        "y": 0
+      },
+      "corner_tl": {
+        "x": 64,
+        "y": 0
+      },
+      "corner_tr": {
+        "x": 96,
+        "y": 0
+      },
+      "corner_bl": {
+        "x": 128,
+        "y": 0
+      },
+      "corner_br": {
+        "x": 160,
+        "y": 0
+      },
+      "t_up": {
+        "x": 192,
+        "y": 0
+      },
+      "t_down": {
+        "x": 224,
+        "y": 0
+      },
+      "t_left": {
+        "x": 256,
+        "y": 0
+      },
+      "t_right": {
+        "x": 0,
+        "y": 32
+      },
+      "cross": {
+        "x": 32,
+        "y": 32
+      },
+      "end_up": {
+        "x": 64,
+        "y": 32
+      },
+      "end_down": {
+        "x": 96,
+        "y": 32
+      },
+      "end_left": {
+        "x": 128,
+        "y": 32
+      },
+      "end_right": {
+        "x": 160,
+        "y": 32
+      }
+    },
+    "special": {
+      "ghost_door": {
+        "x": 192,
+        "y": 32
+      },
+      "empty": {
+        "x": 224,
+        "y": 32
+      }
+    }
+  }
+}
