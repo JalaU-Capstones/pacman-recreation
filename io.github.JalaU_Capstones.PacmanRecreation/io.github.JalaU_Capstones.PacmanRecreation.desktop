@@ -1,10 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Pacman Recreation
-Comment=Classic Pac-Man arcade game with multiplayer support
+Comment=A modern .NET + Avalonia recreation of the classic Pac-Man game
 Exec=pacman-recreation
-Icon=com.codewithbotina.PacmanRecreation
-Categories=Game;ArcadeGame;
-Keywords=pacman;arcade;game;multiplayer;retro;
+Icon=io.github.JalaU_Capstones.PacmanRecreation
 Terminal=false
-StartupNotify=true
+Categories=Game;ArcadeGame;
+StartupWMClass=PacmanGame

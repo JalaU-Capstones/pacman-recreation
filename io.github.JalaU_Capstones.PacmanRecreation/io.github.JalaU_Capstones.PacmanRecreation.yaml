@@ -19,13 +19,31 @@ build-options:
 finish-args:
   - --share=network
   - --socket=wayland
-  - --socket=fallback-x11
+  - --socket=x11
   - --share=ipc
   - --device=dri
   - --socket=pulseaudio
   - --filesystem=xdg-data/pacman-recreation:create
 
 modules:
+  - name: libogg
+    sources:
+      - type: archive
+        url: https://downloads.xiph.org/releases/ogg/libogg-1.3.5.tar.xz
+        sha256: c4d91be36fc8e54deae7575241e03f4211eb102afb3fc0775fbbc1b740016705
+
+  - name: libvorbis
+    sources:
+      - type: archive
+        url: https://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.xz
+        sha256: b33cc4934322bcbf6efcbacf49e3ca01aadbea4114ec9589d1b1e9d20f72954b
+
+  - name: flac
+    sources:
+      - type: archive
+        url: https://downloads.xiph.org/releases/flac/flac-1.3.4.tar.xz
+        sha256: 8ff0607e75a322dd7cd6ec48f4f225471404ae2730d0ea945127b1355155e737
+
   - name: pacman-recreation
     buildsystem: simple
     build-commands:
@@ -43,16 +61,18 @@ modules:
         /p:DebugType=None
         /p:DebugSymbols=false
 
-      # Create launcher script
+      # Create and install launcher script
+      - install -d /app/bin
       - |
-        cat > /tmp/launcher.sh << 'LAUNCHER'
+        cat > /app/bin/pacman-recreation << 'EOF'
         #!/bin/bash
         export ASSETS_PATH=/app/share/pacman-recreation/Assets
         export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/app/lib/pacman-recreation
         mkdir -p "$XDG_DATA_HOME/pacman-recreation"
         exec /app/lib/pacman-recreation/PacmanGame "$@"
-        LAUNCHER
-      - install -Dm755 /tmp/launcher.sh /app/bin/pacman-recreation
+        EOF
+        chmod +x /app/bin/pacman-recreation
 
       # Install game assets
       - install -d /app/share/pacman-recreation
@@ -61,23 +81,40 @@ modules:
       # Install desktop integration
       - install -Dm644 io.github.JalaU_Capstones.PacmanRecreation.desktop
         /app/share/applications/io.github.JalaU_Capstones.PacmanRecreation.desktop
-      - install -Dm644 io.github.JalaU_Capstones.PacmanRecreation.xml
+      - install -Dm644 io.github.JalaU_Capstones.PacmanRecreation.metainfo.xml
         /app/share/metainfo/io.github.JalaU_Capstones.PacmanRecreation.metainfo.xml
-
+  
       # Install icons
-      - install -Dm644 icons/64x64/io.github.JalaU_Capstones.PacmanRecreation.png
-        /app/share/icons/hicolor/64x64/apps/io.github.JalaU_Capstones.PacmanRecreation.png
-      - install -Dm644 icons/128x128/io.github.JalaU_Capstones.PacmanRecreation.png
-        /app/share/icons/hicolor/128x128/apps/io.github.JalaU_Capstones.PacmanRecreation.png
-      - install -Dm644 icons/256x256/io.github.JalaU_Capstones.PacmanRecreation.png
-        /app/share/icons/hicolor/256x256/apps/io.github.JalaU_Capstones.PacmanRecreation.png
-      - install -Dm644 icons/512x512/io.github.JalaU_Capstones.PacmanRecreation.png
-        /app/share/icons/hicolor/512x512/apps/io.github.JalaU_Capstones.PacmanRecreation.png
+      - install -Dm644 64x64.png /app/share/icons/hicolor/64x64/apps/io.github.JalaU_Capstones.PacmanRecreation.png
+      - install -Dm644 128x128.png /app/share/icons/hicolor/128x128/apps/io.github.JalaU_Capstones.PacmanRecreation.png
+      - install -Dm644 256x256.png /app/share/icons/hicolor/256x256/apps/io.github.JalaU_Capstones.PacmanRecreation.png
+      - install -Dm644 512x512.png /app/share/icons/hicolor/512x512/apps/io.github.JalaU_Capstones.PacmanRecreation.png
+      - install -Dm644 io.github.JalaU_Capstones.PacmanRecreation.svg /app/share/icons/hicolor/scalable/apps/io.github.JalaU_Capstones.PacmanRecreation.svg
 
     sources:
       - type: git
         url: https://github.com/JalaU-Capstones/pacman-recreation.git
         tag: v1.0.0
-        commit: 316f44acd330688a84130c6a7a56e2bc44d954f5
+        commit: ed432c2e3b9edd8d93e67eaf3316696ae17a0b4d
 
       - generated-sources.json
+      
+      # Add your local desktop file
+      - type: file
+        path: io.github.JalaU_Capstones.PacmanRecreation.desktop
+
+      # Add metainfo (you provided it — save as io.github.JalaU_Capstones.PacmanRecreation.metainfo.xml or .xml)
+      - type: file
+        path: io.github.JalaU_Capstones.PacmanRecreation.metainfo.xml
+
+      # Add icons
+      - type: file
+        path: 64x64.png
+      - type: file
+        path: 128x128.png
+      - type: file
+        path: 256x256.png
+      - type: file
+        path: 512x512.png
+      - type: file
+        path: io.github.JalaU_Capstones.PacmanRecreation.svg
