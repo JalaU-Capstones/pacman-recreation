@@ -550,3 +550,4 @@ FodyWeavers.xsd
 # Flatpak builder
 .flatpak-builder/
 build-dir/
+repo-dir/

@@ -101,7 +101,7 @@ jobs:
 
             ### Linux
             ```bash
-            flatpak install flathub com.codewithbotina.PacmanRecreation
+            flatpak install flathub io.github.jalau_capstones.pacman-recreation
             ```
           draft: false
           prerelease: false
