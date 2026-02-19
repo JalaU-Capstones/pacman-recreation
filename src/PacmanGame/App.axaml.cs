@@ -61,6 +61,10 @@ public partial class App : Application
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<RoomLobbyViewModel>();
             services.AddTransient<GlobalLeaderboardViewModel>();
+            services.AddTransient<MultiplayerMenuViewModel>();
+            services.AddTransient<CreateRoomViewModel>();
+            services.AddTransient<RoomListViewModel>();
+            services.AddTransient<MultiplayerGameViewModel>();
 
             _serviceProvider = services.BuildServiceProvider();
 

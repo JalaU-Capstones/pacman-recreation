@@ -39,6 +39,7 @@ public class AudioManager : IAudioManager, IDisposable
         _musicPath = Path.Combine(GetAssetsBasePath(), "Audio", "Music");
         _sfxPath = Path.Combine(GetAssetsBasePath(), "Audio", "SFX");
         _isMuted = false;
+        Initialize(); // Initialize immediately in constructor
     }
 
     private string GetAssetsBasePath()

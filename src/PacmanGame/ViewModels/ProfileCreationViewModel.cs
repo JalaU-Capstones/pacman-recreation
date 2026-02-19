@@ -68,6 +68,9 @@ public class ProfileCreationViewModel : ViewModelBase
             }
         });
         CancelCommand = ReactiveCommand.Create(Cancel);
+
+        // Play menu music when profile creation screen is shown
+        _audioManager.PlayMusic("menu-theme.wav", loop: true);
     }
 
     private void CreateProfile()

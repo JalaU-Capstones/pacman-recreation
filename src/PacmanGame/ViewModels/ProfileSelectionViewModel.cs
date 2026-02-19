@@ -32,6 +32,9 @@ public class ProfileSelectionViewModel : ViewModelBase
         DeleteProfileCommand = ReactiveCommand.Create<Profile>(DeleteProfile);
 
         LoadProfiles();
+
+        // Play menu music when profile selection screen is shown
+        _audioManager.PlayMusic("menu-theme.wav", loop: true);
     }
 
     private void LoadProfiles()
