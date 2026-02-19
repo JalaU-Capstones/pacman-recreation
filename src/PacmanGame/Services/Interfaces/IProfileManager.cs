@@ -40,6 +40,16 @@ public interface IProfileManager
     Profile? GetActiveProfile();
 
     /// <summary>
+    /// Gets the currently active profile asynchronously.
+    /// </summary>
+    Task<Profile?> GetCurrentProfileAsync();
+
+    /// <summary>
+    /// Updates an existing profile.
+    /// </summary>
+    Task UpdateProfileAsync(Profile profile);
+
+    /// <summary>
     /// Deletes a profile and its associated scores.
     /// </summary>
     void DeleteProfile(int profileId);
@@ -48,6 +58,11 @@ public interface IProfileManager
     /// Saves a score for the specified profile.
     /// </summary>
     void SaveScore(int profileId, int score, int level);
+
+    /// <summary>
+    /// Saves or updates a high score for a profile by name.
+    /// </summary>
+    Task SaveOrUpdateHighScoreAsync(string profileName, int score);
 
     /// <summary>
     /// Gets the top scores across all profiles.

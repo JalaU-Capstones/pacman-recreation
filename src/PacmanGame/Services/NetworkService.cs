@@ -39,6 +39,10 @@ public class NetworkService : INetEventListener
     public event Action<NewPlayerJoinedEvent>? OnNewPlayerJoined;
     public event Action<SpectatorPromotionFailedEvent>? OnSpectatorPromotionFailed;
 
+    // Leaderboard events
+    public event Action<LeaderboardGetTop10Response>? OnLeaderboardGetTop10Response;
+    public event Action<LeaderboardSubmitScoreResponse>? OnLeaderboardSubmitScoreResponse;
+
     public NetworkService(ILogger<NetworkService> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -145,6 +149,9 @@ public class NetworkService : INetEventListener
 
     public void SendGetRoomListRequest() => SendMessage(new GetRoomListRequest());
     public void SendPauseGameRequest() => SendMessage(new PauseGameRequest());
+
+    public void SendLeaderboardGetTop10Request(long cacheTimestamp) => SendMessage(new LeaderboardGetTop10Request { CacheTimestamp = cacheTimestamp });
+    public void SendLeaderboardSubmitScoreRequest(string profileId, string profileName, int highScore, long clientTimestamp) => SendMessage(new LeaderboardSubmitScoreRequest { ProfileId = profileId, ProfileName = profileName, HighScore = highScore, ClientTimestamp = clientTimestamp });
 
     public void OnPeerConnected(NetPeer peer)
     {
@@ -255,6 +262,12 @@ public class NetworkService : INetEventListener
             case SpectatorPromotionFailedEvent promotionFailedEvent:
                 _logger.LogWarning("Spectator promotion failed: {Reason}", promotionFailedEvent.Reason);
                 OnSpectatorPromotionFailed?.Invoke(promotionFailedEvent);
+                break;
+            case LeaderboardGetTop10Response leaderboardResponse:
+                OnLeaderboardGetTop10Response?.Invoke(leaderboardResponse);
+                break;
+            case LeaderboardSubmitScoreResponse submitResponse:
+                OnLeaderboardSubmitScoreResponse?.Invoke(submitResponse);
                 break;
         }
     }

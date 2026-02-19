@@ -26,6 +26,7 @@ public class ScoreBoardViewModel : ViewModelBase
     }
 
     public ICommand ReturnToMenuCommand { get; }
+    public ICommand ViewGlobalLeaderboardCommand { get; }
 
     public ScoreBoardViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger<ScoreBoardViewModel> logger)
     {
@@ -37,6 +38,7 @@ public class ScoreBoardViewModel : ViewModelBase
         _scores = new ObservableCollection<ScoreEntry>();
 
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
+        ViewGlobalLeaderboardCommand = ReactiveCommand.Create(ViewGlobalLeaderboard);
 
         LoadScores();
     }
@@ -60,5 +62,11 @@ public class ScoreBoardViewModel : ViewModelBase
     {
         _audioManager.PlaySoundEffect("menu-select");
         _mainWindowViewModel.NavigateTo<MainMenuViewModel>();
+    }
+
+    private void ViewGlobalLeaderboard()
+    {
+        _audioManager.PlaySoundEffect("menu-select");
+        _mainWindowViewModel.NavigateTo<GlobalLeaderboardViewModel>();
     }
 }

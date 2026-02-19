@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -7,12 +8,15 @@ using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
 using PacmanGame.ViewModels;
 using PacmanGame.Views;
+using System;
 using System.Threading.Tasks;
 
 namespace PacmanGame;
 
 public partial class App : Application
 {
+    private IServiceProvider? _serviceProvider;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -22,60 +26,99 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // Configure Dependency Injection
             var services = new ServiceCollection();
 
-            // Add logging
-            services.AddLogging(configure =>
+            // Logging
+            services.AddLogging(builder =>
             {
-                configure.AddDebug();
-                configure.AddConsole().SetMinimumLevel(LogLevel.Debug);
+                builder.AddConsole();
+                builder.AddDebug();
+                builder.SetMinimumLevel(LogLevel.Debug);
             });
 
-            // Register services
-            services.AddSingleton<IProfileManager, ProfileManager>();
-            services.AddSingleton<NetworkService>();
-            services.AddSingleton<IAudioManager, AudioManager>();
+            // Services
             services.AddSingleton<IMapLoader, MapLoader>();
             services.AddSingleton<ISpriteManager, SpriteManager>();
+            services.AddSingleton<IAudioManager, AudioManager>();
             services.AddSingleton<ICollisionDetector, CollisionDetector>();
+            services.AddSingleton<IProfileManager, ProfileManager>();
             services.AddTransient<IGameEngine, GameEngine>();
+            services.AddSingleton<NetworkService>();
+            services.AddSingleton<GlobalLeaderboardCache>();
 
-            // Register ViewModels
+            // ViewModels
             services.AddSingleton<MainWindowViewModel>();
             services.AddTransient<MainMenuViewModel>();
             services.AddTransient<GameViewModel>();
-            services.AddTransient<MultiplayerMenuViewModel>();
-            services.AddTransient<RoomLobbyViewModel>();
-            services.AddTransient<CreateRoomViewModel>();
-            services.AddTransient<RoomListViewModel>();
             services.AddTransient<ScoreBoardViewModel>();
-            services.AddTransient<SettingsViewModel>();
             services.AddTransient<ProfileCreationViewModel>();
             services.AddTransient<ProfileSelectionViewModel>();
+            services.AddTransient<SettingsViewModel>();
+            services.AddTransient<MultiplayerLobbyViewModel>();
+            services.AddTransient<GlobalLeaderboardViewModel>();
 
-            var serviceProvider = services.BuildServiceProvider();
+            _serviceProvider = services.BuildServiceProvider();
 
-            var logger = serviceProvider.GetRequiredService<ILogger<App>>();
-            logger.LogInformation("DI container built.");
+            // Initialize ProfileManager
+            var profileManager = _serviceProvider.GetRequiredService<IProfileManager>();
+            try
+            {
+                profileManager.InitializeAsync().Wait();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"FATAL: Failed to initialize database: {ex}");
+            }
 
-            // Initialize audio manager early
-            var audioManager = serviceProvider.GetRequiredService<IAudioManager>();
-            audioManager.Initialize();
-            logger.LogInformation("Audio Manager initialized.");
+            // Line below is needed to remove Avalonia data validation.
+            // Without this line you will get duplicate validations from both Avalonia and CT
+            BindingPlugins.DataValidators.RemoveAt(0);
 
-            var mainWindowViewModel = serviceProvider.GetRequiredService<MainWindowViewModel>();
+            var mainWindowViewModel = _serviceProvider.GetRequiredService<MainWindowViewModel>();
             desktop.MainWindow = new MainWindow
             {
-                DataContext = mainWindowViewModel,
+                DataContext = mainWindowViewModel
             };
 
-            logger.LogInformation("MainWindow created and DataContext set.");
-
-            // Asynchronously initialize the UI and services
-            Task.Run(() => mainWindowViewModel.InitializeAsync());
-            logger.LogInformation("MainWindowViewModel.InitializeAsync() started in background.");
+            // Hook up exit event
+            desktop.Exit += OnExit;
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void OnExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
+    {
+        if (_serviceProvider != null)
+        {
+            var cache = _serviceProvider.GetService<GlobalLeaderboardCache>();
+            if (cache != null)
+            {
+                // Fire and forget flush, but we try to wait a bit
+                try
+                {
+                    Task.Run(async () => await cache.FlushPendingUpdatesAsync()).Wait(2000);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error flushing cache on exit: {ex}");
+                }
+            }
+
+            var networkService = _serviceProvider.GetService<NetworkService>();
+            networkService?.Stop();
+        }
+    }
+
+    // Helper to access services from ViewModels if needed (Service Locator pattern)
+    // Prefer constructor injection where possible.
+    public static T? GetService<T>() where T : class
+    {
+        if (Current is App app && app._serviceProvider != null)
+        {
+            return app._serviceProvider.GetService<T>();
+        }
+        return null;
     }
 }

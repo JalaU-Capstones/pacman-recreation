@@ -29,6 +29,10 @@ namespace PacmanGame.Shared;
 [Union(22, typeof(SpectatorPromotionEvent))]
 [Union(23, typeof(NewPlayerJoinedEvent))]
 [Union(24, typeof(SpectatorPromotionFailedEvent))]
+[Union(30, typeof(LeaderboardGetTop10Request))]
+[Union(31, typeof(LeaderboardGetTop10Response))]
+[Union(32, typeof(LeaderboardSubmitScoreRequest))]
+[Union(33, typeof(LeaderboardSubmitScoreResponse))]
 public abstract class NetworkMessageBase
 {
     [IgnoreMember]
@@ -412,6 +416,58 @@ public class GamePausedEvent : NetworkMessageBase
     public override MessageType Type => MessageType.GamePausedEvent;
     [Key(0)]
     public bool IsPaused { get; set; }
+}
+
+#endregion
+
+#region Leaderboard Messages
+
+[MessagePackObject]
+public class LeaderboardGetTop10Request : NetworkMessageBase
+{
+    [IgnoreMember]
+    public override MessageType Type => MessageType.LeaderboardGetTop10Request;
+    [Key(0)] public long CacheTimestamp { get; set; }
+}
+
+[MessagePackObject]
+public class LeaderboardGetTop10Response : NetworkMessageBase
+{
+    [IgnoreMember]
+    public override MessageType Type => MessageType.LeaderboardGetTop10Response;
+    [Key(0)] public List<LeaderboardEntry> Top10 { get; set; } = new();
+    [Key(1)] public long ServerTimestamp { get; set; }
+}
+
+[MessagePackObject]
+public class LeaderboardSubmitScoreRequest : NetworkMessageBase
+{
+    [IgnoreMember]
+    public override MessageType Type => MessageType.LeaderboardSubmitScoreRequest;
+    [Key(0)] public string ProfileId { get; set; } = string.Empty;
+    [Key(1)] public string ProfileName { get; set; } = string.Empty;
+    [Key(2)] public int HighScore { get; set; }
+    [Key(3)] public long ClientTimestamp { get; set; }
+}
+
+[MessagePackObject]
+public class LeaderboardSubmitScoreResponse : NetworkMessageBase
+{
+    [IgnoreMember]
+    public override MessageType Type => MessageType.LeaderboardSubmitScoreResponse;
+    [Key(0)] public bool Success { get; set; }
+    [Key(1)] public string Message { get; set; } = string.Empty;
+    [Key(2)] public int? NewRank { get; set; } // Null if not in top 10
+    [Key(3)] public LeaderboardEntry? ReplacedEntry { get; set; } // Who was kicked out
+}
+
+[MessagePackObject]
+public class LeaderboardEntry
+{
+    [Key(0)] public string ProfileId { get; set; } = string.Empty;
+    [Key(1)] public string ProfileName { get; set; } = string.Empty;
+    [Key(2)] public int HighScore { get; set; }
+    [Key(3)] public long LastUpdated { get; set; }
 }
 
 #endregion

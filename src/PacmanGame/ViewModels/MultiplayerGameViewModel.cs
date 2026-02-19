@@ -22,6 +22,7 @@ public class MultiplayerGameViewModel : ViewModelBase
     private readonly ILogger<MultiplayerGameViewModel> _logger;
     private readonly NetworkService _networkService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IProfileManager _profileManager;
 
     private readonly int _roomId;
     private PlayerRole _myRole;
@@ -139,6 +140,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         _networkService = networkService;
         _myPlayerId = myPlayerId;
         _serviceProvider = serviceProvider;
+        _profileManager = serviceProvider.GetRequiredService<IProfileManager>();
 
         TogglePauseCommand = ReactiveCommand.Create(TogglePause);
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
@@ -343,6 +345,7 @@ public class MultiplayerGameViewModel : ViewModelBase
                 {
                     IsVictory = true;
                     FinalScore = Score;
+                    ApplyScoreRewards(true);
                 }
                 else if (_myRole == PlayerRole.Spectator)
                 {
@@ -352,6 +355,7 @@ public class MultiplayerGameViewModel : ViewModelBase
                 else
                 {
                     IsGameOver = true; // Ghosts lost
+                    ApplyScoreRewards(false);
                 }
                 break;
             case GameEventType.GameOver:
@@ -359,6 +363,7 @@ public class MultiplayerGameViewModel : ViewModelBase
                 if (_myRole == PlayerRole.Pacman)
                 {
                     IsGameOver = true; // Pacman lost
+                    ApplyScoreRewards(false);
                 }
                 else if (_myRole == PlayerRole.Spectator)
                 {
@@ -369,12 +374,21 @@ public class MultiplayerGameViewModel : ViewModelBase
                 {
                     IsVictory = true; // Ghosts won
                     FinalScore = Score; // Show score anyway
+                    ApplyScoreRewards(true);
                 }
                 break;
             case GameEventType.Victory:
                 // Explicit victory event if server sends it
-                if (_myRole == PlayerRole.Pacman) IsVictory = true;
-                else IsGameOver = true;
+                if (_myRole == PlayerRole.Pacman)
+                {
+                    IsVictory = true;
+                    ApplyScoreRewards(true);
+                }
+                else
+                {
+                    IsGameOver = true;
+                    ApplyScoreRewards(false);
+                }
                 break;
         }
         _logger.LogInformation("[MULTIPLAYER] Game event: {EventType}", evt.EventType);
@@ -382,6 +396,72 @@ public class MultiplayerGameViewModel : ViewModelBase
         // Update UI properties based on role changes or game state
         this.RaisePropertyChanged(nameof(GameOverTitle));
         this.RaisePropertyChanged(nameof(GameOverMessage));
+    }
+
+    private void ApplyScoreRewards(bool isWinner)
+    {
+        var profile = _profileManager.GetActiveProfile();
+        if (profile == null) return;
+
+        int scoreAdjustment = 0;
+
+        if (_myRole == PlayerRole.Pacman)
+        {
+            if (isWinner)
+            {
+                // Pac-Man wins: Game points + 5000 bonus
+                scoreAdjustment = Score + 5000;
+            }
+            else
+            {
+                // Pac-Man loses: Game points only
+                scoreAdjustment = Score;
+            }
+        }
+        else if (_myRole != PlayerRole.Spectator && _myRole != PlayerRole.None)
+        {
+            // Ghost roles
+            if (isWinner)
+            {
+                // Ghosts win (Pac-Man lost): +1200 points
+                scoreAdjustment = 1200;
+            }
+            else
+            {
+                // Ghosts lose (Pac-Man won): Penalty equal to what Pac-Man ate
+                // Note: Score tracks Pac-Man's score, so we subtract it
+                scoreAdjustment = -Score;
+            }
+        }
+
+        if (scoreAdjustment != 0)
+        {
+            // We need to fetch the current high score to add/subtract from it
+            // But SaveScore only saves if higher.
+            // For multiplayer, we might want a cumulative score or just update the high score?
+            // The requirement says: "Total added to their local high score"
+            // This implies we treat it as experience points or we just update the high score if the new total is higher?
+            // "Added to their local high score" suggests accumulation, but our system is High Score based (max score).
+            // Let's assume we add it to a "Multiplayer Score" or just try to save it as a new high score entry?
+            // Re-reading: "Total added to their local high score"
+            // If I have 10,000 high score, and I win 15,000 points, my new high score should be 25,000?
+            // Or is it just a new score submission of 15,000?
+            // "Added to their local high score" usually means HighScore += NewPoints.
+
+            // Let's implement it as: NewPotentialHighScore = CurrentHighScore + scoreAdjustment
+
+            var currentProfile = _profileManager.GetProfileById(profile.Id);
+            if (currentProfile != null)
+            {
+                int currentHighScore = currentProfile.HighScore; // This comes from MAX(Score) in DB
+                int newScore = currentHighScore + scoreAdjustment;
+
+                if (newScore < 0) newScore = 0; // No negative scores
+
+                _profileManager.SaveScore(profile.Id, newScore, 1); // Level 1 for multiplayer
+                _logger.LogInformation($"[MULTIPLAYER] Score adjustment: {scoreAdjustment}. New High Score: {newScore}");
+            }
+        }
     }
 
     private void HandleGamePaused(bool isPaused)

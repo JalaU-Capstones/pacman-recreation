@@ -6,6 +6,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using PacmanGame.Models.Game;
 using PacmanGame.Services.Interfaces;
+using Dapper;
 
 namespace PacmanGame.Services;
 
@@ -92,7 +93,10 @@ public class ProfileManager : IProfileManager
                     Name TEXT NOT NULL UNIQUE,
                     AvatarColor TEXT,
                     CreatedAt TEXT NOT NULL,
-                    LastPlayedAt TEXT
+                    LastPlayedAt TEXT,
+                    HasCompletedAllLevels INTEGER DEFAULT 0,
+                    GlobalProfileId TEXT,
+                    LastGlobalScoreSubmission INTEGER DEFAULT 0
                 );
                 CREATE TABLE IF NOT EXISTS Scores (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,6 +116,26 @@ public class ProfileManager : IProfileManager
                 );
             ";
             await command.ExecuteNonQueryAsync();
+
+            // Migration: Add new columns if they don't exist
+            try
+            {
+                await connection.ExecuteAsync("ALTER TABLE Profiles ADD COLUMN HasCompletedAllLevels INTEGER DEFAULT 0;");
+            }
+            catch { /* Column likely exists */ }
+
+            try
+            {
+                await connection.ExecuteAsync("ALTER TABLE Profiles ADD COLUMN GlobalProfileId TEXT;");
+            }
+            catch { /* Column likely exists */ }
+
+            try
+            {
+                await connection.ExecuteAsync("ALTER TABLE Profiles ADD COLUMN LastGlobalScoreSubmission INTEGER DEFAULT 0;");
+            }
+            catch { /* Column likely exists */ }
+
             _isInitialized = true;
             _logger.LogInformation("Database initialized successfully.");
         }
@@ -135,7 +159,8 @@ public class ProfileManager : IProfileManager
 
             var command = connection.CreateCommand();
             command.CommandText = @"
-                SELECT p.Id, p.Name, p.AvatarColor, p.CreatedAt, p.LastPlayedAt, MAX(s.Score) as HighScore
+                SELECT p.Id, p.Name, p.AvatarColor, p.CreatedAt, p.LastPlayedAt, MAX(s.Score) as HighScore,
+                       p.HasCompletedAllLevels, p.GlobalProfileId, p.LastGlobalScoreSubmission
                 FROM Profiles p
                 LEFT JOIN Scores s ON p.Id = s.ProfileId
                 GROUP BY p.Id
@@ -152,7 +177,10 @@ public class ProfileManager : IProfileManager
                     AvatarColor = reader.IsDBNull(2) ? null : reader.GetString(2),
                     CreatedAt = DateTime.Parse(reader.GetString(3)),
                     LastPlayedAt = reader.IsDBNull(4) ? null : DateTime.Parse(reader.GetString(4)),
-                    HighScore = reader.IsDBNull(5) ? 0 : reader.GetInt32(5)
+                    HighScore = reader.IsDBNull(5) ? 0 : reader.GetInt32(5),
+                    HasCompletedAllLevels = !reader.IsDBNull(6) && reader.GetInt32(6) != 0,
+                    GlobalProfileId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                    LastGlobalScoreSubmission = reader.IsDBNull(8) ? 0 : reader.GetInt64(8)
                 });
             }
             _logger.LogDebug("GetAllProfiles completed, found {Count} profiles", profiles.Count);
@@ -176,8 +204,8 @@ public class ProfileManager : IProfileManager
 
             var command = connection.CreateCommand();
             command.CommandText = @"
-                INSERT INTO Profiles (Name, AvatarColor, CreatedAt, LastPlayedAt)
-                VALUES ($name, $avatarColor, $createdAt, $lastPlayedAt);
+                INSERT INTO Profiles (Name, AvatarColor, CreatedAt, LastPlayedAt, HasCompletedAllLevels, LastGlobalScoreSubmission)
+                VALUES ($name, $avatarColor, $createdAt, $lastPlayedAt, 0, 0);
                 SELECT last_insert_rowid();
             ";
 
@@ -195,7 +223,9 @@ public class ProfileManager : IProfileManager
                 Name = name,
                 AvatarColor = avatarColor,
                 CreatedAt = now,
-                LastPlayedAt = now
+                LastPlayedAt = now,
+                HasCompletedAllLevels = false,
+                LastGlobalScoreSubmission = 0
             };
 
             SaveSettings((int)id, new Settings { ProfileId = (int)id });
@@ -221,7 +251,7 @@ public class ProfileManager : IProfileManager
             connection.Open();
 
             var command = connection.CreateCommand();
-            command.CommandText = "SELECT Id, Name, AvatarColor, CreatedAt, LastPlayedAt FROM Profiles WHERE Id = $id";
+            command.CommandText = "SELECT Id, Name, AvatarColor, CreatedAt, LastPlayedAt, HasCompletedAllLevels, GlobalProfileId, LastGlobalScoreSubmission FROM Profiles WHERE Id = $id";
             command.Parameters.AddWithValue("$id", id);
 
             using var reader = command.ExecuteReader();
@@ -233,7 +263,10 @@ public class ProfileManager : IProfileManager
                     Name = reader.GetString(1),
                     AvatarColor = reader.IsDBNull(2) ? null : reader.GetString(2),
                     CreatedAt = DateTime.Parse(reader.GetString(3)),
-                    LastPlayedAt = reader.IsDBNull(4) ? null : DateTime.Parse(reader.GetString(4))
+                    LastPlayedAt = reader.IsDBNull(4) ? null : DateTime.Parse(reader.GetString(4)),
+                    HasCompletedAllLevels = !reader.IsDBNull(5) && reader.GetInt32(5) != 0,
+                    GlobalProfileId = reader.IsDBNull(6) ? null : reader.GetString(6),
+                    LastGlobalScoreSubmission = reader.IsDBNull(7) ? 0 : reader.GetInt64(7)
                 };
             }
         }
@@ -253,6 +286,51 @@ public class ProfileManager : IProfileManager
     }
 
     public Profile? GetActiveProfile() => _activeProfile;
+
+    public async Task<Profile?> GetCurrentProfileAsync()
+    {
+        if (_activeProfile == null) return null;
+        return GetProfileById(_activeProfile.Id);
+    }
+
+    public async Task UpdateProfileAsync(Profile profile)
+    {
+        if (!_isInitialized) return;
+
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
+
+            await connection.ExecuteAsync(@"
+                UPDATE Profiles
+                SET Name = @Name,
+                    AvatarColor = @AvatarColor,
+                    LastPlayedAt = @LastPlayedAt,
+                    HasCompletedAllLevels = @HasCompletedAllLevels,
+                    GlobalProfileId = @GlobalProfileId,
+                    LastGlobalScoreSubmission = @LastGlobalScoreSubmission
+                WHERE Id = @Id",
+                new {
+                    profile.Name,
+                    profile.AvatarColor,
+                    LastPlayedAt = profile.LastPlayedAt?.ToString("o"),
+                    HasCompletedAllLevels = profile.HasCompletedAllLevels ? 1 : 0,
+                    profile.GlobalProfileId,
+                    profile.LastGlobalScoreSubmission,
+                    profile.Id
+                });
+
+            if (_activeProfile?.Id == profile.Id)
+            {
+                _activeProfile = profile;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update profile {ProfileId}.", profile.Id);
+        }
+    }
 
     public void DeleteProfile(int profileId)
     {
@@ -290,32 +368,118 @@ public class ProfileManager : IProfileManager
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
 
-            var command = connection.CreateCommand();
-            command.CommandText = @"
-                INSERT INTO Scores (ProfileId, Score, Level, Date)
-                VALUES ($profileId, $score, $level, $date)
-            ";
+            // Check if this is a new high score for this profile
+            var checkCmd = connection.CreateCommand();
+            checkCmd.CommandText = "SELECT MAX(Score) FROM Scores WHERE ProfileId = $profileId";
+            checkCmd.Parameters.AddWithValue("$profileId", profileId);
+            var result = checkCmd.ExecuteScalar();
+            int currentHighScore = result != DBNull.Value ? Convert.ToInt32(result) : 0;
 
-            command.Parameters.AddWithValue("$profileId", profileId);
-            command.Parameters.AddWithValue("$score", score);
-            command.Parameters.AddWithValue("$level", level);
-            command.Parameters.AddWithValue("$date", DateTime.Now.ToString("o"));
+            // Only save if it's a new high score or if no score exists
+            if (score > currentHighScore)
+            {
+                // Remove old scores for this profile to keep only the highest
+                var deleteCmd = connection.CreateCommand();
+                deleteCmd.CommandText = "DELETE FROM Scores WHERE ProfileId = $profileId";
+                deleteCmd.Parameters.AddWithValue("$profileId", profileId);
+                deleteCmd.ExecuteNonQuery();
 
-            command.ExecuteNonQuery();
+                var command = connection.CreateCommand();
+                command.CommandText = @"
+                    INSERT INTO Scores (ProfileId, Score, Level, Date)
+                    VALUES ($profileId, $score, $level, $date)
+                ";
 
-            // Also update LastPlayedAt for the profile
+                command.Parameters.AddWithValue("$profileId", profileId);
+                command.Parameters.AddWithValue("$score", score);
+                command.Parameters.AddWithValue("$level", level);
+                command.Parameters.AddWithValue("$date", DateTime.Now.ToString("o"));
+
+                command.ExecuteNonQuery();
+                _logger.LogInformation("New High Score saved for profile {ProfileId}: {Score} points at level {Level}", profileId, score, level);
+            }
+            else
+            {
+                _logger.LogInformation("Score {Score} is not higher than current high score {HighScore} for profile {ProfileId}. Not saving.", score, currentHighScore, profileId);
+            }
+
+            // Always update LastPlayedAt for the profile
             var updateCmd = connection.CreateCommand();
             updateCmd.CommandText = "UPDATE Profiles SET LastPlayedAt = $lastPlayedAt WHERE Id = $id";
             updateCmd.Parameters.AddWithValue("$lastPlayedAt", DateTime.Now.ToString("o"));
             updateCmd.Parameters.AddWithValue("$id", profileId);
             updateCmd.ExecuteNonQuery();
-
-            _logger.LogInformation("Score saved for profile {ProfileId}: {Score} points at level {Level}", profileId, score, level);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save score for profile ID {ProfileId}.", profileId);
         }
+    }
+
+    public async Task SaveOrUpdateHighScoreAsync(string profileName, int score)
+    {
+        // Get existing high score
+        var existingScore = await GetHighScoreAsync(profileName);
+
+        if (existingScore == null || score > existingScore.Score)
+        {
+            // Update or insert
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
+
+            // We need to find the ProfileId first
+            var profileId = await connection.ExecuteScalarAsync<int?>("SELECT Id FROM Profiles WHERE Name = @Name", new { Name = profileName });
+
+            if (profileId.HasValue)
+            {
+                // Remove old scores for this profile to keep only the highest
+                await connection.ExecuteAsync("DELETE FROM Scores WHERE ProfileId = @ProfileId", new { ProfileId = profileId.Value });
+
+                await connection.ExecuteAsync(@"
+                    INSERT INTO Scores (ProfileId, Score, Level, Date)
+                    VALUES (@ProfileId, @Score, 1, @DateAchieved)",
+                    new { ProfileId = profileId.Value, Score = score, DateAchieved = DateTime.UtcNow.ToString("o") });
+            }
+        }
+    }
+
+    private async Task<ScoreEntry?> GetHighScoreAsync(string profileName)
+    {
+        if (!_isInitialized) return null;
+
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
+
+            var command = connection.CreateCommand();
+            command.CommandText = @"
+                SELECT p.Name, MAX(s.Score) as Score, s.Level, s.Date
+                FROM Scores s
+                JOIN Profiles p ON s.ProfileId = p.Id
+                WHERE p.Name = $profileName
+                GROUP BY s.ProfileId
+            ";
+            command.Parameters.AddWithValue("$profileName", profileName);
+
+            using var reader = await command.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                return new ScoreEntry
+                {
+                    PlayerName = reader.GetString(0),
+                    Score = reader.GetInt32(1),
+                    Level = reader.GetInt32(2),
+                    Date = DateTime.Parse(reader.GetString(3))
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get high score for profile {ProfileName}.", profileName);
+        }
+
+        return null;
     }
 
     public List<ScoreEntry> GetTopScores(int limit = 10)

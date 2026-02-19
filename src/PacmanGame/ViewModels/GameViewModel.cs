@@ -202,7 +202,25 @@ public class GameViewModel : ViewModelBase
         IsLevelComplete = false;
 
         Level++;
-        _engine.LoadLevel(Level);
+
+        if (Level > 3)
+        {
+            // Game completed!
+            OnVictory();
+
+            // Mark profile as completed all levels
+            var profile = await _profileManager.GetCurrentProfileAsync();
+            if (profile != null && !profile.HasCompletedAllLevels)
+            {
+                profile.HasCompletedAllLevels = true;
+                await _profileManager.UpdateProfileAsync(profile);
+                _logger.LogInformation("Profile {Name} has completed all levels!", profile.Name);
+            }
+        }
+        else
+        {
+            _engine.LoadLevel(Level);
+        }
     }
 
     private void OnGameOver()

@@ -33,10 +33,14 @@ dotnet run --project src/PacmanGame/PacmanGame.csproj
 
 ## Features
 
-- Single-player mode with multiple levels
-- Multiplayer mode for up to 5 players
-- Faithful ghost AI implementation
-- Score tracking and profile system
+- Classic single-player mode with 3 progressively difficult levels
+- Online multiplayer for up to 5 players
+- **Global Top 10 Leaderboard** - Compete with players worldwide
+- Profile system with local and global high score tracking
+- Complete all 3 levels to unlock global leaderboard submission
+- Original ghost AI behaviors (Blinky, Pinky, Inky, Clyde)
+- Authentic arcade sounds and graphics
+- Cross-platform support (Linux x64/ARM64, Windows)
 
 ## License
 

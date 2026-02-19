@@ -22,6 +22,7 @@ public class RelayServer : INetEventListener
     private readonly ILoggerFactory _loggerFactory;
     private readonly MessagePackSerializerOptions _serializerOptions;
     private readonly IMapLoader _mapLoader;
+    private readonly LeaderboardService _leaderboardService;
     private CancellationTokenSource? _cancellationTokenSource;
 
     // Mapping to track player sessions and roles
@@ -45,6 +46,7 @@ public class RelayServer : INetEventListener
         // Use StandardResolver to support [MessagePackObject] and [Union] attributes
         _serializerOptions = MessagePack.MessagePackSerializer.DefaultOptions.WithResolver(MessagePack.Resolvers.StandardResolver.Instance);
         _mapLoader = new MapLoader(_loggerFactory.CreateLogger<MapLoader>());
+        _leaderboardService = new LeaderboardService(_loggerFactory.CreateLogger<LeaderboardService>());
     }
 
     public Task StartAsync()
@@ -144,8 +146,39 @@ public class RelayServer : INetEventListener
             case GetRoomListRequest _: HandleGetRoomListRequest(player); break;
             case PlayerInputMessage input: HandlePlayerInput(player, input); break;
             case PauseGameRequest req: HandlePauseGameRequest(player, req); break;
+            case LeaderboardGetTop10Request req: HandleLeaderboardGetTop10Request(player, req); break;
+            case LeaderboardSubmitScoreRequest req: HandleLeaderboardSubmitScoreRequest(player, req); break;
             default: _logger.LogWarning($"Unknown message type: {message.Type} from {player.Peer.Address}"); break;
         }
+    }
+
+    private async void HandleLeaderboardGetTop10Request(Player player, LeaderboardGetTop10Request request)
+    {
+        var top10 = await _leaderboardService.GetTop10Async();
+        var response = new LeaderboardGetTop10Response
+        {
+            Top10 = top10,
+            ServerTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
+        SendMessageToPlayer(player, response);
+    }
+
+    private async void HandleLeaderboardSubmitScoreRequest(Player player, LeaderboardSubmitScoreRequest request)
+    {
+        var result = await _leaderboardService.SubmitScoreAsync(
+            request.ProfileId,
+            request.ProfileName,
+            request.HighScore,
+            request.ClientTimestamp);
+
+        var response = new LeaderboardSubmitScoreResponse
+        {
+            Success = result.Success,
+            Message = result.Message,
+            NewRank = result.NewRank,
+            ReplacedEntry = result.ReplacedEntry
+        };
+        SendMessageToPlayer(player, response);
     }
 
     private void HandlePauseGameRequest(Player player, PauseGameRequest request)

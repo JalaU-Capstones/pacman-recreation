@@ -43,3 +43,50 @@ flatpak run --command=flatpak-builder-lint org.flatpak.Builder \
   
 flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo repo-dir
 ```
+
+### ARM64 Support
+
+The Flatpak manifest supports both x86_64 and ARM64 architectures.
+Build command for ARM64:
+
+```bash
+flatpak-builder --force-clean --arch=aarch64 \
+  --user --install build-dir-arm64 \
+  io.github.jalaucapstones.pacman-recreation.yaml
+```
+
+The manifest automatically handles architecture-specific .NET runtime packs.
+
+## Global Leaderboard Database Setup
+
+1. SSH into server:
+   ```bash
+   ssh -i pacman-server-key.pem ubuntu@pacmanserver.codewithbotina.com
+   ```
+
+2. Create database directory:
+   ```bash
+   sudo mkdir -p /var/lib/pacman-server
+   sudo chown ubuntu:ubuntu /var/lib/pacman-server
+   ```
+
+3. Initialize database:
+   ```bash
+   cd /var/lib/pacman-server
+   sqlite3 global_leaderboard.db < schema.sql
+   ```
+
+4. Set permissions:
+   ```bash
+   chmod 644 global_leaderboard.db
+   ```
+
+5. Update server service to include leaderboard:
+   ```bash
+   sudo systemctl restart pacman-server
+   ```
+
+6. Verify database is working:
+   ```bash
+   sqlite3 global_leaderboard.db "SELECT * FROM GlobalLeaderboard;"
+   ```
