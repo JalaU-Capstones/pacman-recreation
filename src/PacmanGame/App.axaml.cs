@@ -22,10 +22,14 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
     }
 
-    public override void OnFrameworkInitializationCompleted()
+    public override async void OnFrameworkInitializationCompleted()
     {
+        Console.WriteLine("OnFrameworkInitializationCompleted started");
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            Console.WriteLine("Desktop lifetime detected");
+
             // Configure Dependency Injection
             var services = new ServiceCollection();
 
@@ -60,17 +64,6 @@ public partial class App : Application
 
             _serviceProvider = services.BuildServiceProvider();
 
-            // Initialize ProfileManager
-            var profileManager = _serviceProvider.GetRequiredService<IProfileManager>();
-            try
-            {
-                profileManager.InitializeAsync().Wait();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"FATAL: Failed to initialize database: {ex}");
-            }
-
             // Line below is needed to remove Avalonia data validation.
             // Without this line you will get duplicate validations from both Avalonia and CT
             BindingPlugins.DataValidators.RemoveAt(0);
@@ -80,6 +73,38 @@ public partial class App : Application
             {
                 DataContext = mainWindowViewModel
             };
+
+            // Initialize ProfileManager and set initial view
+            var profileManager = _serviceProvider.GetRequiredService<IProfileManager>();
+            try
+            {
+                await profileManager.InitializeAsync();
+                Console.WriteLine("ProfileManager initialized");
+
+                var profiles = await Task.Run(() => profileManager.GetAllProfiles());
+                Console.WriteLine($"Found {profiles.Count} profiles");
+
+                ViewModelBase initialViewModel;
+                if (profiles.Count == 0)
+                {
+                    initialViewModel = _serviceProvider.GetRequiredService<ProfileCreationViewModel>();
+                }
+                else
+                {
+                    initialViewModel = _serviceProvider.GetRequiredService<ProfileSelectionViewModel>();
+                }
+                Console.WriteLine($"Initial ViewModel: {initialViewModel.GetType().Name}");
+
+                mainWindowViewModel.CurrentViewModel = initialViewModel;
+                Console.WriteLine("MainWindowViewModel created with CurrentViewModel set");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"FATAL: Failed to initialize: {ex}");
+            }
+
+            desktop.MainWindow.Show();
+            Console.WriteLine("MainWindow.Show() called");
 
             // Hook up exit event
             desktop.Exit += OnExit;
