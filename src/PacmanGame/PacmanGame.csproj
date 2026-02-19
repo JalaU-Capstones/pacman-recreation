@@ -35,6 +35,7 @@
     <PackageReference Include="LiteNetLib" />
     <PackageReference Include="MessagePack" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Dapper" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PacmanGame.Shared\PacmanGame.Shared.csproj" />
@@ -42,6 +43,9 @@
   <ItemGroup>
     <Compile Update="Views\ScoreBoardView.axaml.cs">
       <DependentUpon>ScoreBoardView.axaml</DependentUpon>
+    </Compile>
+    <Compile Update="Views\GlobalLeaderboardView.axaml.cs">
+      <DependentUpon>GlobalLeaderboardView.axaml</DependentUpon>
     </Compile>
   </ItemGroup>
 </Project>

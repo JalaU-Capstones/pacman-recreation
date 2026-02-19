@@ -55,7 +55,7 @@ public partial class App : Application
             services.AddTransient<ProfileCreationViewModel>();
             services.AddTransient<ProfileSelectionViewModel>();
             services.AddTransient<SettingsViewModel>();
-            services.AddTransient<MultiplayerLobbyViewModel>();
+            services.AddTransient<RoomLobbyViewModel>();
             services.AddTransient<GlobalLeaderboardViewModel>();
 
             _serviceProvider = services.BuildServiceProvider();

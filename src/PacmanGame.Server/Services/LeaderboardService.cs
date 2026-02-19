@@ -162,7 +162,7 @@ public class LeaderboardService
                     ORDER BY HighScore ASC
                     LIMIT 1");
 
-                if (highScore > lowest.HighScore)
+                if (lowest != null && highScore > lowest.HighScore)
                 {
                     // Replace lowest entry
                     await connection.ExecuteAsync(

@@ -55,14 +55,23 @@ class Program
 
         try
         {
-            var shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell"));
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shellType == null) return;
+
+            var shell = Activator.CreateInstance(shellType);
+            if (shell == null) return;
+
             var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             var startMenuPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.Programs),
                 "Pacman Recreation"
             );
 
-            Directory.CreateDirectory(Path.GetDirectoryName(flagPath));
+            var flagDir = Path.GetDirectoryName(flagPath);
+            if (!string.IsNullOrEmpty(flagDir))
+            {
+                Directory.CreateDirectory(flagDir);
+            }
             Directory.CreateDirectory(startMenuPath);
 
             CreateShortcut(shell, desktopPath, "Pacman Recreation.lnk");
@@ -83,9 +92,11 @@ class Program
             System.Reflection.BindingFlags.InvokeMethod, null, shell,
             new object[] { shortcutPath });
 
+        if (shortcut == null) return;
+
         shortcut.GetType().InvokeMember("TargetPath",
             System.Reflection.BindingFlags.SetProperty, null, shortcut,
-            new object[] { Environment.ProcessPath });
+            new object[] { Environment.ProcessPath ?? string.Empty });
 
         shortcut.GetType().InvokeMember("WorkingDirectory",
             System.Reflection.BindingFlags.SetProperty, null, shortcut,

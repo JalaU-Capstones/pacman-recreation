@@ -8,6 +8,10 @@
              x:DataType="vm:GlobalLeaderboardViewModel"
              Background="Black">
 
+    <Design.DataContext>
+        <vm:GlobalLeaderboardViewModel />
+    </Design.DataContext>
+
     <UserControl.Styles>
         <StyleInclude Source="/Styles/ButtonStyles.axaml" />
     </UserControl.Styles>

@@ -13,8 +13,10 @@ namespace PacmanGame.Services.AI;
 public class BlinkyAI : IGhostAI
 {
     private readonly AStarPathfinder _pathfinder = new AStarPathfinder();
+#pragma warning disable CS0414
     private Direction _cachedDirection = Direction.None;
     private float _lastPathCalculationTime = 0f;
+#pragma warning restore CS0414
     private const float PathCalculationInterval = 0.5f; // Calculate path every 0.5 seconds
 
     /// <summary>

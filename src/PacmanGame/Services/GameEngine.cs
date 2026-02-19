@@ -191,6 +191,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             };
 
             ghost.SpeedMultiplier = baseGhostSpeed / Constants.GhostNormalSpeed;
+            ghost.Speed *= speedMultiplier;
         }
     }
 

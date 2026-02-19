@@ -597,4 +597,11 @@ public class ProfileManager : IProfileManager
 
         return new Settings { ProfileId = profileId };
     }
+
+    public async Task CleanupDuplicateScoresAsync()
+    {
+        await Task.Run(() => {
+            // Placeholder for cleanup logic if needed
+        });
+    }
 }
