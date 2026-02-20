@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Pac-Man wins: +5000 bonus points
   - Pac-Man loses: Ghosts get +1200 points each
   - Score penalties for ghosts when Pac-Man wins
+- Creative Mode level editor (unlock after completing all 3 levels)
+  - 28x31 grid editor with tools (walls, ghost house, power pellets)
+  - Tools/Config tabs with zoom controls and cursor preview
+  - Per-project and per-level configuration (lives, win score, speed multipliers, points)
+  - Export/import .pacproj (editable or play-only) with preview
+  - Multi-level projects (1-10 levels) with Prev/Next navigation
+  - Play test launches GameView with custom maps/settings
 - New Profile database fields: HasCompletedAllLevels, GlobalProfileId
 - Global Leaderboard View with submission capability
 - Navigation from Local Scoreboard to Global Top 10
@@ -63,7 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 - Additional levels
-- Custom maze editor
 - Spectator mode improvements
 - In-game chat
 - Gamepad support

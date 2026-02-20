@@ -36,8 +36,13 @@ dotnet run --project src/PacmanGame/PacmanGame.csproj
 - Classic single-player mode with 3 progressively difficult levels
 - Online multiplayer for up to 5 players
 - **Global Top 10 Leaderboard** - Compete with players worldwide
+  - Unlock submission by completing all 3 levels
+  - Client-side cache + offline pending submission queue
 - Profile system with local and global high score tracking
-- Complete all 3 levels to unlock global leaderboard submission
+- **Creative Mode** - Design and share custom levels
+  - Up to 10 levels per project
+  - Configure lives, win score, and per-level difficulty settings
+  - Export/import shareable `.pacproj` packages
 - Original ghost AI behaviors (Blinky, Pinky, Inky, Clyde)
 - Authentic arcade sounds and graphics
 - Cross-platform support (Linux x64/ARM64, Windows)

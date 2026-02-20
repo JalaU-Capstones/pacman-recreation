@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:PacmanGame.ViewModels"
+             xmlns:conv="using:PacmanGame.Converters"
+             xmlns:input="using:Avalonia.Input"
+             mc:Ignorable="d"
+             x:Class="PacmanGame.Views.ConsoleView"
+             x:DataType="vm:ConsoleViewModel">
+
+  <UserControl.Resources>
+    <conv:ConsoleMessageBrushConverter x:Key="ConsoleMessageBrushConverter" />
+  </UserControl.Resources>
+
+  <Border Background="#1E1E1E"
+          Padding="16"
+          CornerRadius="8"
+          Opacity="0.95"
+          IsVisible="{Binding IsVisible}"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          Width="720"
+          Height="320">
+    <Grid RowDefinitions="*,Auto">
+      <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+        <ItemsControl ItemsSource="{Binding CommandHistory}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Text}"
+                         Foreground="{Binding Type, Converter={StaticResource ConsoleMessageBrushConverter}}"
+                         FontFamily="Consolas" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+
+        <Border Grid.Row="1" BorderBrush="#333" BorderThickness="1" CornerRadius="4" Margin="0,12,0,0">
+          <TextBox Text="{Binding CurrentCommand, Mode=TwoWay}"
+                   Background="#050505"
+                   Foreground="#00FF00"
+                   CaretBrush="#00FF00"
+                   SelectionBrush="#005500"
+                   Padding="8"
+                   FontFamily="Consolas"
+                   Watermark="Type /command and press Enter"
+                   HorizontalContentAlignment="Stretch">
+            <TextBox.KeyBindings>
+              <input:KeyBinding Command="{Binding SubmitCommand}" Gesture="Enter" />
+            </TextBox.KeyBindings>
+          </TextBox>
+        </Border>
+    </Grid>
+
+  </Border>
+</UserControl>

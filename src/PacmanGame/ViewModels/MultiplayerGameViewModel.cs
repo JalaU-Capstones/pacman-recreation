@@ -72,6 +72,10 @@ public class MultiplayerGameViewModel : ViewModelBase
     private int _spectatorPromotionTimer;
     public int SpectatorPromotionTimer { get => _spectatorPromotionTimer; set => this.RaiseAndSetIfChanged(ref _spectatorPromotionTimer, value); }
 
+    private bool _hasPendingOutcome;
+    private bool _pendingPacmanWon;
+    private int _pendingPacmanEarnedScore;
+
     public bool IsAdmin { get => _isAdmin; set => this.RaiseAndSetIfChanged(ref _isAdmin, value); }
     public string PauseButtonText => IsPaused ? "RESUME" : "PAUSE";
 
@@ -340,12 +344,11 @@ public class MultiplayerGameViewModel : ViewModelBase
                 break;
             case GameEventType.LevelComplete:
                 _audioManager.PlaySoundEffect("level-complete.wav");
-                // For multiplayer level 1 only, this is victory for Pacman
+                // For multiplayer level 1 only, this is victory for Pac-Man.
                 if (_myRole == PlayerRole.Pacman)
                 {
                     IsVictory = true;
                     FinalScore = Score;
-                    ApplyScoreRewards(true);
                 }
                 else if (_myRole == PlayerRole.Spectator)
                 {
@@ -355,15 +358,18 @@ public class MultiplayerGameViewModel : ViewModelBase
                 else
                 {
                     IsGameOver = true; // Ghosts lost
-                    ApplyScoreRewards(false);
                 }
+
+                // Scoring is role-based and applied after role rotation (at next GameStartEvent).
+                _hasPendingOutcome = true;
+                _pendingPacmanWon = true;
+                _pendingPacmanEarnedScore = Score;
                 break;
             case GameEventType.GameOver:
                 _audioManager.PlayMusic("game-over-theme.wav");
                 if (_myRole == PlayerRole.Pacman)
                 {
                     IsGameOver = true; // Pacman lost
-                    ApplyScoreRewards(false);
                 }
                 else if (_myRole == PlayerRole.Spectator)
                 {
@@ -374,21 +380,26 @@ public class MultiplayerGameViewModel : ViewModelBase
                 {
                     IsVictory = true; // Ghosts won
                     FinalScore = Score; // Show score anyway
-                    ApplyScoreRewards(true);
                 }
+
+                _hasPendingOutcome = true;
+                _pendingPacmanWon = false;
+                _pendingPacmanEarnedScore = Score;
                 break;
             case GameEventType.Victory:
                 // Explicit victory event if server sends it
                 if (_myRole == PlayerRole.Pacman)
                 {
                     IsVictory = true;
-                    ApplyScoreRewards(true);
                 }
                 else
                 {
                     IsGameOver = true;
-                    ApplyScoreRewards(false);
                 }
+
+                _hasPendingOutcome = true;
+                _pendingPacmanWon = true;
+                _pendingPacmanEarnedScore = Score;
                 break;
         }
         _logger.LogInformation("[MULTIPLAYER] Game event: {EventType}", evt.EventType);
@@ -396,72 +407,6 @@ public class MultiplayerGameViewModel : ViewModelBase
         // Update UI properties based on role changes or game state
         this.RaisePropertyChanged(nameof(GameOverTitle));
         this.RaisePropertyChanged(nameof(GameOverMessage));
-    }
-
-    private void ApplyScoreRewards(bool isWinner)
-    {
-        var profile = _profileManager.GetActiveProfile();
-        if (profile == null) return;
-
-        int scoreAdjustment = 0;
-
-        if (_myRole == PlayerRole.Pacman)
-        {
-            if (isWinner)
-            {
-                // Pac-Man wins: Game points + 5000 bonus
-                scoreAdjustment = Score + 5000;
-            }
-            else
-            {
-                // Pac-Man loses: Game points only
-                scoreAdjustment = Score;
-            }
-        }
-        else if (_myRole != PlayerRole.Spectator && _myRole != PlayerRole.None)
-        {
-            // Ghost roles
-            if (isWinner)
-            {
-                // Ghosts win (Pac-Man lost): +1200 points
-                scoreAdjustment = 1200;
-            }
-            else
-            {
-                // Ghosts lose (Pac-Man won): Penalty equal to what Pac-Man ate
-                // Note: Score tracks Pac-Man's score, so we subtract it
-                scoreAdjustment = -Score;
-            }
-        }
-
-        if (scoreAdjustment != 0)
-        {
-            // We need to fetch the current high score to add/subtract from it
-            // But SaveScore only saves if higher.
-            // For multiplayer, we might want a cumulative score or just update the high score?
-            // The requirement says: "Total added to their local high score"
-            // This implies we treat it as experience points or we just update the high score if the new total is higher?
-            // "Added to their local high score" suggests accumulation, but our system is High Score based (max score).
-            // Let's assume we add it to a "Multiplayer Score" or just try to save it as a new high score entry?
-            // Re-reading: "Total added to their local high score"
-            // If I have 10,000 high score, and I win 15,000 points, my new high score should be 25,000?
-            // Or is it just a new score submission of 15,000?
-            // "Added to their local high score" usually means HighScore += NewPoints.
-
-            // Let's implement it as: NewPotentialHighScore = CurrentHighScore + scoreAdjustment
-
-            var currentProfile = _profileManager.GetProfileById(profile.Id);
-            if (currentProfile != null)
-            {
-                int currentHighScore = currentProfile.HighScore; // This comes from MAX(Score) in DB
-                int newScore = currentHighScore + scoreAdjustment;
-
-                if (newScore < 0) newScore = 0; // No negative scores
-
-                _profileManager.SaveScore(profile.Id, newScore, 1); // Level 1 for multiplayer
-                _logger.LogInformation($"[MULTIPLAYER] Score adjustment: {scoreAdjustment}. New High Score: {newScore}");
-            }
-        }
     }
 
     private void HandleGamePaused(bool isPaused)
@@ -507,6 +452,14 @@ public class MultiplayerGameViewModel : ViewModelBase
 
     private void HandleGameStart(GameStartEvent evt)
     {
+        // Apply previous round rewards after role rotation (NEW roles decide the reward/penalty).
+        // Requirement: rewards/penalties tied to roles, not players; when roles rotate, use the new role.
+        if (_hasPendingOutcome)
+        {
+            ApplyScoreRewardsForOutcome(_pendingPacmanWon, _pendingPacmanEarnedScore);
+            _hasPendingOutcome = false;
+        }
+
         // Reset local state for new game
         IsGameOver = false;
         IsVictory = false;
@@ -524,6 +477,34 @@ public class MultiplayerGameViewModel : ViewModelBase
         }
 
         _logger.LogInformation($"[CLIENT-VM] Game restarted. New role: {_myRole}");
+    }
+
+    private void ApplyScoreRewardsForOutcome(bool pacmanWon, int pacmanEarnedScore)
+    {
+        var profile = _profileManager.GetActiveProfile();
+        if (profile == null) return;
+
+        var scoreAdjustment = 0;
+
+        if (_myRole == PlayerRole.Pacman)
+        {
+            scoreAdjustment = pacmanWon ? (pacmanEarnedScore + 5000) : pacmanEarnedScore;
+        }
+        else if (_myRole != PlayerRole.Spectator && _myRole != PlayerRole.None)
+        {
+            scoreAdjustment = pacmanWon ? -pacmanEarnedScore : 1200;
+        }
+
+        if (scoreAdjustment == 0) return;
+
+        var currentProfile = _profileManager.GetProfileById(profile.Id);
+        if (currentProfile == null) return;
+
+        var newScore = currentProfile.HighScore + scoreAdjustment;
+        if (newScore < 0) newScore = 0;
+
+        _profileManager.SaveScore(profile.Id, newScore, 1);
+        _logger.LogInformation("[MULTIPLAYER] Applied role-based score adjustment {Adjustment}. New High Score: {NewScore}", scoreAdjustment, newScore);
     }
 
     private void HandleRoomStateUpdate(System.Collections.Generic.List<PlayerState> players)

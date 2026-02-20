@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
 using PacmanGame.Shared;
+using PacmanGame.ViewModels.Creative;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
@@ -15,6 +16,7 @@ public class MainWindowViewModel : ViewModelBase
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MainWindowViewModel> _logger;
+    public ConsoleViewModel ConsoleViewModel { get; }
     private ViewModelBase _currentViewModel;
     public ViewModelBase CurrentViewModel
     {
@@ -27,14 +29,26 @@ public class MainWindowViewModel : ViewModelBase
     {
         _serviceProvider = null!;
         _logger = null!;
+        ConsoleViewModel = null!;
         _currentViewModel = new ViewModelBase();
     }
 
+    public MainWindowViewModel(IServiceProvider serviceProvider, ILogger<MainWindowViewModel> logger, ConsoleViewModel consoleViewModel)
+    {
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+        _currentViewModel = new ViewModelBase(); // Placeholder
+        ConsoleViewModel = consoleViewModel;
+    }
+
+    // Back-compat constructor for tests/mocks that only pass serviceProvider + logger.
+    // Runtime DI should use the 3-arg ctor so ConsoleViewModel is provided.
     public MainWindowViewModel(IServiceProvider serviceProvider, ILogger<MainWindowViewModel> logger)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _currentViewModel = new ViewModelBase(); // Placeholder
+        ConsoleViewModel = null!;
     }
 
     public virtual async Task InitializeAsync()
@@ -81,6 +95,11 @@ public class MainWindowViewModel : ViewModelBase
         CurrentViewModel = _serviceProvider.GetRequiredService<TViewModel>();
     }
 
+    public virtual TViewModel CreateViewModel<TViewModel>() where TViewModel : ViewModelBase
+    {
+        return _serviceProvider.GetRequiredService<TViewModel>();
+    }
+
     public virtual void NavigateTo(ViewModelBase viewModel)
     {
         CurrentViewModel = viewModel;
@@ -95,5 +114,12 @@ public class MainWindowViewModel : ViewModelBase
             _serviceProvider.GetRequiredService<IProfileManager>(),
             _serviceProvider);
         CurrentViewModel = lobbyViewModel;
+    }
+
+    public void NavigateToCreativeMode()
+    {
+        if (_serviceProvider == null) return;
+        var creativeViewModel = _serviceProvider.GetRequiredService<CreativeModeViewModel>();
+        CurrentViewModel = creativeViewModel;
     }
 }

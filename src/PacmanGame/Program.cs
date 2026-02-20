@@ -79,9 +79,9 @@ class Program
 
             File.WriteAllText(flagPath, DateTime.UtcNow.ToString());
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Console.WriteLine($"Warning: Could not create shortcuts: {ex.Message}");
+            // Best-effort only; avoid writing to console in production.
         }
     }
 

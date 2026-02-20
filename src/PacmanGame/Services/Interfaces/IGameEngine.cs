@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using PacmanGame.Models.CustomLevel;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using System;
@@ -81,6 +82,19 @@ public interface IGameEngine
     /// </summary>
     /// <param name="level">Level number to load</param>
     void LoadLevel(int level);
+
+    /// <summary>
+    /// Load a custom map from an absolute file path.
+    /// Intended for Creative Mode play testing and custom projects.
+    /// </summary>
+    /// <param name="mapFilePath">Absolute path to a map text file</param>
+    void LoadCustomLevel(string mapFilePath);
+
+    /// <summary>
+    /// Apply per-level custom settings for Creative Mode and custom projects.
+    /// Must be called after <see cref="LoadCustomLevel"/> so entities exist.
+    /// </summary>
+    void ApplyCustomLevelSettings(LevelConfig levelConfig);
 
     /// <summary>
     /// Start the game

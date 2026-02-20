@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
@@ -19,15 +20,35 @@ public class ViewLocator : IDataTemplate
         if (param is null)
             return null;
         
-        var name = param.GetType().FullName!.Replace("ViewModel", "View", StringComparison.Ordinal);
-        var type = Type.GetType(name);
+        var viewModelType = param.GetType();
+        var baseName = viewModelType.Name.Replace("ViewModel", "View", StringComparison.Ordinal);
+        var candidates = new List<string>();
+        candidates.Add(viewModelType.FullName!.Replace("ViewModel", "View", StringComparison.Ordinal));
 
-        if (type != null)
+        if (!string.IsNullOrEmpty(viewModelType.Namespace))
         {
-            return (Control)Activator.CreateInstance(type)!;
+            var namespaceCandidate = viewModelType.Namespace.Replace("ViewModels", "Views", StringComparison.Ordinal);
+            candidates.Add($"{namespaceCandidate}.{baseName}");
         }
-        
-        return new TextBlock { Text = "Not Found: " + name };
+
+        candidates.Add($"PacmanGame.Views.{baseName}");
+
+        var tried = new HashSet<string>();
+        foreach (var candidate in candidates)
+        {
+            if (!tried.Add(candidate))
+            {
+                continue;
+            }
+
+            var type = Type.GetType(candidate);
+            if (type != null)
+            {
+                return (Control)Activator.CreateInstance(type)!;
+            }
+        }
+
+        return new TextBlock { Text = "Not Found: " + string.Join(", ", candidates) };
     }
 
     public bool Match(object? data)

@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:PacmanGame.ViewModels"
+        xmlns:views="using:PacmanGame.Views"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1156" d:DesignHeight="1020"
@@ -15,6 +16,9 @@
         WindowStartupLocation="CenterScreen"
         Background="Black">
 
-    <ContentControl x:Name="ContentHost" Content="{Binding CurrentViewModel}" />
+    <Grid>
+        <ContentControl x:Name="ContentHost" Content="{Binding CurrentViewModel}" />
+        <views:ConsoleView DataContext="{Binding ConsoleViewModel}" />
+    </Grid>
 
 </Window>

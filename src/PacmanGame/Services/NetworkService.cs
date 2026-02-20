@@ -55,19 +55,14 @@ public class NetworkService : INetEventListener
     {
         if (_isStarted) return;
         _isStarted = true;
-        Console.WriteLine("DEBUG: NetworkService.Start() called");
         _netManager.Start();
         _logger.LogInformation("Starting connection to server...");
-        Console.WriteLine($"DEBUG: Connecting to server at {Constants.MultiplayerServerIP}:{Constants.MultiplayerServerPort}");
         _server = _netManager.Connect(Constants.MultiplayerServerIP, Constants.MultiplayerServerPort, "PacmanGame");
-        Console.WriteLine("DEBUG: Server connection initiated, starting PollEventsLoop");
         Task.Run(PollEventsLoop);
-        Console.WriteLine("DEBUG: NetworkService.Start() completed");
     }
 
     private void PollEventsLoop()
     {
-        Console.WriteLine("DEBUG: PollEventsLoop started");
         try
         {
             while (_isStarted)
@@ -78,12 +73,7 @@ public class NetworkService : INetEventListener
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"DEBUG: PollEventsLoop exception: {ex}");
             _logger.LogError(ex, "Error in PollEventsLoop");
-        }
-        finally
-        {
-            Console.WriteLine("DEBUG: PollEventsLoop ended");
         }
     }
 

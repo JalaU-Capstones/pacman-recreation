@@ -1,0 +1,442 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:conv="using:PacmanGame.Converters"
+             xmlns:vm="using:PacmanGame.ViewModels.Creative"
+             mc:Ignorable="d"
+             x:Class="PacmanGame.Views.CreativeModeView"
+             x:DataType="vm:CreativeModeViewModel"
+             x:Name="CreativeRoot"
+             KeyDown="OnKeyDown"
+             Focusable="True">
+
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <conv:CreativeCellBrushConverter x:Key="CellBrush" />
+      <conv:CreativeCursorBrushConverter x:Key="CursorBrush" />
+      <conv:ToolIconGeometryConverter x:Key="ToolIcon" />
+      <conv:InverseBooleanConverter x:Key="InverseBool" />
+    </ResourceDictionary>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#0E0E0E"/>
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Setter Property="BorderBrush" Value="#333333"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CaretBrush" Value="#FFD700"/>
+    </Style>
+    <Style Selector="NumericUpDown">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Setter Property="Background" Value="#0E0E0E"/>
+      <Setter Property="BorderBrush" Value="#333333"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="TabItem">
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+    </Style>
+  </UserControl.Styles>
+  <Grid ColumnDefinitions="220,*,340" Background="#121212">
+    <Border Grid.Column="0" Margin="12" CornerRadius="8" BorderThickness="2" BorderBrush="#FFD700" Background="#131313">
+      <StackPanel Margin="12" Spacing="8">
+        <TextBlock Text="Keyboard" FontSize="16" FontWeight="Bold" Foreground="#FFD700"/>
+        <TextBlock Text="Arrow Keys: Move cursor" Foreground="White"/>
+        <TextBlock Text="Enter: Place tile" Foreground="White"/>
+        <TextBlock Text="Delete: Clear tile" Foreground="White"/>
+        <TextBlock Text="Tab: Cycle tools" Foreground="White"/>
+        <TextBlock Text="R: Rotate wall" Foreground="White"/>
+        <TextBlock Text="Ctrl+P: Play test" Foreground="White"/>
+        <TextBlock Text="Ctrl+E: Export" Foreground="White"/>
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Column="1" Margin="12" CornerRadius="8" BorderBrush="#2121FF" BorderThickness="2" Background="#050505">
+        <StackPanel Spacing="6" Margin="12">
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+            <Button Content="-" Command="{Binding ZoomOutCommand}" Width="32" Height="32"/>
+            <Slider Width="200"
+                    Minimum="0.5"
+                    Maximum="2"
+                    SmallChange="0.1"
+                    LargeChange="0.2"
+                    Value="{Binding ZoomLevel}"/>
+            <Button Content="+" Command="{Binding ZoomInCommand}" Width="32" Height="32"/>
+            <TextBlock Text="{Binding ZoomLabel}" Foreground="White" VerticalAlignment="Center" Margin="8,0,0,0"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+            <Button Content="◄ Prev Level"
+                    Command="{Binding PreviousLevelCommand}"
+                    IsEnabled="{Binding CanGoPreviousLevel}"
+                    MinWidth="120"/>
+            <TextBlock Text="{Binding CurrentLevelInfo}"
+                       Foreground="#DDDDDD"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center"/>
+            <Button Content="Next Level ►"
+                    Command="{Binding NextLevelCommand}"
+                    IsEnabled="{Binding CanGoNextLevel}"
+                    MinWidth="120"/>
+          </StackPanel>
+          <TextBlock Text="{Binding CanvasViewModel.StatusMessage}"
+                     Foreground="#AAAAAA"
+                     FontSize="12"
+                     TextWrapping="Wrap"/>
+
+        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      PointerWheelChanged="OnPointerWheelChanged">
+          <Grid x:Name="CanvasLayer"
+                Width="{Binding GridPixelWidth}"
+                Height="{Binding GridPixelHeight}"
+                RenderTransformOrigin="0,0">
+            <Grid.RenderTransform>
+              <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}" />
+            </Grid.RenderTransform>
+
+            <ItemsControl ItemsSource="{Binding CanvasViewModel.Cells}"
+                          Width="{Binding GridPixelWidth}"
+                          Height="{Binding GridPixelHeight}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Columns="28" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Width="22"
+                          Height="22"
+                          Margin="1"
+                          Background="{Binding TileType, Converter={StaticResource CellBrush}}"
+                          BorderBrush="{Binding IsCursor, Converter={StaticResource CursorBrush}}"
+                          BorderThickness="1" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Canvas x:Name="GridLinesLayer"
+                    Width="{Binding GridPixelWidth}"
+                    Height="{Binding GridPixelHeight}"
+                    IsHitTestVisible="False">
+              <ItemsControl ItemsSource="{Binding VerticalGridLines}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Rectangle Width="1"
+                               Height="{Binding ElementName=GridLinesLayer, Path=Height}"
+                               Fill="#2A2A2A"
+                               Canvas.Left="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding HorizontalGridLines}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Rectangle Height="1"
+                               Width="{Binding ElementName=GridLinesLayer, Path=Width}"
+                               Fill="#2A2A2A"
+                               Canvas.Top="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding MajorVerticalLines}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Rectangle Width="1"
+                               Height="{Binding ElementName=GridLinesLayer, Path=Height}"
+                               Fill="#404040"
+                               Opacity="0.7"
+                               Canvas.Left="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <ItemsControl ItemsSource="{Binding MajorHorizontalLines}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Rectangle Height="1"
+                               Width="{Binding ElementName=GridLinesLayer, Path=Width}"
+                               Fill="#404040"
+                               Opacity="0.7"
+                               Canvas.Top="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Canvas>
+
+            <Canvas Width="{Binding GridPixelWidth}"
+                    Height="{Binding GridPixelHeight}"
+                    IsHitTestVisible="False">
+              <Rectangle Width="{Binding CellDisplaySize}"
+                         Height="{Binding CellDisplaySize}"
+                         Stroke="#FFD700"
+                         StrokeThickness="2"
+                         Fill="Transparent"
+                         Canvas.Left="{Binding CursorLeft}"
+                         Canvas.Top="{Binding CursorTop}"
+                         IsVisible="{Binding HasSelectedTool}" />
+
+              <Image Source="{Binding ToolboxViewModel.SelectedToolEntry.Icon}"
+                     Width="18"
+                     Height="18"
+                     Opacity="0.65"
+                     Canvas.Left="{Binding CursorLeft}"
+                     Canvas.Top="{Binding CursorTop}"
+                     IsVisible="{Binding HasSelectedTool}"
+                     RenderTransformOrigin="0.5,0.5">
+                <Image.RenderTransform>
+                  <RotateTransform Angle="{Binding CursorRotation}" />
+                </Image.RenderTransform>
+              </Image>
+
+              <TextBlock Text="{Binding CursorRotation, StringFormat='{}{0}°'}"
+                         FontSize="10"
+                         Foreground="#FFD700"
+                         Canvas.Left="{Binding CursorRotationLabelLeft}"
+                         Canvas.Top="{Binding CursorRotationLabelTop}"
+                         IsVisible="{Binding SelectedToolRotatable}" />
+            </Canvas>
+          </Grid>
+        </ScrollViewer>
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Column="2" Margin="12" CornerRadius="8" BorderBrush="#FFD700" BorderThickness="2" Background="#131313">
+      <StackPanel Margin="12" Spacing="12">
+        <TextBlock Text="Toolbox" FontSize="16" FontWeight="Bold" Foreground="#FFD700"/>
+        <TabControl>
+          <TabItem Header="Tools">
+            <ListBox x:Name="ToolList"
+                     Classes="tool-list"
+                     ItemsSource="{Binding ToolboxViewModel.Tools}"
+                     SelectedItem="{Binding ToolboxViewModel.SelectedToolEntry, Mode=TwoWay}"
+                     BorderBrush="Transparent">
+              <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                  <Setter Property="Background" Value="Transparent"/>
+                  <Setter Property="Padding" Value="6"/>
+                  <Setter Property="Margin" Value="2"/>
+                </Style>
+                <Style Selector="ListBoxItem TextBlock">
+                  <Setter Property="Foreground" Value="#FFFFFF"/>
+                </Style>
+                <Style Selector="ListBoxItem TextBlock.tool-desc">
+                  <Setter Property="Foreground" Value="#AAAAAA"/>
+                </Style>
+                <Style Selector="ListBoxItem:pointerover">
+                  <Setter Property="Background" Value="#222222"/>
+                </Style>
+                <Style Selector="ListBoxItem:selected">
+                  <Setter Property="Background" Value="#FFD700"/>
+                  <Setter Property="BorderBrush" Value="#FFA500"/>
+                  <Setter Property="BorderThickness" Value="2"/>
+                </Style>
+                <Style Selector="ListBoxItem:selected TextBlock">
+                  <Setter Property="Foreground" Value="#000000"/>
+                </Style>
+                <Style Selector="ListBoxItem:selected Border.tool-icon-bg">
+                  <Setter Property="Background" Value="#000000"/>
+                </Style>
+                <Style Selector="ListBoxItem:selected Border.shortcut-badge">
+                  <Setter Property="Background" Value="#000000"/>
+                </Style>
+                <Style Selector="ListBoxItem:selected Border.shortcut-badge TextBlock">
+                  <Setter Property="Foreground" Value="#FFFFFF"/>
+                </Style>
+              </ListBox.Styles>
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="42,*,50" VerticalAlignment="Center">
+                    <ToolTip.Tip>
+                      <ToolTip>
+                        <StackPanel>
+                          <TextBlock Text="{Binding Label}" FontWeight="Bold" Foreground="White"/>
+                          <TextBlock Text="{Binding Description}" Foreground="#DDDDDD" FontSize="12" TextWrapping="Wrap" MaxWidth="220" Margin="0,4,0,0"/>
+                          <TextBlock Text="{Binding Shortcut, StringFormat='Shortcut: {0}'}" Foreground="#AAAAAA" FontSize="10" Margin="0,6,0,0"/>
+                        </StackPanel>
+                      </ToolTip>
+                    </ToolTip.Tip>
+                    <Border Width="36" Height="36" CornerRadius="6" Background="#0E0E0E" HorizontalAlignment="Center" VerticalAlignment="Center" Classes="tool-icon-bg">
+                      <Image Source="{Binding Icon}"
+                             Width="28"
+                             Height="28"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"
+                             Stretch="Uniform" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBlock Text="{Binding Label}"
+                                 FontSize="16"
+                                 FontFamily="Consolas" />
+                      <TextBlock Text="{Binding Description}"
+                                 Classes="tool-desc"
+                                 TextWrapping="Wrap"
+                                 FontSize="12"
+                                 />
+                    </StackPanel>
+                    <Border Grid.Column="2"
+                            Background="#333"
+                            CornerRadius="4"
+                            Padding="4"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Classes="shortcut-badge">
+                      <TextBlock Text="{Binding Shortcut}"
+                                 FontSize="10"
+                                 FontFamily="Consolas" />
+                    </Border>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </TabItem>
+          <TabItem Header="Config">
+            <ScrollViewer>
+              <StackPanel Spacing="10" Margin="6">
+                <TextBlock Text="Lives" Foreground="White" />
+                <NumericUpDown Value="{Binding Lives}" Minimum="1" Maximum="5" />
+
+                <TextBlock Text="Number of Levels" Foreground="White" Margin="0,10,0,0"/>
+                <NumericUpDown Value="{Binding LevelCount}" Minimum="1" Maximum="10" />
+
+                <TextBlock Text="Win Score" Foreground="White" Margin="0,10,0,0"/>
+                <NumericUpDown Value="{Binding WinScore}"
+                               Minimum="{Binding WinScoreMin}"
+                               Maximum="{Binding WinScoreMax}" />
+                <TextBlock Text="{Binding WinScoreRange}" Foreground="#AAAAAA" FontSize="10"/>
+
+                <TextBlock Text="Level Settings" Foreground="White" Margin="0,10,0,0" FontWeight="Bold"/>
+                <Expander Header="Per Level" IsExpanded="True">
+                  <ItemsControl ItemsSource="{Binding LevelConfigs}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel Spacing="6" Margin="0,10">
+                          <TextBlock Text="{Binding LevelNumber, StringFormat='Level {0}'}" Foreground="#FFD700" FontWeight="Bold" />
+                          <TextBlock Text="Pac-Man Speed" Foreground="White" />
+                          <Slider Value="{Binding PacmanSpeedMultiplier}" Minimum="0.5" Maximum="2.0" TickFrequency="0.1" />
+                          <TextBlock Text="{Binding PacmanSpeedMultiplier, StringFormat='×{0:F1}'}" Foreground="#AAAAAA" />
+                          <TextBlock Text="Ghost Speed" Foreground="White" />
+                          <Slider Value="{Binding GhostSpeedMultiplier}" Minimum="0.5" Maximum="2.0" TickFrequency="0.1" />
+                          <TextBlock Text="{Binding GhostSpeedMultiplier, StringFormat='×{0:F1}'}" Foreground="#AAAAAA" />
+                          <TextBlock Text="Frightened Duration (s)" Foreground="White" />
+                          <NumericUpDown Value="{Binding FrightenedDuration}"
+                                         Minimum="1"
+                                         Maximum="{Binding MaxFrightenedDuration}" />
+                          <TextBlock Text="Fruit Points" Foreground="White" />
+                          <NumericUpDown Value="{Binding FruitPoints}"
+                                         Minimum="1"
+                                         Maximum="{Binding MaxFruitPoints}" />
+                          <TextBlock Text="Ghost Eat Points" Foreground="White" />
+                          <NumericUpDown Value="{Binding GhostEatPoints}"
+                                         Minimum="10"
+                                         Maximum="{Binding MaxGhostEatPoints}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Expander>
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+        </TabControl>
+
+        <TextBlock Text="{Binding CursorShortcut, StringFormat='Shortcut: {0}'}"
+                   Foreground="#AAAAAA"
+                   FontSize="12"
+                   Margin="0,4,0,0" />
+        <StackPanel Spacing="6">
+          <Button Content="Play Test" Command="{Binding PlayTestCommand}" Classes="arcade"/>
+          <Button Content="Export" Command="{Binding ExportCommand}" Classes="arcade"/>
+          <Button Content="Import" Command="{Binding ImportCommand}" Classes="arcade"/>
+          <Button Content="Close Editor" Command="{Binding CloseCommand}" Classes="arcade"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Export options modal -->
+    <Border Grid.ColumnSpan="3"
+            Background="#AA000000"
+            IsVisible="{Binding IsExportOptionsOpen}">
+      <Border Width="420"
+              CornerRadius="10"
+              BorderBrush="#FFD700"
+              BorderThickness="2"
+              Background="#1E1E1E"
+              Padding="16"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <StackPanel Spacing="12">
+          <TextBlock Text="Export Pac-Man Project"
+                     FontSize="18"
+                     FontWeight="Bold"
+                     Foreground="#FFD700"/>
+
+          <StackPanel Spacing="6">
+            <TextBlock Text="Project Name" Foreground="#FFFFFF"/>
+            <TextBox Text="{Binding ExportProjectName}" />
+          </StackPanel>
+
+          <StackPanel Spacing="6">
+            <TextBlock Text="Export Mode" Foreground="#FFFFFF"/>
+            <RadioButton Content="Allow editing after import"
+                         IsChecked="{Binding ExportIsEditable}" />
+            <RadioButton Content="Play-only (locked for editing)"
+                         IsChecked="{Binding ExportIsEditable, Converter={StaticResource InverseBool}}" />
+          </StackPanel>
+
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+            <Button Content="Cancel" Command="{Binding CancelExportCommand}" />
+            <Button Content="Export" Command="{Binding ConfirmExportCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <!-- Import preview modal -->
+    <Border Grid.ColumnSpan="3"
+            Background="#AA000000"
+            IsVisible="{Binding IsImportPreviewOpen}">
+      <Border Width="520"
+              CornerRadius="10"
+              BorderBrush="#FFD700"
+              BorderThickness="2"
+              Background="#1E1E1E"
+              Padding="16"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+        <StackPanel Spacing="12">
+          <TextBlock Text="Import Pac-Man Project"
+                     FontSize="18"
+                     FontWeight="Bold"
+                     Foreground="#FFD700"/>
+
+          <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,4,0,0">
+            <TextBlock Text="Name:" Foreground="#FFFFFF" />
+            <TextBlock Grid.Column="1" Text="{Binding ImportSummary.ProjectName}" Foreground="#DDDDDD" />
+
+            <TextBlock Grid.Row="1" Text="Author:" Foreground="#FFFFFF" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ImportSummary.Author}" Foreground="#DDDDDD" />
+
+            <TextBlock Grid.Row="2" Text="Levels:" Foreground="#FFFFFF" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ImportSummary.LevelCount}" Foreground="#DDDDDD" />
+
+            <TextBlock Grid.Row="3" Text="Editable:" Foreground="#FFFFFF" />
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ImportSummary.IsEditable}" Foreground="#DDDDDD" />
+          </Grid>
+
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
+            <Button Content="Cancel" Command="{Binding CancelImportPreviewCommand}" Width="110" />
+            <Button Content="Play" Command="{Binding ImportPlayCommand}" Width="110" />
+            <Button Content="Edit" Command="{Binding ImportEditCommand}" Width="110" IsEnabled="{Binding ImportCanEdit}" />
+          </StackPanel>
+
+          <TextBlock Text="This project is locked and cannot be edited."
+                     Foreground="#FF5555"
+                     IsVisible="{Binding ImportCanEdit, Converter={StaticResource InverseBool}}"
+                     HorizontalAlignment="Center"/>
+        </StackPanel>
+      </Border>
+    </Border>
+  </Grid>
+</UserControl>

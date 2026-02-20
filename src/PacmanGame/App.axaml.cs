@@ -1,12 +1,15 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PacmanGame.Services;
+using PacmanGame.Services.ConsoleCommands;
 using PacmanGame.Services.Interfaces;
 using PacmanGame.ViewModels;
+using PacmanGame.ViewModels.Creative;
 using PacmanGame.Views;
 using System;
 using System.Threading.Tasks;
@@ -24,14 +27,13 @@ public partial class App : Application
 
     public override async void OnFrameworkInitializationCompleted()
     {
-        Console.WriteLine("OnFrameworkInitializationCompleted started");
-
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            Console.WriteLine("Desktop lifetime detected");
+            var mainWindow = new MainWindow();
 
             // Configure Dependency Injection
             var services = new ServiceCollection();
+            services.AddSingleton<IStorageProvider>(mainWindow.StorageProvider);
 
             // Logging
             services.AddLogging(builder =>
@@ -50,9 +52,24 @@ public partial class App : Application
             services.AddTransient<IGameEngine, GameEngine>();
             services.AddSingleton<NetworkService>();
             services.AddSingleton<GlobalLeaderboardCache>();
+            services.AddSingleton<IConsoleService, ConsoleService>();
+            services.AddTransient<IConsoleCommand, HelpCommand>();
+            services.AddTransient<IConsoleCommand, ClearCommand>();
+            services.AddTransient<IConsoleCommand, ExitCommand>();
+            services.AddTransient<IConsoleCommand, ActiveCommand>();
+            services.AddSingleton<ICustomLevelManagerService, CustomLevelManagerService>();
 
             // ViewModels
-            services.AddSingleton<MainWindowViewModel>();
+            services.AddSingleton<ConsoleViewModel>();
+            services.AddTransient<LevelCanvasViewModel>();
+            services.AddTransient<ToolboxViewModel>();
+            services.AddTransient<CreativeModeViewModel>();
+            services.AddTransient<CustomLevelsLibraryViewModel>();
+            services.AddSingleton(provider =>
+                new MainWindowViewModel(
+                    provider,
+                    provider.GetRequiredService<ILogger<MainWindowViewModel>>(),
+                    provider.GetRequiredService<ConsoleViewModel>()));
             services.AddTransient<MainMenuViewModel>();
             services.AddTransient<GameViewModel>();
             services.AddTransient<ScoreBoardViewModel>();
@@ -73,20 +90,15 @@ public partial class App : Application
             BindingPlugins.DataValidators.RemoveAt(0);
 
             var mainWindowViewModel = _serviceProvider.GetRequiredService<MainWindowViewModel>();
-            desktop.MainWindow = new MainWindow
-            {
-                DataContext = mainWindowViewModel
-            };
+            desktop.MainWindow = mainWindow;
+            mainWindow.DataContext = mainWindowViewModel;
 
             // Initialize ProfileManager and set initial view
             var profileManager = _serviceProvider.GetRequiredService<IProfileManager>();
             try
             {
                 await profileManager.InitializeAsync();
-                Console.WriteLine("ProfileManager initialized");
-
                 var profiles = await Task.Run(() => profileManager.GetAllProfiles());
-                Console.WriteLine($"Found {profiles.Count} profiles");
 
                 ViewModelBase initialViewModel;
                 if (profiles.Count == 0)
@@ -97,18 +109,16 @@ public partial class App : Application
                 {
                     initialViewModel = _serviceProvider.GetRequiredService<ProfileSelectionViewModel>();
                 }
-                Console.WriteLine($"Initial ViewModel: {initialViewModel.GetType().Name}");
 
                 mainWindowViewModel.CurrentViewModel = initialViewModel;
-                Console.WriteLine("MainWindowViewModel created with CurrentViewModel set");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"FATAL: Failed to initialize: {ex}");
+                var logger = _serviceProvider.GetService<ILogger<App>>();
+                logger?.LogCritical(ex, "FATAL: Failed to initialize application");
             }
 
             desktop.MainWindow.Show();
-            Console.WriteLine("MainWindow.Show() called");
 
             // Hook up exit event
             desktop.Exit += OnExit;
@@ -121,17 +131,18 @@ public partial class App : Application
     {
         if (_serviceProvider != null)
         {
+            var logger = _serviceProvider.GetService<ILogger<App>>();
             var cache = _serviceProvider.GetService<GlobalLeaderboardCache>();
             if (cache != null)
             {
                 // Fire and forget flush, but we try to wait a bit
                 try
                 {
-                    Task.Run(async () => await cache.FlushPendingUpdatesAsync()).Wait(2000);
+                    Task.Run(async () => await cache.FlushPendingUpdatesAsync()).Wait(6000);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error flushing cache on exit: {ex}");
+                    logger?.LogError(ex, "Error flushing global leaderboard cache on exit");
                 }
             }
 

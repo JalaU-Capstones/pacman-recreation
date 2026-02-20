@@ -29,15 +29,16 @@ public class GlobalLeaderboardCache
     private readonly NetworkService _networkService;
     private readonly ILogger<GlobalLeaderboardCache> _logger;
     private TaskCompletionSource<List<LeaderboardEntry>>? _fetchTcs;
+    private TaskCompletionSource<LeaderboardSubmitScoreResponse>? _submitTcs;
+    private static readonly JsonSerializerOptions JsonWriteOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonReadOptions = new() { PropertyNameCaseInsensitive = true };
 
     public GlobalLeaderboardCache(NetworkService networkService, ILogger<GlobalLeaderboardCache> logger)
     {
         _networkService = networkService;
         _logger = logger;
 
-        var cacheDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "pacman-recreation");
+        var cacheDir = GetCacheDirectory();
         Directory.CreateDirectory(cacheDir);
         _cacheFilePath = Path.Combine(cacheDir, "global_leaderboard.cache");
 
@@ -48,6 +49,24 @@ public class GlobalLeaderboardCache
         _networkService.OnLeaderboardSubmitScoreResponse += HandleSubmitResponse;
     }
 
+    private static string GetCacheDirectory()
+    {
+        // Requirement: Linux uses ~/.cache/pacman-recreation; Windows uses %LOCALAPPDATA%\\pacman-recreation.
+        if (OperatingSystem.IsWindows())
+        {
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "pacman-recreation");
+        }
+
+        var xdgCacheHome = Environment.GetEnvironmentVariable("XDG_CACHE_HOME");
+        if (!string.IsNullOrWhiteSpace(xdgCacheHome))
+        {
+            return Path.Combine(xdgCacheHome, "pacman-recreation");
+        }
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return Path.Combine(home, ".cache", "pacman-recreation");
+    }
+
     private void LoadCache()
     {
         try
@@ -55,7 +74,7 @@ public class GlobalLeaderboardCache
             if (File.Exists(_cacheFilePath))
             {
                 var json = File.ReadAllText(_cacheFilePath);
-                _cache = JsonSerializer.Deserialize<LeaderboardCacheData>(json) ?? new LeaderboardCacheData();
+                _cache = JsonSerializer.Deserialize<LeaderboardCacheData>(json, JsonReadOptions) ?? new LeaderboardCacheData();
             }
         }
         catch (Exception ex)
@@ -69,7 +88,7 @@ public class GlobalLeaderboardCache
     {
         try
         {
-            var json = JsonSerializer.Serialize(_cache);
+            var json = JsonSerializer.Serialize(_cache, JsonWriteOptions);
             File.WriteAllText(_cacheFilePath, json);
         }
         catch (Exception ex)
@@ -166,6 +185,13 @@ public class GlobalLeaderboardCache
     {
         if (_cache.PendingUpdate != null)
         {
+            if (_submitTcs != null)
+            {
+                // A submit is already in-flight.
+                await _submitTcs.Task;
+                return;
+            }
+
             if (!_networkService.IsConnected)
             {
                 _networkService.Start();
@@ -174,11 +200,30 @@ public class GlobalLeaderboardCache
 
             if (_networkService.IsConnected)
             {
-                _networkService.SendLeaderboardSubmitScoreRequest(
-                    _cache.PendingUpdate.ProfileId,
-                    _cache.PendingUpdate.ProfileName,
-                    _cache.PendingUpdate.HighScore,
-                    DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                try
+                {
+                    _submitTcs = new TaskCompletionSource<LeaderboardSubmitScoreResponse>();
+                    _networkService.SendLeaderboardSubmitScoreRequest(
+                        _cache.PendingUpdate.ProfileId,
+                        _cache.PendingUpdate.ProfileName,
+                        _cache.PendingUpdate.HighScore,
+                        DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+                    var timeoutTask = Task.Delay(5000);
+                    var completed = await Task.WhenAny(_submitTcs.Task, timeoutTask);
+                    if (completed == timeoutTask)
+                    {
+                        _logger.LogWarning("Timeout waiting for leaderboard submit response");
+                        _submitTcs.TrySetResult(new LeaderboardSubmitScoreResponse { Success = false, Message = "Timeout" });
+                    }
+
+                    await _submitTcs.Task;
+                }
+                finally
+                {
+                    // If a late response arrives, HandleSubmitResponse will safely no-op the cleared TCS.
+                    _submitTcs = null;
+                }
             }
         }
     }
@@ -196,5 +241,8 @@ public class GlobalLeaderboardCache
         {
             _logger.LogWarning("Score submission failed: {Message}", response.Message);
         }
+
+        _submitTcs?.TrySetResult(response);
+        _submitTcs = null;
     }
 }

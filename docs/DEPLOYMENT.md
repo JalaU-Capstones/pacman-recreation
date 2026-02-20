@@ -90,3 +90,21 @@ The manifest automatically handles architecture-specific .NET runtime packs.
    ```bash
    sqlite3 global_leaderboard.db "SELECT * FROM GlobalLeaderboard;"
    ```
+
+## Winget Deployment (Windows)
+
+### Prerequisites
+- Winget Package Manager (Windows 10 1809+)
+- Valid Microsoft Store developer account (if using Store distribution)
+- Code signing certificate (recommended)
+
+### Build Release
+```bash
+dotnet publish src/PacmanGame/PacmanGame.csproj -c Release -r win-x64 --self-contained
+```
+
+### Installation
+Users can install via:
+```powershell
+winget install JalaU-Capstones.PacmanRecreation
+```

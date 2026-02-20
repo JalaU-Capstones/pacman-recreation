@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using PacmanGame.Helpers;
+using PacmanGame.Models.CustomLevel;
 using PacmanGame.Models.Entities;
 using PacmanGame.Models.Enums;
 using PacmanGame.Services.Interfaces;
@@ -8,6 +9,7 @@ using PacmanGame.Services.AI;
 using PacmanGame.Services.Pathfinding;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 
@@ -33,6 +35,13 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     private int _ghostsEatenThisRound;
     private int _currentLevel;
     private float _ghostRespawnTime;
+
+    private bool _isCustomLevel;
+    private (int Row, int Col)? _customPacmanSpawn;
+    private (int DoorY, int CenterX, int ExitY)? _ghostDoorInfo;
+
+    private int? _customFruitPoints;
+    private int? _customGhostEatBasePoints;
 
     private readonly Dictionary<GhostType, IGhostAI> _ghostAIs;
     private readonly AStarPathfinder _pathfinder;
@@ -96,10 +105,17 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     {
         try
         {
+            _isCustomLevel = false;
+            _customPacmanSpawn = null;
+            _ghostDoorInfo = null;
+            _customFruitPoints = null;
+            _customGhostEatBasePoints = null;
+
             _currentLevel = level;
             string fileName = "level" + level + ".txt";
 
             _map = _mapLoader.LoadMap(fileName);
+            ComputeGhostDoorInfo();
 
             _collectibles = _mapLoader.GetCollectibles(fileName)
                 .Select(c => new Collectible(c.Col, c.Row, c.Type))
@@ -142,6 +158,188 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             _logger.LogError(ex, "Error loading level");
             throw;
         }
+    }
+
+    public void LoadCustomLevel(string mapFilePath)
+    {
+        try
+        {
+            _isCustomLevel = true;
+            _customPacmanSpawn = null;
+            _ghostDoorInfo = null;
+            _customFruitPoints = null;
+            _customGhostEatBasePoints = null;
+
+            if (string.IsNullOrWhiteSpace(mapFilePath))
+            {
+                throw new ArgumentException("Custom map path is required.", nameof(mapFilePath));
+            }
+
+            if (!File.Exists(mapFilePath))
+            {
+                throw new FileNotFoundException("Custom map file not found.", mapFilePath);
+            }
+
+            _currentLevel = 1;
+            var lines = File.ReadAllLines(mapFilePath);
+
+            if (lines.Length != Constants.MapHeight)
+            {
+                throw new InvalidOperationException(
+                    $"Map height mismatch. Expected {Constants.MapHeight}, got {lines.Length}");
+            }
+
+            _map = new TileType[Constants.MapHeight, Constants.MapWidth];
+            for (int row = 0; row < lines.Length; row++)
+            {
+                var line = lines[row];
+                if (line.Length > Constants.MapWidth)
+                {
+                    throw new InvalidOperationException(
+                        $"Map width mismatch on line {row + 1}. Expected max {Constants.MapWidth}, got {line.Length}");
+                }
+
+                for (int col = 0; col < Constants.MapWidth; col++)
+                {
+                    char c = col < line.Length ? line[col] : ' ';
+                    _map[row, col] = CharToTileType(c);
+                }
+            }
+
+            ComputeGhostDoorInfo();
+
+            _collectibles = new List<Collectible>();
+            for (int row = 0; row < lines.Length; row++)
+            {
+                for (int col = 0; col < lines[row].Length; col++)
+                {
+                    var type = CharToCollectibleType(lines[row][col]);
+                    if (type.HasValue)
+                    {
+                        _collectibles.Add(new Collectible(col, row, type.Value));
+                    }
+                }
+            }
+
+            var pacmanSpawn = FindSpawn(lines, Constants.PacmanChar);
+            _customPacmanSpawn = pacmanSpawn;
+            _pacman = new Pacman(pacmanSpawn.Col, pacmanSpawn.Row, _loggerFactory.CreateLogger<Pacman>());
+
+            var ghostSpawns = FindAllSpawns(lines, Constants.GhostChar);
+            _ghosts = new List<Ghost>();
+
+            ApplyDifficultySettings(_currentLevel);
+
+            GhostType[] ghostTypes = { GhostType.Blinky, GhostType.Pinky, GhostType.Inky, GhostType.Clyde };
+            for (int i = 0; i < ghostSpawns.Count && i < ghostTypes.Length; i++)
+            {
+                var spawn = ghostSpawns[i];
+                Ghost ghost = new Ghost(spawn.Col, spawn.Row, ghostTypes[i]);
+                ghost.ExactX = spawn.Col;
+                ghost.ExactY = spawn.Row;
+                ghost.State = GhostState.InHouse;
+                ghost.ReleaseTimer = 0.5f + i * Constants.GhostReleaseInterval;
+                _ghosts.Add(ghost);
+            }
+
+            _ghostsEatenThisRound = 0;
+            _modeTimer = 0f;
+            _isChaseMode = false;
+
+            _spriteManager.Initialize();
+            _audioManager.Initialize();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading custom level from {Path}", mapFilePath);
+            throw;
+        }
+    }
+
+    public void ApplyCustomLevelSettings(LevelConfig levelConfig)
+    {
+        if (levelConfig == null) throw new ArgumentNullException(nameof(levelConfig));
+
+        if (_pacman != null)
+        {
+            _pacman.PowerPelletDuration = Math.Max(1, levelConfig.FrightenedDuration);
+            _pacman.Speed = 3.0f * (float)Math.Clamp(levelConfig.PacmanSpeedMultiplier, 0.1, 10.0);
+        }
+
+        var ghostMultiplier = (float)Math.Clamp(levelConfig.GhostSpeedMultiplier, 0.1, 10.0);
+        foreach (var ghost in _ghosts)
+        {
+            ghost.SpeedMultiplier *= ghostMultiplier;
+        }
+
+        _customFruitPoints = Math.Max(1, levelConfig.FruitPoints);
+        _customGhostEatBasePoints = Math.Max(1, levelConfig.GhostEatPoints);
+
+        // Apply fruit points to any fruit already present.
+        foreach (var collectible in _collectibles)
+        {
+            if (collectible.Type == CollectibleType.Cherry && _customFruitPoints.HasValue)
+            {
+                collectible.Points = _customFruitPoints.Value;
+            }
+        }
+    }
+
+    private static TileType CharToTileType(char c)
+    {
+        return c switch
+        {
+            Constants.WallChar => TileType.Wall,
+            Constants.GhostDoorChar => TileType.GhostDoor,
+            _ => TileType.Empty
+        };
+    }
+
+    private static CollectibleType? CharToCollectibleType(char c)
+    {
+        return c switch
+        {
+            Constants.SmallDotChar => CollectibleType.SmallDot,
+            Constants.PowerPelletChar or 'O' => CollectibleType.PowerPellet,
+            Constants.FruitChar => CollectibleType.Cherry,
+            _ => null
+        };
+    }
+
+    private static (int Row, int Col) FindSpawn(string[] lines, char spawnChar)
+    {
+        for (int row = 0; row < lines.Length; row++)
+        {
+            int col = lines[row].IndexOf(spawnChar);
+            if (col >= 0)
+            {
+                return (row, col);
+            }
+        }
+
+        throw new InvalidOperationException($"Spawn point '{spawnChar}' not found in custom map.");
+    }
+
+    private static List<(int Row, int Col)> FindAllSpawns(string[] lines, char spawnChar)
+    {
+        var spawns = new List<(int Row, int Col)>();
+        for (int row = 0; row < lines.Length; row++)
+        {
+            for (int col = 0; col < lines[row].Length; col++)
+            {
+                if (lines[row][col] == spawnChar)
+                {
+                    spawns.Add((row, col));
+                }
+            }
+        }
+
+        if (spawns.Count == 0)
+        {
+            throw new InvalidOperationException($"No spawn points '{spawnChar}' found in custom map.");
+        }
+
+        return spawns;
     }
 
     private void ApplyDifficultySettings(int level)
@@ -340,7 +538,8 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
         var tile = _map[y, x];
 
-        if (tile == TileType.Wall)
+        // Pac-Man uses this movement check; the ghost door is not passable for Pac-Man.
+        if (tile == TileType.Wall || tile == TileType.GhostDoor)
         {
             return false;
         }
@@ -488,13 +687,41 @@ public class GameEngine : IGameEngine, IGameEngineInternal
                 break;
 
             case GhostState.ExitingHouse:
-                if (ghost.Y > Constants.GhostHouseExitY)
+                if (_ghostDoorInfo is { } info)
                 {
-                    nextMove = Direction.Up;
+                    // Move towards the door center, then step through the gate and become Normal outside.
+                    if (ghost.Y > info.DoorY)
+                    {
+                        nextMove = Direction.Up;
+                    }
+                    else if (ghost.Y < info.DoorY)
+                    {
+                        nextMove = Direction.Down;
+                    }
+                    else
+                    {
+                        if (ghost.X < info.CenterX) nextMove = Direction.Right;
+                        else if (ghost.X > info.CenterX) nextMove = Direction.Left;
+                        else nextMove = Direction.Up;
+                    }
+
+                    if (ghost.Y <= info.ExitY && ghost.X == info.CenterX)
+                    {
+                        ghost.State = GhostState.Normal;
+                        nextMove = Direction.None;
+                    }
                 }
                 else
                 {
-                    ghost.State = GhostState.Normal;
+                    // Legacy fallback for built-in layouts.
+                    if (ghost.Y > Constants.GhostHouseExitY)
+                    {
+                        nextMove = Direction.Up;
+                    }
+                    else
+                    {
+                        ghost.State = GhostState.Normal;
+                    }
                 }
                 break;
 
@@ -573,7 +800,8 @@ public class GameEngine : IGameEngine, IGameEngineInternal
                 hitGhost.GetEaten();
                 _audioManager.PlaySoundEffect("eat-ghost");
                 _ghostsEatenThisRound++;
-                int points = Constants.GhostPoints * (1 << (_ghostsEatenThisRound - 1));
+                int basePoints = _customGhostEatBasePoints ?? Constants.GhostPoints;
+                int points = basePoints * (1 << (_ghostsEatenThisRound - 1));
                 ScoreChanged?.Invoke(points);
             }
             else if (hitGhost.State == GhostState.Normal)
@@ -586,7 +814,9 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
     private void ResetPositions()
     {
-        var pacmanSpawn = _mapLoader.GetPacmanSpawn($"level{_currentLevel}.txt");
+        var pacmanSpawn = _isCustomLevel && _customPacmanSpawn.HasValue
+            ? _customPacmanSpawn.Value
+            : _mapLoader.GetPacmanSpawn($"level{_currentLevel}.txt");
         if (_pacman != null)
         {
             _pacman.X = pacmanSpawn.Col;
@@ -615,6 +845,48 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         _ghostsEatenThisRound = 0;
         _modeTimer = 0f;
         _isChaseMode = false;
+    }
+
+    private void ComputeGhostDoorInfo()
+    {
+        // Find the most prominent ghost door row. Built-in maps use '-' (GhostDoorChar) for the gate.
+        var doorsByRow = new Dictionary<int, List<int>>();
+        for (int y = 0; y < Constants.MapHeight; y++)
+        {
+            for (int x = 0; x < Constants.MapWidth; x++)
+            {
+                if (_map[y, x] != TileType.GhostDoor) continue;
+                if (!doorsByRow.TryGetValue(y, out var xs))
+                {
+                    xs = new List<int>();
+                    doorsByRow[y] = xs;
+                }
+                xs.Add(x);
+            }
+        }
+
+        if (doorsByRow.Count == 0)
+        {
+            _ghostDoorInfo = null;
+            return;
+        }
+
+        var chosen = doorsByRow
+            .OrderByDescending(kvp => kvp.Value.Count)
+            .ThenBy(kvp => kvp.Key)
+            .First();
+
+        var doorY = chosen.Key;
+        var xsSorted = chosen.Value.OrderBy(x => x).ToList();
+        var centerX = xsSorted[xsSorted.Count / 2];
+
+        var exitY = doorY - 1;
+        if (exitY < 0)
+        {
+            exitY = doorY + 1;
+        }
+
+        _ghostDoorInfo = (doorY, centerX, exitY);
     }
 
     private void UpdateTimers(float deltaTime)

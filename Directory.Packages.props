@@ -13,6 +13,7 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="9.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
     <PackageVersion Include="System.Windows.Extensions" Version="7.0.0" />
+    <PackageVersion Include="System.Reactive" Version="6.0.1" />
     <PackageVersion Include="SFML.Audio" Version="2.6.0" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="9.0.0" />
     <PackageVersion Include="LiteNetLib" Version="1.2.0" />
@@ -26,5 +27,7 @@
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="9.0.0" />
     <PackageVersion Include="Dapper" Version="2.1.35" />
+    <PackageVersion Include="System.IO.Compression.ZipFile" Version="7.0.0" />
+    <PackageVersion Include="System.Security.Cryptography.Algorithms" Version="7.0.0" />
   </ItemGroup>
 </Project>

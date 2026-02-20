@@ -104,29 +104,7 @@ public class GlobalLeaderboardViewModel : ViewModelBase
             await _profileManager.UpdateProfileAsync(profile);
         }
 
-        // Ensure we are sending the correct high score
-        // The profile.HighScore property is populated by GetAllProfiles() which does a MAX(Score) query
-        // But GetCurrentProfileAsync() uses GetProfileById() which might not populate HighScore correctly if the query doesn't join Scores
-        // Let's double check GetProfileById in ProfileManager.cs
-
-        // Re-fetch the profile to ensure we have the latest data, specifically the HighScore
-        // Actually, Profile object from GetProfileById doesn't seem to populate HighScore based on the SQL in ProfileManager.cs
-        // Let's check ProfileManager.cs again.
-
-        // In ProfileManager.cs:
-        // GetProfileById query: "SELECT Id, Name, AvatarColor, CreatedAt, LastPlayedAt, HasCompletedAllLevels, GlobalProfileId, LastGlobalScoreSubmission FROM Profiles WHERE Id = $id"
-        // It does NOT select HighScore. So profile.HighScore is 0 (default).
-
-        // We need to fetch the high score explicitly.
-        var topScores = _profileManager.GetTopScores(1); // This gets global top scores, not specific to user.
-
-        // Better approach: Use the existing GetTopScores but filter or just add a method to get high score for a profile.
-        // Or just use the fact that we can get all profiles and find ours.
-        var allProfiles = _profileManager.GetAllProfiles();
-        var myProfileWithScore = allProfiles.Find(p => p.Id == profile.Id);
-
-        int scoreToSend = myProfileWithScore?.HighScore ?? 0;
-
+        var scoreToSend = profile.HighScore;
         if (scoreToSend > 0)
         {
              await _cache.SubmitScoreAsync(

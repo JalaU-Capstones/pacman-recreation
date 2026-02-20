@@ -110,6 +110,16 @@ public class LeaderboardService
         await _dbLock.WaitAsync();
         try
         {
+            if (string.IsNullOrWhiteSpace(profileId) || string.IsNullOrWhiteSpace(profileName))
+            {
+                return new LeaderboardSubmitResult { Success = false, Message = "ProfileId and ProfileName are required" };
+            }
+
+            if (highScore <= 0)
+            {
+                return new LeaderboardSubmitResult { Success = false, Message = "HighScore must be positive" };
+            }
+
             using var connection = new SqliteConnection($"Data Source={_dbPath}");
             await connection.OpenAsync();
 
@@ -118,10 +128,25 @@ public class LeaderboardService
             // Check if profile already exists
             var existing = await connection.QueryFirstOrDefaultAsync<LeaderboardEntry>(
                 "SELECT * FROM GlobalLeaderboard WHERE ProfileId = @ProfileId",
-                new { ProfileId = profileId });
+                new { ProfileId = profileId }, transaction);
 
             if (existing != null)
             {
+                // Enforce global unique names (ProfileName may be updated, but cannot collide).
+                var nameOwner = await connection.ExecuteScalarAsync<string?>(@"
+                        SELECT ProfileId
+                        FROM GlobalLeaderboard
+                        WHERE ProfileName = @ProfileName
+                          AND ProfileId <> @ProfileId
+                        LIMIT 1",
+                    new { ProfileId = profileId, ProfileName = profileName }, transaction);
+
+                if (!string.IsNullOrEmpty(nameOwner))
+                {
+                    transaction.Rollback();
+                    return new LeaderboardSubmitResult { Success = false, Message = "ProfileName already taken" };
+                }
+
                 // Update only if new score is higher
                 if (highScore > existing.HighScore)
                 {
@@ -129,7 +154,7 @@ public class LeaderboardService
                         UPDATE GlobalLeaderboard
                         SET HighScore = @HighScore, LastUpdated = @LastUpdated, ProfileName = @ProfileName
                         WHERE ProfileId = @ProfileId",
-                        new { ProfileId = profileId, ProfileName = profileName, HighScore = highScore, LastUpdated = clientTimestamp });
+                        new { ProfileId = profileId, ProfileName = profileName, HighScore = highScore, LastUpdated = clientTimestamp }, transaction);
 
                     transaction.Commit();
                     return new LeaderboardSubmitResult
@@ -150,9 +175,23 @@ public class LeaderboardService
                 }
             }
 
+            // New entry: enforce unique ProfileName.
+            var existingNameId = await connection.ExecuteScalarAsync<string?>(@"
+                    SELECT ProfileId
+                    FROM GlobalLeaderboard
+                    WHERE ProfileName = @ProfileName
+                    LIMIT 1",
+                new { ProfileName = profileName }, transaction);
+
+            if (!string.IsNullOrEmpty(existingNameId))
+            {
+                transaction.Rollback();
+                return new LeaderboardSubmitResult { Success = false, Message = "ProfileName already taken" };
+            }
+
             // Check if leaderboard is full (10 entries)
             var count = await connection.ExecuteScalarAsync<int>(
-                "SELECT COUNT(*) FROM GlobalLeaderboard");
+                "SELECT COUNT(*) FROM GlobalLeaderboard", transaction: transaction);
 
             if (count >= 10)
             {
@@ -160,19 +199,19 @@ public class LeaderboardService
                 var lowest = await connection.QueryFirstOrDefaultAsync<LeaderboardEntry>(@"
                     SELECT * FROM GlobalLeaderboard
                     ORDER BY HighScore ASC
-                    LIMIT 1");
+                    LIMIT 1", transaction: transaction);
 
                 if (lowest != null && highScore > lowest.HighScore)
                 {
                     // Replace lowest entry
                     await connection.ExecuteAsync(
                         "DELETE FROM GlobalLeaderboard WHERE ProfileId = @ProfileId",
-                        new { ProfileId = lowest.ProfileId });
+                        new { ProfileId = lowest.ProfileId }, transaction);
 
                     await connection.ExecuteAsync(@"
                         INSERT INTO GlobalLeaderboard (ProfileId, ProfileName, HighScore, LastUpdated)
                         VALUES (@ProfileId, @ProfileName, @HighScore, @LastUpdated)",
-                        new { ProfileId = profileId, ProfileName = profileName, HighScore = highScore, LastUpdated = clientTimestamp });
+                        new { ProfileId = profileId, ProfileName = profileName, HighScore = highScore, LastUpdated = clientTimestamp }, transaction);
 
                     transaction.Commit();
                     return new LeaderboardSubmitResult
@@ -199,7 +238,7 @@ public class LeaderboardService
                 await connection.ExecuteAsync(@"
                     INSERT INTO GlobalLeaderboard (ProfileId, ProfileName, HighScore, LastUpdated)
                     VALUES (@ProfileId, @ProfileName, @HighScore, @LastUpdated)",
-                    new { ProfileId = profileId, ProfileName = profileName, HighScore = highScore, LastUpdated = clientTimestamp });
+                    new { ProfileId = profileId, ProfileName = profileName, HighScore = highScore, LastUpdated = clientTimestamp }, transaction);
 
                 transaction.Commit();
                 return new LeaderboardSubmitResult

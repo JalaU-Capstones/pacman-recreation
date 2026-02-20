@@ -1,10 +1,12 @@
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using System;
+using System.Collections.Generic;
 using System.Reactive;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using PacmanGame.Helpers;
+using PacmanGame.Models.CustomLevel;
 using PacmanGame.Models.Enums;
 using PacmanGame.Services.Interfaces;
 
@@ -46,6 +48,21 @@ public class GameViewModel : ViewModelBase
     private bool _isVictory;
     public bool IsVictory { get => _isVictory; set => this.RaiseAndSetIfChanged(ref _isVictory, value); }
 
+    private string? _customMapPath;
+    public string? CustomMapPath { get => _customMapPath; set => this.RaiseAndSetIfChanged(ref _customMapPath, value); }
+
+    private LevelConfig? _customLevelSettings;
+    public LevelConfig? CustomLevelSettings { get => _customLevelSettings; set => this.RaiseAndSetIfChanged(ref _customLevelSettings, value); }
+
+    private IReadOnlyList<string>? _customProjectMapPaths;
+    public IReadOnlyList<string>? CustomProjectMapPaths { get => _customProjectMapPaths; set => this.RaiseAndSetIfChanged(ref _customProjectMapPaths, value); }
+
+    private IReadOnlyList<LevelConfig>? _customProjectLevelSettings;
+    public IReadOnlyList<LevelConfig>? CustomProjectLevelSettings { get => _customProjectLevelSettings; set => this.RaiseAndSetIfChanged(ref _customProjectLevelSettings, value); }
+
+    private int _customProjectLevelIndex;
+    private int _initialLives;
+
     public IGameEngine Engine => _engine;
 
     public ICommand PauseGameCommand { get; }
@@ -71,6 +88,7 @@ public class GameViewModel : ViewModelBase
         _isLevelComplete = false;
         _isVictory = false;
         _extraLifeThreshold = Constants.ExtraLifeScore;
+        _initialLives = _lives;
 
         _engine.ScoreChanged += HandleScoreChanged;
         _engine.LifeLost += OnLifeLost;
@@ -90,7 +108,32 @@ public class GameViewModel : ViewModelBase
         try
         {
             _logger.LogInformation("Starting game at level {Level}", Level);
-            _engine.LoadLevel(Level);
+            _initialLives = Lives;
+            if (CustomProjectMapPaths != null && CustomProjectMapPaths.Count > 0)
+            {
+                _customProjectLevelIndex = 0;
+                Level = 1;
+                _engine.LoadCustomLevel(CustomProjectMapPaths[0]);
+                var levelCfg = (CustomProjectLevelSettings != null && CustomProjectLevelSettings.Count > 0)
+                    ? CustomProjectLevelSettings[0]
+                    : null;
+                if (levelCfg != null)
+                {
+                    _engine.ApplyCustomLevelSettings(levelCfg);
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(CustomMapPath))
+            {
+                _engine.LoadCustomLevel(CustomMapPath);
+                if (CustomLevelSettings != null)
+                {
+                    _engine.ApplyCustomLevelSettings(CustomLevelSettings);
+                }
+            }
+            else
+            {
+                _engine.LoadLevel(Level);
+            }
             _engine.Start();
             _audioManager.PlayMusic(Constants.BackgroundMusic);
             _audioManager.PlaySoundEffect("game-start");
@@ -140,8 +183,9 @@ public class GameViewModel : ViewModelBase
         IsGameOver = false;
         IsVictory = false;
         Score = 0;
-        Lives = Constants.StartingLives;
+        Lives = _initialLives;
         Level = 1;
+        _customProjectLevelIndex = 0;
         _extraLifeThreshold = Constants.ExtraLifeScore;
         StartGame();
     }
@@ -200,6 +244,25 @@ public class GameViewModel : ViewModelBase
         IsLevelComplete = true;
         await Task.Delay(3000);
         IsLevelComplete = false;
+
+        if (CustomProjectMapPaths != null && CustomProjectMapPaths.Count > 0)
+        {
+            _customProjectLevelIndex++;
+            Level = _customProjectLevelIndex + 1;
+            if (_customProjectLevelIndex >= CustomProjectMapPaths.Count)
+            {
+                OnVictory();
+                return;
+            }
+
+            _engine.LoadCustomLevel(CustomProjectMapPaths[_customProjectLevelIndex]);
+            if (CustomProjectLevelSettings != null && _customProjectLevelIndex < CustomProjectLevelSettings.Count)
+            {
+                _engine.ApplyCustomLevelSettings(CustomProjectLevelSettings[_customProjectLevelIndex]);
+            }
+
+            return;
+        }
 
         Level++;
 

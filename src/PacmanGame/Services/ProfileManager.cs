@@ -136,6 +136,31 @@ public class ProfileManager : IProfileManager
             }
             catch { /* Column likely exists */ }
 
+            // Migration: ensure only one score row per profile (high score) and enforce via unique index.
+            try
+            {
+                await connection.ExecuteAsync(@"
+                    DELETE FROM Scores
+                    WHERE Id NOT IN (
+                        SELECT s.Id
+                        FROM Scores s
+                        WHERE s.Score = (
+                            SELECT MAX(s2.Score) FROM Scores s2 WHERE s2.ProfileId = s.ProfileId
+                        )
+                        AND s.Id = (
+                            SELECT MAX(s3.Id) FROM Scores s3 WHERE s3.ProfileId = s.ProfileId AND s3.Score = s.Score
+                        )
+                    );
+                ");
+            }
+            catch { /* Best-effort cleanup */ }
+
+            try
+            {
+                await connection.ExecuteAsync("CREATE UNIQUE INDEX IF NOT EXISTS idx_scores_profile_unique ON Scores(ProfileId);");
+            }
+            catch { /* Index might already exist */ }
+
             _isInitialized = true;
             _logger.LogInformation("Database initialized successfully.");
         }
@@ -251,7 +276,19 @@ public class ProfileManager : IProfileManager
             connection.Open();
 
             var command = connection.CreateCommand();
-            command.CommandText = "SELECT Id, Name, AvatarColor, CreatedAt, LastPlayedAt, HasCompletedAllLevels, GlobalProfileId, LastGlobalScoreSubmission FROM Profiles WHERE Id = $id";
+            command.CommandText = @"
+                SELECT p.Id,
+                       p.Name,
+                       p.AvatarColor,
+                       p.CreatedAt,
+                       p.LastPlayedAt,
+                       p.HasCompletedAllLevels,
+                       p.GlobalProfileId,
+                       p.LastGlobalScoreSubmission,
+                       (SELECT MAX(s.Score) FROM Scores s WHERE s.ProfileId = p.Id) AS HighScore
+                FROM Profiles p
+                WHERE p.Id = $id
+            ";
             command.Parameters.AddWithValue("$id", id);
 
             using var reader = command.ExecuteReader();
@@ -266,7 +303,8 @@ public class ProfileManager : IProfileManager
                     LastPlayedAt = reader.IsDBNull(4) ? null : DateTime.Parse(reader.GetString(4)),
                     HasCompletedAllLevels = !reader.IsDBNull(5) && reader.GetInt32(5) != 0,
                     GlobalProfileId = reader.IsDBNull(6) ? null : reader.GetString(6),
-                    LastGlobalScoreSubmission = reader.IsDBNull(7) ? 0 : reader.GetInt64(7)
+                    LastGlobalScoreSubmission = reader.IsDBNull(7) ? 0 : reader.GetInt64(7),
+                    HighScore = reader.IsDBNull(8) ? 0 : reader.GetInt32(8)
                 };
             }
         }
@@ -287,10 +325,10 @@ public class ProfileManager : IProfileManager
 
     public Profile? GetActiveProfile() => _activeProfile;
 
-    public async Task<Profile?> GetCurrentProfileAsync()
+    public Task<Profile?> GetCurrentProfileAsync()
     {
-        if (_activeProfile == null) return null;
-        return GetProfileById(_activeProfile.Id);
+        if (_activeProfile == null) return Task.FromResult<Profile?>(null);
+        return Task.FromResult(GetProfileById(_activeProfile.Id));
     }
 
     public async Task UpdateProfileAsync(Profile profile)

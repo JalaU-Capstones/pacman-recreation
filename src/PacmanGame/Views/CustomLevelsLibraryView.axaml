@@ -1,0 +1,64 @@
+<UserControl x:Name="LibraryRoot" xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:PacmanGame.ViewModels"
+             xmlns:views="using:PacmanGame.Views"
+             mc:Ignorable="d"
+             x:Class="PacmanGame.Views.CustomLevelsLibraryView"
+             x:DataType="vm:CustomLevelsLibraryViewModel"
+             Background="#050505">
+
+  <Grid Margin="12">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" CornerRadius="8" BorderThickness="2" BorderBrush="#FFD700" Padding="12" Background="#111">
+      <StackPanel Orientation="Horizontal" Spacing="20">
+        <TextBlock Text="Custom Levels Library" FontSize="22" FontWeight="Bold" Foreground="#FFD700" />
+        <Button Content="Import New Level" Command="{Binding ImportCommand}" Classes="arcade" />
+        <Button Content="Reload" Command="{Binding ReloadCommand}" Classes="arcade" />
+      </StackPanel>
+    </Border>
+
+    <Border Grid.Row="1" Margin="0,12" CornerRadius="8" BorderBrush="#2121FF" BorderThickness="2" Background="#0B0B0B">
+        <ListBox ItemsSource="{Binding Library}"
+               SelectedItem="{Binding SelectedLevel}"
+               Margin="12"
+               Background="#0B0B0B"
+               Foreground="White">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Border CornerRadius="6" BorderThickness="1" BorderBrush="#333" Margin="0,4" Padding="10" Background="#111">
+              <Grid ColumnDefinitions="*,200" RowDefinitions="Auto,Auto">
+                <TextBlock Text="{Binding ProjectName}" FontSize="18" FontWeight="Bold" Foreground="#FFD700" />
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" Margin="0,6,0,0">
+                  <TextBlock Text="Author:" Foreground="#AAAAAA" />
+                  <TextBlock Text="{Binding Author}" />
+                  <TextBlock Text="Levels:" Foreground="#AAAAAA" />
+                  <TextBlock Text="{Binding LevelCount}" />
+                  <TextBlock Text="Editable:" Foreground="#AAAAAA" />
+                  <TextBlock Text="{Binding IsEditable}" />
+                  <TextBlock Text="Created:" Foreground="#AAAAAA" />
+                  <TextBlock Text="{Binding CreatedDate, StringFormat='{}{0:MMM d, yyyy}'}" />
+                </StackPanel>
+        <StackPanel Grid.Column="1" HorizontalAlignment="Right" Spacing="6">
+          <Button Content="Play" Command="{Binding ViewModel.PlayCommand, ElementName=LibraryRoot}" Classes="arcade" />
+          <Button Content="Edit" Command="{Binding ViewModel.EditCommand, ElementName=LibraryRoot}" Classes="arcade" />
+          <Button Content="Delete" Command="{Binding ViewModel.DeleteCommand, ElementName=LibraryRoot}" Classes="arcade danger" />
+        </StackPanel>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Border>
+
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+      <Button Content="Back to Main" Command="{Binding BackToMenuCommand}" Classes="arcade" />
+    </StackPanel>
+  </Grid>
+</UserControl>
