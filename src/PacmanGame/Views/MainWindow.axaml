@@ -9,16 +9,24 @@
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/icon.ico"
         Title="Pac-Man - Educational Recreation"
-        Width="1156" Height="1020"
-        MinWidth="1156" MinHeight="1020"
-        MaxWidth="1156" MaxHeight="1020"
-        CanResize="False"
+        SizeToContent="WidthAndHeight"
+        CanResize="True"
+        MinWidth="860"
+        MinHeight="640"
         WindowStartupLocation="CenterScreen"
-        Background="Black">
+        Background="{DynamicResource AppBackgroundBrush}">
 
     <Grid>
-        <ContentControl x:Name="ContentHost" Content="{Binding CurrentViewModel}" />
-        <views:ConsoleView DataContext="{Binding ConsoleViewModel}" />
+        <!-- Scale down-only so the app always fits in small VM screens without overflow. -->
+        <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
+            <!-- Logical design surface; all views are authored for this base size. -->
+            <Border Width="1156" Height="1020" Background="{DynamicResource AppBackgroundBrush}">
+                <Grid>
+                    <ContentControl x:Name="ContentHost" Content="{Binding CurrentViewModel}" />
+                    <views:ConsoleView DataContext="{Binding ConsoleViewModel}" />
+                </Grid>
+            </Border>
+        </Viewbox>
     </Grid>
 
 </Window>

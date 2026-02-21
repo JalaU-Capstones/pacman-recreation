@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - Unreleased
+
+### Added
+- Global Top 10 Leaderboard system (server-side persistence + client cache + offline pending submission)
+- DevConsole overlay for debugging and quick actions
+- Creative Mode project editor (1-10 levels, export/import `.pacproj`, play test)
+
+### Changed
+- Creative Mode configuration now scales dynamically with project level count:
+  - Victory reward (win score) limits:
+    - 1 level: 100 to 1,000
+    - 2 levels: 1,000 to 5,000
+    - 3 levels: 5,000 to 12,000
+    - 4+ levels: max increases by +5,000 per extra level (e.g. 4 levels: max 17,000)
+  - Frightened timer max starts at 20s (level 1) and decreases by 2s per level
+  - Fruit points max starts at 5 (level 1) and increases by +5 per level
+  - Ghost eat points max starts at 30 (level 1) and increases by +15 per level
+  - Speed multipliers are constrained to safe ranges to reduce collision clipping risk
+- Creative Mode exports now include `metadata.json` alongside `project.json` for richer project metadata.
+- UI now scales responsively within VM/work-area constraints (downscales to prevent overflow).
+- Global UI theme resources applied for consistent contrast (no white-on-white).
+
+### Fixed
+- Window sizing issues where content exceeded the screen (common in VMs).
+- Contrast issues caused by hardcoded view-level colors.
+
 ## [1.0.0] - 2026-02-17
 
 ### Added
@@ -20,44 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Audio system with background music and sound effects
 - Cross-platform support (Windows, Linux)
 - Flatpak distribution for Linux
-
-## [1.0.1] - Unreleased
-
-### Added
-- Global Top 10 Leaderboard system (server-side persistence + client cache + offline pending submission)
-- DevConsole (developer console overlay for debugging and quick actions)
-- Creative Mode level editor (projects with 1-10 levels, export/import `.pacproj`, play test)
-
-### Changed
-- Creative Mode configuration now scales dynamically with project level count:
-  - Victory reward (win score) limits:
-    - 1 level: 100 to 1,000
-    - 2 levels: 1,000 to 5,000
-    - 3 levels: 5,000 to 12,000
-    - 4+ levels: max increases by +5,000 per extra level (e.g. 4 levels: max 17,000)
-  - Frightened timer max starts at 20s (level 1) and decreases by 2s per level
-  - Fruit points max starts at 5 (level 1) and increases by +5 per level
-  - Ghost eat points max starts at 30 (level 1) and increases by +15 per level
-  - Speed multipliers are constrained to safe ranges to reduce collision clipping risk
-- Creative Mode exports now include `metadata.json` alongside `project.json` for richer project metadata.
-- Winget distribution for Windows
-- DDNS support for relay server deployment
-- Comprehensive documentation (README, DEPLOYMENT, MULTIPLAYER_DESIGN)
-
-### Changed
-- High score system now stores only ONE score per profile (maximum score)
-- Multiplayer rewards/penalties now tied to ROLES, not players
-- Scores persist correctly across role rotations in multiplayer
-- Profile Manager now enforces unique high score per profile
-- Optimized single-player performance (stable 60 FPS)
-- Adjusted Pac-Man speed for balanced difficulty
-- Improved ghost pathfinding with caching
-
-### Fixed
-- Duplicate high score entries in local database
-- Score calculation errors in multiplayer mode
-- Multiplayer input detection and player-role mapping
-- Ghost autonomous movement in multiplayer
 - Wall collision detection
 - Cross-platform database and asset paths
 - MVVM compliance across all ViewModels

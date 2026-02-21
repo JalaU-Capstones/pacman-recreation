@@ -3,15 +3,15 @@
 
     <!-- Estilo base para botones arcade -->
     <Style Selector="Button.arcade">
-        <Setter Property="Background" Value="#2121FF"/>
-        <!-- Use white text by default for strong contrast on the dark background -->
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-        <Setter Property="BorderBrush" Value="#FFFF00"/>
+        <Setter Property="Background" Value="{DynamicResource AppBorderStrongBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccentBrush}"/>
         <Setter Property="BorderThickness" Value="3"/>
         <!-- Slightly smaller padding to make buttons adapt better on narrow screens -->
         <Setter Property="Padding" Value="20,12"/>
         <Setter Property="MinHeight" Value="48"/>
-        <Setter Property="FontFamily" Value="Consolas, Courier New, monospace"/>
+        <!-- DynamicResource avoids load-order failures when StyleInclude is loaded before App resources. -->
+        <Setter Property="FontFamily" Value="{DynamicResource ArcadeFont}"/>
         <Setter Property="FontSize" Value="20"/>
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -42,9 +42,9 @@
 
     <!-- Estado Hover / Pointer Over -->
     <Style Selector="Button.arcade:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#FFFF00"/>
-        <Setter Property="Foreground" Value="#2121FF"/>
-        <Setter Property="BorderBrush" Value="#2121FF"/>
+        <Setter Property="Background" Value="{DynamicResource AppAccentBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppBorderStrongBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrongBrush}"/>
     </Style>
 
     <Style Selector="Button.arcade:pointerover">
@@ -52,14 +52,14 @@
     </Style>
 
     <Style Selector="Button.arcade:pointerover TextBlock">
-        <Setter Property="Foreground" Value="#2121FF"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppBorderStrongBrush}"/>
     </Style>
 
     <!-- Estado Pressed -->
     <Style Selector="Button.arcade:pressed /template/ ContentPresenter">
-        <Setter Property="Background" Value="#FF0000"/>
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-        <Setter Property="BorderBrush" Value="#FFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource AppDangerBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppTextPrimaryBrush}"/>
     </Style>
 
     <Style Selector="Button.arcade:pressed">
@@ -67,20 +67,20 @@
     </Style>
 
     <Style Selector="Button.arcade:pressed TextBlock">
-        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}"/>
     </Style>
 
     <!-- Focus visual -->
     <Style Selector="Button.arcade:focus /template/ ContentPresenter">
-        <Setter Property="BorderBrush" Value="#FFFF00"/>
-        <Setter Property="Background" Value="#2A2AFF"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccentBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource AppBorderStrongBrush}"/>
     </Style>
 
     <!-- Estado Disabled -->
     <Style Selector="Button.arcade:disabled /template/ ContentPresenter">
-        <Setter Property="Background" Value="#555555"/>
-        <Setter Property="Foreground" Value="#BBBBBB"/>
-        <Setter Property="BorderBrush" Value="#666666"/>
+        <Setter Property="Background" Value="{DynamicResource AppBorderBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextMutedBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}"/>
     </Style>
 
     <Style Selector="Button.arcade:disabled">
@@ -90,19 +90,19 @@
 
     <!-- Custom variants -->
     <Style Selector="Button.arcade.danger">
-        <Setter Property="Background" Value="#330000"/>
-        <Setter Property="Foreground" Value="#FF0000"/>
-        <Setter Property="BorderBrush" Value="#FF0000"/>
+        <Setter Property="Background" Value="{DynamicResource AppSurface2Brush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppDangerBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppDangerBrush}"/>
     </Style>
 
     <Style Selector="Button.arcade.danger:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#FF0000"/>
-        <Setter Property="Foreground" Value="#FFFFFF"/>
-        <Setter Property="BorderBrush" Value="#FFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource AppDangerBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AppTextPrimaryBrush}"/>
     </Style>
 
     <Style Selector="Button.arcade.danger:pointerover TextBlock">
-        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}"/>
     </Style>
 
 </Styles>

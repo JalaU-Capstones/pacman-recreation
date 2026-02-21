@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Threading;
 using PacmanGame.ViewModels;
 
 namespace PacmanGame.Views;
@@ -8,12 +9,14 @@ namespace PacmanGame.Views;
 public partial class MainWindow : Window
 {
     private bool _pausedForConsole;
+    private bool _didClampToWorkArea;
 
     public MainWindow()
     {
         InitializeComponent();
         this.ContentHost.PropertyChanged += OnContentChanged;
         this.KeyDown += OnKeyDown;
+        this.Opened += (_, _) => ClampToWorkArea();
     }
 
     private void OnContentChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
@@ -21,11 +24,49 @@ public partial class MainWindow : Window
         if (e.Property == ContentControl.ContentProperty && e.NewValue is GameView gameView)
         {
             // Use a delayed action to ensure the view is fully loaded and visible
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            Dispatcher.UIThread.Post(() =>
             {
                 gameView.Focus();
-            }, Avalonia.Threading.DispatcherPriority.Loaded);
+            }, DispatcherPriority.Loaded);
         }
+    }
+
+    private void ClampToWorkArea()
+    {
+        if (_didClampToWorkArea)
+        {
+            return;
+        }
+
+        _didClampToWorkArea = true;
+
+        var screen = Screens?.ScreenFromWindow(this) ?? Screens?.Primary;
+        if (screen == null)
+        {
+            return;
+        }
+
+        var workArea = screen.WorkingArea;
+        if (workArea.Width <= 0 || workArea.Height <= 0)
+        {
+            return;
+        }
+
+        MaxWidth = workArea.Width;
+        MaxHeight = workArea.Height;
+
+        // If SizeToContent made the window larger than the work area (common in VMs), clamp it.
+        if (Width > MaxWidth)
+        {
+            Width = MaxWidth;
+        }
+        if (Height > MaxHeight)
+        {
+            Height = MaxHeight;
+        }
+
+        // After initial sizing, keep manual sizing so user resize behaves predictably.
+        SizeToContent = SizeToContent.Manual;
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)

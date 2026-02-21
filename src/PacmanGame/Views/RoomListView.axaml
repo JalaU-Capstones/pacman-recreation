@@ -8,21 +8,21 @@
              x:Class="PacmanGame.Views.RoomListView"
              x:DataType="vm:RoomListViewModel"
              x:Name="PageRoot"
-             Background="Black">
+             Background="{DynamicResource AppBackgroundBrush}">
     <Grid>
         <StackPanel Spacing="20" Margin="20" HorizontalAlignment="Center" VerticalAlignment="Center">
-            <TextBlock Text="PUBLIC ROOMS" FontSize="36" Foreground="#FFFF00" HorizontalAlignment="Center"/>
+            <TextBlock Text="PUBLIC ROOMS" FontSize="36" Foreground="{DynamicResource AppAccentBrush}" HorizontalAlignment="Center"/>
 
-            <Border BorderBrush="#FFFF00" BorderThickness="2" CornerRadius="8" Padding="10" MinWidth="600">
+            <Border BorderBrush="{DynamicResource AppAccentBrush}" BorderThickness="2" CornerRadius="8" Padding="10" MinWidth="600">
                 <Panel>
                     <TextBlock Text="No public rooms available." IsVisible="{Binding !Rooms.Count}"
-                               Foreground="Gray" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                               Foreground="{DynamicResource AppTextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <ListBox ItemsSource="{Binding Rooms}" Background="Transparent" IsVisible="{Binding Rooms.Count}">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="shared:RoomInfo" x:CompileBindings="False">
                                 <Grid ColumnDefinitions="*,Auto,Auto" Margin="5">
-                                    <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="White" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding PlayerCount, StringFormat='{}{0}/5 Players'}" Foreground="Gray" VerticalAlignment="Center" Margin="20,0"/>
+                                    <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding PlayerCount, StringFormat='{}{0}/5 Players'}" Foreground="{DynamicResource AppTextMutedBrush}" VerticalAlignment="Center" Margin="20,0"/>
                                     <Button Grid.Column="2" Content="JOIN"
                                             Command="{Binding $parent[ListBox].DataContext.JoinPublicRoomCommand}"
                                             CommandParameter="{Binding}"
@@ -43,23 +43,23 @@
                     HorizontalAlignment="Center"/>
 
             <Border IsVisible="{Binding IsPrivateJoinFormVisible}"
-                    Background="#1A1A1A"
-                    BorderBrush="#FFFF00"
+                    Background="{DynamicResource AppSurfaceBrush}"
+                    BorderBrush="{DynamicResource AppAccentBrush}"
                     BorderThickness="2"
                     CornerRadius="8"
                     Padding="20"
                     Margin="0,10,0,0">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="JOIN PRIVATE ROOM" FontSize="24" Foreground="#FFFF00" HorizontalAlignment="Center"/>
-                    <TextBlock Text="{Binding ErrorMessage}" Foreground="Red" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+                    <TextBlock Text="JOIN PRIVATE ROOM" FontSize="24" Foreground="{DynamicResource AppAccentBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource AppDangerBrush}" HorizontalAlignment="Center" TextWrapping="Wrap"/>
 
                     <StackPanel Spacing="5">
-                        <TextBlock Text="Room Name:" Foreground="White"/>
+                        <TextBlock Text="Room Name:" />
                         <TextBox Text="{Binding PrivateRoomName}" Watermark="Enter room name..." MinWidth="300"/>
                     </StackPanel>
 
                     <StackPanel Spacing="5">
-                        <TextBlock Text="Password:" Foreground="White"/>
+                        <TextBlock Text="Password:" />
                         <TextBox Text="{Binding PrivateRoomPassword}" PasswordChar="●" Watermark="Enter password..." MinWidth="300"/>
                     </StackPanel>
 
@@ -75,11 +75,11 @@
 
         <!-- Spectator Join Prompt Modal -->
         <Border IsVisible="{Binding ShowSpectatorPrompt}"
-                Background="#CC000000"
+                Background="{DynamicResource AppOverlayBrush}"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch">
-            <Border Background="#1A1A1A"
-                    BorderBrush="#FFFF00"
+            <Border Background="{DynamicResource AppSurfaceBrush}"
+                    BorderBrush="{DynamicResource AppAccentBrush}"
                     BorderThickness="2"
                     CornerRadius="8"
                     Padding="20"
@@ -88,8 +88,8 @@
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="JOIN ROOM" FontSize="24" Foreground="#FFFF00" HorizontalAlignment="Center"/>
-                    <TextBlock Text="{Binding ErrorMessage}" Foreground="White" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+                    <TextBlock Text="JOIN ROOM" FontSize="24" Foreground="{DynamicResource AppAccentBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding ErrorMessage}" HorizontalAlignment="Center" TextWrapping="Wrap"/>
 
                     <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
                           HorizontalAlignment="Center"

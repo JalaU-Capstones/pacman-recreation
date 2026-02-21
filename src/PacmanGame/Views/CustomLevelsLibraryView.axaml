@@ -7,7 +7,7 @@
              mc:Ignorable="d"
              x:Class="PacmanGame.Views.CustomLevelsLibraryView"
              x:DataType="vm:CustomLevelsLibraryViewModel"
-             Background="#050505">
+             Background="{DynamicResource AppBackgroundBrush}">
 
   <Grid Margin="12">
     <Grid.RowDefinitions>
@@ -16,33 +16,33 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <Border Grid.Row="0" CornerRadius="8" BorderThickness="2" BorderBrush="#FFD700" Padding="12" Background="#111">
+    <Border Grid.Row="0" CornerRadius="8" BorderThickness="2" BorderBrush="{DynamicResource AppAccentBrush}" Padding="12" Background="{DynamicResource AppSurfaceBrush}">
       <StackPanel Orientation="Horizontal" Spacing="20">
-        <TextBlock Text="Custom Levels Library" FontSize="22" FontWeight="Bold" Foreground="#FFD700" />
+        <TextBlock Text="Custom Levels Library" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource AppAccentBrush}" />
         <Button Content="Import New Level" Command="{Binding ImportCommand}" Classes="arcade" />
         <Button Content="Reload" Command="{Binding ReloadCommand}" Classes="arcade" />
       </StackPanel>
     </Border>
 
-    <Border Grid.Row="1" Margin="0,12" CornerRadius="8" BorderBrush="#2121FF" BorderThickness="2" Background="#0B0B0B">
+    <Border Grid.Row="1" Margin="0,12" CornerRadius="8" BorderBrush="{DynamicResource AppBorderStrongBrush}" BorderThickness="2" Background="{DynamicResource AppSurface2Brush}">
         <ListBox ItemsSource="{Binding Library}"
                SelectedItem="{Binding SelectedLevel}"
                Margin="12"
-               Background="#0B0B0B"
-               Foreground="White">
+               Background="{DynamicResource AppSurface2Brush}"
+               Foreground="{DynamicResource AppTextPrimaryBrush}">
         <ListBox.ItemTemplate>
           <DataTemplate>
-            <Border CornerRadius="6" BorderThickness="1" BorderBrush="#333" Margin="0,4" Padding="10" Background="#111">
+            <Border CornerRadius="6" BorderThickness="1" BorderBrush="{DynamicResource AppBorderBrush}" Margin="0,4" Padding="10" Background="{DynamicResource AppSurfaceBrush}">
               <Grid ColumnDefinitions="*,200" RowDefinitions="Auto,Auto">
-                <TextBlock Text="{Binding ProjectName}" FontSize="18" FontWeight="Bold" Foreground="#FFD700" />
+                <TextBlock Text="{Binding ProjectName}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AppAccentBrush}" />
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" Margin="0,6,0,0">
-                  <TextBlock Text="Author:" Foreground="#AAAAAA" />
+                  <TextBlock Text="Author:" Foreground="{DynamicResource AppTextMutedBrush}" />
                   <TextBlock Text="{Binding Author}" />
-                  <TextBlock Text="Levels:" Foreground="#AAAAAA" />
+                  <TextBlock Text="Levels:" Foreground="{DynamicResource AppTextMutedBrush}" />
                   <TextBlock Text="{Binding LevelCount}" />
-                  <TextBlock Text="Editable:" Foreground="#AAAAAA" />
+                  <TextBlock Text="Editable:" Foreground="{DynamicResource AppTextMutedBrush}" />
                   <TextBlock Text="{Binding IsEditable}" />
-                  <TextBlock Text="Created:" Foreground="#AAAAAA" />
+                  <TextBlock Text="Created:" Foreground="{DynamicResource AppTextMutedBrush}" />
                   <TextBlock Text="{Binding CreatedDate, StringFormat='{}{0:MMM d, yyyy}'}" />
                 </StackPanel>
         <StackPanel Grid.Column="1" HorizontalAlignment="Right" Spacing="6">

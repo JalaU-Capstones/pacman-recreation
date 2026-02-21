@@ -13,7 +13,7 @@
     <conv:ConsoleMessageBrushConverter x:Key="ConsoleMessageBrushConverter" />
   </UserControl.Resources>
 
-  <Border Background="#1E1E1E"
+  <Border Background="{DynamicResource AppSurfaceBrush}"
           Padding="16"
           CornerRadius="8"
           Opacity="0.95"
@@ -29,20 +29,20 @@
             <DataTemplate>
               <TextBlock Text="{Binding Text}"
                          Foreground="{Binding Type, Converter={StaticResource ConsoleMessageBrushConverter}}"
-                         FontFamily="Consolas" />
+                         FontFamily="{StaticResource ArcadeFont}" />
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </ScrollViewer>
 
-        <Border Grid.Row="1" BorderBrush="#333" BorderThickness="1" CornerRadius="4" Margin="0,12,0,0">
+        <Border Grid.Row="1" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="4" Margin="0,12,0,0">
           <TextBox Text="{Binding CurrentCommand, Mode=TwoWay}"
-                   Background="#050505"
-                   Foreground="#00FF00"
-                   CaretBrush="#00FF00"
-                   SelectionBrush="#005500"
+                   Background="{DynamicResource AppSurface2Brush}"
+                   Foreground="{DynamicResource AppSuccessBrush}"
+                   CaretBrush="{DynamicResource AppSuccessBrush}"
+                   SelectionBrush="{DynamicResource AppBorderBrush}"
                    Padding="8"
-                   FontFamily="Consolas"
+                   FontFamily="{StaticResource ArcadeFont}"
                    Watermark="Type /command and press Enter"
                    HorizontalContentAlignment="Stretch">
             <TextBox.KeyBindings>

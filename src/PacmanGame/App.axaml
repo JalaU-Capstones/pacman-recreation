@@ -10,17 +10,13 @@
 
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="/Styles/Theme.axaml" />
         <StyleInclude Source="/Styles/ButtonStyles.axaml" />
     </Application.Styles>
 
     <Application.Resources>
-        <Color x:Key="PacmanYellow">#FFFF00</Color>
-        <Color x:Key="MazeBlue">#2121FF</Color>
-        <Color x:Key="BackgroundBlack">#000000</Color>
-
-        <SolidColorBrush x:Key="PacmanYellowBrush" Color="{StaticResource PacmanYellow}" />
-        <SolidColorBrush x:Key="MazeBlueBrush" Color="{StaticResource MazeBlue}" />
-        <SolidColorBrush x:Key="BackgroundBlackBrush" Color="{StaticResource BackgroundBlack}" />
+        <!-- ArcadeFont is also defined in Theme.axaml to avoid StyleInclude load-order issues. -->
+        <FontFamily x:Key="ArcadeFont">Consolas, Courier New, monospace</FontFamily>
     </Application.Resources>
 
 </Application>

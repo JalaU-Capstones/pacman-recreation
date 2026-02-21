@@ -6,15 +6,15 @@
              mc:Ignorable="d" d:DesignWidth="1156" d:DesignHeight="1020"
              x:Class="PacmanGame.Views.GameView"
              x:DataType="vm:GameViewModel"
-             Background="Black"
+             Background="{DynamicResource AppBackgroundBrush}"
              Focusable="True">
 
     <Grid ColumnDefinitions="Auto,*,Auto" PointerPressed="OnPointerPressed" Focusable="True">
 
         <!-- Left Sidebar - HUD -->
         <Border Grid.Column="0"
-                Background="#1A1A1A"
-                BorderBrush="#FFFF00"
+                Background="{DynamicResource AppSurfaceBrush}"
+                BorderBrush="{DynamicResource AppAccentBrush}"
                 BorderThickness="0,0,2,0"
                 MinWidth="120"
                 Padding="15"
@@ -28,67 +28,66 @@
                 <StackPanel Spacing="5">
                     <TextBlock Text="SCORE"
                               FontSize="14"
-                              Foreground="#888888"
+                              Foreground="{DynamicResource AppTextDimBrush}"
                               HorizontalAlignment="Center"
-                              FontFamily="Consolas, Courier New"/>
+                              FontFamily="{StaticResource ArcadeFont}"/>
                     <TextBlock Text="{Binding Score, StringFormat='{}{0:N0}'}"
                               FontSize="28"
                               FontWeight="Bold"
-                              Foreground="#FFFF00"
+                              Foreground="{DynamicResource AppAccentBrush}"
                               HorizontalAlignment="Center"
-                              FontFamily="Consolas, Courier New"/>
+                              FontFamily="{StaticResource ArcadeFont}"/>
                 </StackPanel>
 
                 <!-- Level -->
                 <StackPanel Spacing="5">
                     <TextBlock Text="LEVEL"
                               FontSize="14"
-                              Foreground="#888888"
+                              Foreground="{DynamicResource AppTextDimBrush}"
                               HorizontalAlignment="Center"
-                              FontFamily="Consolas, Courier New"/>
+                              FontFamily="{StaticResource ArcadeFont}"/>
                     <TextBlock Text="{Binding Level}"
                               FontSize="28"
                               FontWeight="Bold"
-                              Foreground="White"
                               HorizontalAlignment="Center"
-                              FontFamily="Consolas, Courier New"/>
+                              FontFamily="{StaticResource ArcadeFont}"/>
                 </StackPanel>
 
                 <!-- Lives -->
                 <StackPanel Spacing="5">
                     <TextBlock Text="LIVES"
                               FontSize="14"
-                              Foreground="#888888"
+                              Foreground="{DynamicResource AppTextDimBrush}"
                               HorizontalAlignment="Center"
-                              FontFamily="Consolas, Courier New"/>
+                              FontFamily="{StaticResource ArcadeFont}"/>
                     <TextBlock Text="{Binding Lives}"
                               FontSize="28"
                               FontWeight="Bold"
-                              Foreground="#FF0000"
+                              Foreground="{DynamicResource AppDangerBrush}"
                               HorizontalAlignment="Center"
-                              FontFamily="Consolas, Courier New"/>
+                              FontFamily="{StaticResource ArcadeFont}"/>
                 </StackPanel>
             </StackPanel>
         </Border>
 
         <!-- Center - Game Canvas -->
         <Border Grid.Column="1"
-                Background="Black"
-                BorderBrush="#2121FF"
+                Background="{DynamicResource AppBackgroundBrush}"
+                BorderBrush="{DynamicResource AppBorderStrongBrush}"
                 BorderThickness="2">
 
             <Canvas x:Name="GameCanvas"
                     Width="896"
                     Height="992"
-                    Background="Black"
+                    Background="{DynamicResource AppBackgroundBrush}"
                     ClipToBounds="True"
                     Focusable="True"/>
         </Border>
 
         <!-- Right Sidebar - Controls -->
         <Border Grid.Column="2"
-                Background="#1A1A1A"
-                BorderBrush="#FFFF00"
+                Background="{DynamicResource AppSurfaceBrush}"
+                BorderBrush="{DynamicResource AppAccentBrush}"
                 BorderThickness="2,0,0,0"
                 MinWidth="120"
                 Padding="15"
@@ -119,21 +118,21 @@
 
         <!-- Level Complete Message -->
         <Border Grid.Column="1"
-                Background="#CC000000"
+                Background="{DynamicResource AppOverlayBrush}"
                 IsVisible="{Binding IsLevelComplete}"
                 ZIndex="99">
             <TextBlock Text="LEVEL COMPLETE"
                        FontSize="60"
                        FontWeight="Bold"
-                       Foreground="#00FF00"
+                       Foreground="{DynamicResource AppSuccessBrush}"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"
-                       FontFamily="Consolas, Courier New"/>
+                       FontFamily="{StaticResource ArcadeFont}"/>
         </Border>
 
         <!-- Game Over Dialog (overlay) -->
         <Border Grid.Column="0" Grid.ColumnSpan="3"
-                Background="#CC000000"
+                Background="{DynamicResource AppOverlayBrush}"
                 IsVisible="{Binding IsGameOver}"
                 ZIndex="100">
 
@@ -144,15 +143,14 @@
                 <TextBlock Text="GAME OVER"
                           FontSize="80"
                           FontWeight="Bold"
-                          Foreground="#FF0000"
+                          Foreground="{DynamicResource AppDangerBrush}"
                           HorizontalAlignment="Center"
-                          FontFamily="Consolas, Courier New"/>
+                          FontFamily="{StaticResource ArcadeFont}"/>
 
                 <TextBlock Text="{Binding FinalScore, StringFormat='FINAL SCORE: {0}'}"
                           FontSize="32"
-                          Foreground="White"
                           HorizontalAlignment="Center"
-                          FontFamily="Consolas, Courier New"/>
+                          FontFamily="{StaticResource ArcadeFont}"/>
 
                 <StackPanel Orientation="Horizontal"
                            HorizontalAlignment="Center"
@@ -173,7 +171,7 @@
 
         <!-- Victory Dialog (hidden by default) -->
         <Border x:Name="VictoryDialog"
-                Background="#CC000000"
+                Background="{DynamicResource AppOverlayBrush}"
                 IsVisible="{Binding IsVictory}"
                 ZIndex="100"
                 Grid.ColumnSpan="3">
@@ -190,22 +188,21 @@
                 <TextBlock Text="CONGRATULATIONS!"
                           FontSize="72"
                           FontWeight="Bold"
-                          Foreground="#FFD700"
+                          Foreground="{DynamicResource AppAccentBrush}"
                           HorizontalAlignment="Center"
-                          FontFamily="Consolas, Courier New"/>
+                          FontFamily="{StaticResource ArcadeFont}"/>
 
                 <TextBlock Text="YOU COMPLETED ALL LEVELS!"
                           FontSize="28"
-                          Foreground="White"
                           HorizontalAlignment="Center"
-                          FontFamily="Consolas, Courier New"/>
+                          FontFamily="{StaticResource ArcadeFont}"/>
 
                 <TextBlock Text="{Binding FinalScore, StringFormat='FINAL SCORE: {0}'}"
                           FontSize="40"
                           FontWeight="Bold"
-                          Foreground="#FFFF00"
+                          Foreground="{DynamicResource AppAccentBrush}"
                           HorizontalAlignment="Center"
-                          FontFamily="Consolas, Courier New"
+                          FontFamily="{StaticResource ArcadeFont}"
                           Margin="0,20,0,0"/>
 
                 <StackPanel Orientation="Horizontal"

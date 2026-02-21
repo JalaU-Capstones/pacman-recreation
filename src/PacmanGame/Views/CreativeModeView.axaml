@@ -19,42 +19,21 @@
       <conv:InverseBooleanConverter x:Key="InverseBool" />
     </ResourceDictionary>
   </UserControl.Resources>
-  <UserControl.Styles>
-    <Style Selector="TextBox">
-      <Setter Property="Background" Value="#0E0E0E"/>
-      <Setter Property="Foreground" Value="#FFFFFF"/>
-      <Setter Property="BorderBrush" Value="#333333"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CaretBrush" Value="#FFD700"/>
-    </Style>
-    <Style Selector="NumericUpDown">
-      <Setter Property="Foreground" Value="#FFFFFF"/>
-    </Style>
-    <Style Selector="ComboBox">
-      <Setter Property="Foreground" Value="#FFFFFF"/>
-      <Setter Property="Background" Value="#0E0E0E"/>
-      <Setter Property="BorderBrush" Value="#333333"/>
-      <Setter Property="BorderThickness" Value="1"/>
-    </Style>
-    <Style Selector="TabItem">
-      <Setter Property="Foreground" Value="#FFFFFF"/>
-    </Style>
-  </UserControl.Styles>
-  <Grid ColumnDefinitions="220,*,340" Background="#121212">
-    <Border Grid.Column="0" Margin="12" CornerRadius="8" BorderThickness="2" BorderBrush="#FFD700" Background="#131313">
+  <Grid ColumnDefinitions="220,*,340" Background="{DynamicResource AppBackgroundBrush}">
+    <Border Grid.Column="0" Margin="12" CornerRadius="8" BorderThickness="2" BorderBrush="{DynamicResource AppAccentBrush}" Background="{DynamicResource AppSurfaceBrush}">
       <StackPanel Margin="12" Spacing="8">
-        <TextBlock Text="Keyboard" FontSize="16" FontWeight="Bold" Foreground="#FFD700"/>
-        <TextBlock Text="Arrow Keys: Move cursor" Foreground="White"/>
-        <TextBlock Text="Enter: Place tile" Foreground="White"/>
-        <TextBlock Text="Delete: Clear tile" Foreground="White"/>
-        <TextBlock Text="Tab: Cycle tools" Foreground="White"/>
-        <TextBlock Text="R: Rotate wall" Foreground="White"/>
-        <TextBlock Text="Ctrl+P: Play test" Foreground="White"/>
-        <TextBlock Text="Ctrl+E: Export" Foreground="White"/>
+        <TextBlock Text="Keyboard" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AppAccentBrush}"/>
+        <TextBlock Text="Arrow Keys: Move cursor" />
+        <TextBlock Text="Enter: Place tile" />
+        <TextBlock Text="Delete: Clear tile" />
+        <TextBlock Text="Tab: Cycle tools" />
+        <TextBlock Text="R: Rotate wall" />
+        <TextBlock Text="Ctrl+P: Play test" />
+        <TextBlock Text="Ctrl+E: Export" />
       </StackPanel>
     </Border>
 
-    <Border Grid.Column="1" Margin="12" CornerRadius="8" BorderBrush="#2121FF" BorderThickness="2" Background="#050505">
+    <Border Grid.Column="1" Margin="12" CornerRadius="8" BorderBrush="{DynamicResource AppBorderStrongBrush}" BorderThickness="2" Background="{DynamicResource AppSurface2Brush}">
         <StackPanel Spacing="6" Margin="12">
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
             <Button Content="-" Command="{Binding ZoomOutCommand}" Width="32" Height="32"/>
@@ -65,7 +44,7 @@
                     LargeChange="0.2"
                     Value="{Binding ZoomLevel}"/>
             <Button Content="+" Command="{Binding ZoomInCommand}" Width="32" Height="32"/>
-            <TextBlock Text="{Binding ZoomLabel}" Foreground="White" VerticalAlignment="Center" Margin="8,0,0,0"/>
+            <TextBlock Text="{Binding ZoomLabel}" VerticalAlignment="Center" Margin="8,0,0,0"/>
           </StackPanel>
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
             <Button Content="◄ Prev Level"
@@ -73,7 +52,7 @@
                     IsEnabled="{Binding CanGoPreviousLevel}"
                     MinWidth="120"/>
             <TextBlock Text="{Binding CurrentLevelInfo}"
-                       Foreground="#DDDDDD"
+                       Foreground="{DynamicResource AppTextMutedBrush}"
                        VerticalAlignment="Center"
                        HorizontalAlignment="Center"/>
             <Button Content="Next Level ►"
@@ -82,7 +61,7 @@
                     MinWidth="120"/>
           </StackPanel>
           <TextBlock Text="{Binding CanvasViewModel.StatusMessage}"
-                     Foreground="#AAAAAA"
+                     Foreground="{DynamicResource AppTextMutedBrush}"
                      FontSize="12"
                      TextWrapping="Wrap"/>
 
@@ -126,7 +105,7 @@
                   <DataTemplate>
                     <Rectangle Width="1"
                                Height="{Binding ElementName=GridLinesLayer, Path=Height}"
-                               Fill="#2A2A2A"
+                               Fill="{DynamicResource AppGridLineBrush}"
                                Canvas.Left="{Binding}" />
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -136,7 +115,7 @@
                   <DataTemplate>
                     <Rectangle Height="1"
                                Width="{Binding ElementName=GridLinesLayer, Path=Width}"
-                               Fill="#2A2A2A"
+                               Fill="{DynamicResource AppGridLineBrush}"
                                Canvas.Top="{Binding}" />
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -146,7 +125,7 @@
                   <DataTemplate>
                     <Rectangle Width="1"
                                Height="{Binding ElementName=GridLinesLayer, Path=Height}"
-                               Fill="#404040"
+                               Fill="{DynamicResource AppGridLineMajorBrush}"
                                Opacity="0.7"
                                Canvas.Left="{Binding}" />
                   </DataTemplate>
@@ -157,7 +136,7 @@
                   <DataTemplate>
                     <Rectangle Height="1"
                                Width="{Binding ElementName=GridLinesLayer, Path=Width}"
-                               Fill="#404040"
+                               Fill="{DynamicResource AppGridLineMajorBrush}"
                                Opacity="0.7"
                                Canvas.Top="{Binding}" />
                   </DataTemplate>
@@ -170,7 +149,7 @@
                     IsHitTestVisible="False">
               <Rectangle Width="{Binding CellDisplaySize}"
                          Height="{Binding CellDisplaySize}"
-                         Stroke="#FFD700"
+                         Stroke="{DynamicResource AppAccentBrush}"
                          StrokeThickness="2"
                          Fill="Transparent"
                          Canvas.Left="{Binding CursorLeft}"
@@ -192,7 +171,7 @@
 
               <TextBlock Text="{Binding CursorRotation, StringFormat='{}{0}°'}"
                          FontSize="10"
-                         Foreground="#FFD700"
+                         Foreground="{DynamicResource AppAccentBrush}"
                          Canvas.Left="{Binding CursorRotationLabelLeft}"
                          Canvas.Top="{Binding CursorRotationLabelTop}"
                          IsVisible="{Binding SelectedToolRotatable}" />
@@ -202,9 +181,9 @@
       </StackPanel>
     </Border>
 
-    <Border Grid.Column="2" Margin="12" CornerRadius="8" BorderBrush="#FFD700" BorderThickness="2" Background="#131313">
+    <Border Grid.Column="2" Margin="12" CornerRadius="8" BorderBrush="{DynamicResource AppAccentBrush}" BorderThickness="2" Background="{DynamicResource AppSurfaceBrush}">
       <StackPanel Margin="12" Spacing="12">
-        <TextBlock Text="Toolbox" FontSize="16" FontWeight="Bold" Foreground="#FFD700"/>
+        <TextBlock Text="Toolbox" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AppAccentBrush}"/>
         <TabControl>
           <TabItem Header="Tools">
             <ListBox x:Name="ToolList"
@@ -219,30 +198,30 @@
                   <Setter Property="Margin" Value="2"/>
                 </Style>
                 <Style Selector="ListBoxItem TextBlock">
-                  <Setter Property="Foreground" Value="#FFFFFF"/>
+                  <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}"/>
                 </Style>
                 <Style Selector="ListBoxItem TextBlock.tool-desc">
-                  <Setter Property="Foreground" Value="#AAAAAA"/>
+                  <Setter Property="Foreground" Value="{DynamicResource AppTextMutedBrush}"/>
                 </Style>
                 <Style Selector="ListBoxItem:pointerover">
-                  <Setter Property="Background" Value="#222222"/>
+                  <Setter Property="Background" Value="{DynamicResource AppSurface2Brush}"/>
                 </Style>
                 <Style Selector="ListBoxItem:selected">
-                  <Setter Property="Background" Value="#FFD700"/>
-                  <Setter Property="BorderBrush" Value="#FFA500"/>
+                  <Setter Property="Background" Value="{DynamicResource AppAccentBrush}"/>
+                  <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrongBrush}"/>
                   <Setter Property="BorderThickness" Value="2"/>
                 </Style>
                 <Style Selector="ListBoxItem:selected TextBlock">
-                  <Setter Property="Foreground" Value="#000000"/>
+                  <Setter Property="Foreground" Value="{DynamicResource AppBackgroundBrush}"/>
                 </Style>
                 <Style Selector="ListBoxItem:selected Border.tool-icon-bg">
-                  <Setter Property="Background" Value="#000000"/>
+                  <Setter Property="Background" Value="{DynamicResource AppBackgroundBrush}"/>
                 </Style>
                 <Style Selector="ListBoxItem:selected Border.shortcut-badge">
-                  <Setter Property="Background" Value="#000000"/>
+                  <Setter Property="Background" Value="{DynamicResource AppBackgroundBrush}"/>
                 </Style>
                 <Style Selector="ListBoxItem:selected Border.shortcut-badge TextBlock">
-                  <Setter Property="Foreground" Value="#FFFFFF"/>
+                  <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}"/>
                 </Style>
               </ListBox.Styles>
               <ListBox.ItemTemplate>
@@ -251,13 +230,13 @@
                     <ToolTip.Tip>
                       <ToolTip>
                         <StackPanel>
-                          <TextBlock Text="{Binding Label}" FontWeight="Bold" Foreground="White"/>
-                          <TextBlock Text="{Binding Description}" Foreground="#DDDDDD" FontSize="12" TextWrapping="Wrap" MaxWidth="220" Margin="0,4,0,0"/>
-                          <TextBlock Text="{Binding Shortcut, StringFormat='Shortcut: {0}'}" Foreground="#AAAAAA" FontSize="10" Margin="0,6,0,0"/>
+                          <TextBlock Text="{Binding Label}" FontWeight="Bold" />
+                          <TextBlock Text="{Binding Description}" Foreground="{DynamicResource AppTextMutedBrush}" FontSize="12" TextWrapping="Wrap" MaxWidth="220" Margin="0,4,0,0"/>
+                          <TextBlock Text="{Binding Shortcut, StringFormat='Shortcut: {0}'}" Foreground="{DynamicResource AppTextMutedBrush}" FontSize="10" Margin="0,6,0,0"/>
                         </StackPanel>
                       </ToolTip>
                     </ToolTip.Tip>
-                    <Border Width="36" Height="36" CornerRadius="6" Background="#0E0E0E" HorizontalAlignment="Center" VerticalAlignment="Center" Classes="tool-icon-bg">
+                    <Border Width="36" Height="36" CornerRadius="6" Background="{DynamicResource AppSurface2Brush}" HorizontalAlignment="Center" VerticalAlignment="Center" Classes="tool-icon-bg">
                       <Image Source="{Binding Icon}"
                              Width="28"
                              Height="28"
@@ -268,7 +247,7 @@
                     <StackPanel Grid.Column="1" Spacing="2">
                       <TextBlock Text="{Binding Label}"
                                  FontSize="16"
-                                 FontFamily="Consolas" />
+                                 FontFamily="{StaticResource ArcadeFont}" />
                       <TextBlock Text="{Binding Description}"
                                  Classes="tool-desc"
                                  TextWrapping="Wrap"
@@ -276,7 +255,7 @@
                                  />
                     </StackPanel>
                     <Border Grid.Column="2"
-                            Background="#333"
+                            Background="{DynamicResource AppBorderBrush}"
                             CornerRadius="4"
                             Padding="4"
                             HorizontalAlignment="Right"
@@ -284,7 +263,7 @@
                             Classes="shortcut-badge">
                       <TextBlock Text="{Binding Shortcut}"
                                  FontSize="10"
-                                 FontFamily="Consolas" />
+                                 FontFamily="{StaticResource ArcadeFont}" />
                     </Border>
                   </Grid>
                 </DataTemplate>
@@ -294,46 +273,46 @@
           <TabItem Header="Config">
             <ScrollViewer>
               <StackPanel Spacing="10" Margin="6">
-                <TextBlock Text="Lives" Foreground="White" />
+                <TextBlock Text="Lives" />
                 <NumericUpDown Value="{Binding Lives}" Minimum="1" Maximum="5" />
 
-                <TextBlock Text="Number of Levels" Foreground="White" Margin="0,10,0,0"/>
+                <TextBlock Text="Number of Levels" Margin="0,10,0,0"/>
                 <NumericUpDown Value="{Binding LevelCount}" Minimum="1" Maximum="10" />
 
-                <TextBlock Text="Win Score" Foreground="White" Margin="0,10,0,0"/>
+                <TextBlock Text="Win Score" Margin="0,10,0,0"/>
                 <NumericUpDown Value="{Binding WinScore}"
                                Minimum="{Binding WinScoreMin}"
                                Maximum="{Binding WinScoreMax}" />
-                <TextBlock Text="{Binding WinScoreRange}" Foreground="#AAAAAA" FontSize="10"/>
+                <TextBlock Text="{Binding WinScoreRange}" Foreground="{DynamicResource AppTextMutedBrush}" FontSize="10"/>
 
-                <TextBlock Text="Level Settings" Foreground="White" Margin="0,10,0,0" FontWeight="Bold"/>
+                <TextBlock Text="Level Settings" Margin="0,10,0,0" FontWeight="Bold"/>
                 <Expander Header="Per Level" IsExpanded="True">
                   <ItemsControl ItemsSource="{Binding LevelConfigs}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
                         <StackPanel Spacing="6" Margin="0,10">
-                          <TextBlock Text="{Binding LevelNumber, StringFormat='Level {0}'}" Foreground="#FFD700" FontWeight="Bold" />
-                          <TextBlock Text="Pac-Man Speed" Foreground="White" />
+                          <TextBlock Text="{Binding LevelNumber, StringFormat='Level {0}'}" Foreground="{DynamicResource AppAccentBrush}" FontWeight="Bold" />
+                          <TextBlock Text="Pac-Man Speed" />
                           <Slider Value="{Binding PacmanSpeedMultiplier}"
                                   Minimum="{Binding MinAllowedSpeedMultiplier}"
                                   Maximum="{Binding MaxAllowedSpeedMultiplier}"
                                   TickFrequency="0.1" />
-                          <TextBlock Text="{Binding PacmanSpeedMultiplier, StringFormat='×{0:F1}'}" Foreground="#AAAAAA" />
-                          <TextBlock Text="Ghost Speed" Foreground="White" />
+                          <TextBlock Text="{Binding PacmanSpeedMultiplier, StringFormat='×{0:F1}'}" Foreground="{DynamicResource AppTextMutedBrush}" />
+                          <TextBlock Text="Ghost Speed" />
                           <Slider Value="{Binding GhostSpeedMultiplier}"
                                   Minimum="{Binding MinAllowedSpeedMultiplier}"
                                   Maximum="{Binding MaxAllowedSpeedMultiplier}"
                                   TickFrequency="0.1" />
-                          <TextBlock Text="{Binding GhostSpeedMultiplier, StringFormat='×{0:F1}'}" Foreground="#AAAAAA" />
-                          <TextBlock Text="Frightened Duration (s)" Foreground="White" />
+                          <TextBlock Text="{Binding GhostSpeedMultiplier, StringFormat='×{0:F1}'}" Foreground="{DynamicResource AppTextMutedBrush}" />
+                          <TextBlock Text="Frightened Duration (s)" />
                           <NumericUpDown Value="{Binding FrightenedDuration}"
                                          Minimum="1"
                                          Maximum="{Binding MaxFrightenedDuration}" />
-                          <TextBlock Text="Fruit Points" Foreground="White" />
+                          <TextBlock Text="Fruit Points" />
                           <NumericUpDown Value="{Binding FruitPoints}"
                                          Minimum="1"
                                          Maximum="{Binding MaxFruitPoints}" />
-                          <TextBlock Text="Ghost Eat Points" Foreground="White" />
+                          <TextBlock Text="Ghost Eat Points" />
                           <NumericUpDown Value="{Binding GhostEatPoints}"
                                          Minimum="10"
                                          Maximum="{Binding MaxGhostEatPoints}" />
@@ -348,7 +327,7 @@
         </TabControl>
 
         <TextBlock Text="{Binding CursorShortcut, StringFormat='Shortcut: {0}'}"
-                   Foreground="#AAAAAA"
+                   Foreground="{DynamicResource AppTextMutedBrush}"
                    FontSize="12"
                    Margin="0,4,0,0" />
         <StackPanel Spacing="6">
@@ -362,13 +341,13 @@
 
     <!-- Export options modal -->
     <Border Grid.ColumnSpan="3"
-            Background="#AA000000"
+            Background="{DynamicResource AppOverlayBrush}"
             IsVisible="{Binding IsExportOptionsOpen}">
       <Border Width="420"
               CornerRadius="10"
-              BorderBrush="#FFD700"
+              BorderBrush="{DynamicResource AppAccentBrush}"
               BorderThickness="2"
-              Background="#1E1E1E"
+              Background="{DynamicResource AppSurfaceBrush}"
               Padding="16"
               HorizontalAlignment="Center"
               VerticalAlignment="Center">
@@ -376,15 +355,15 @@
           <TextBlock Text="Export Pac-Man Project"
                      FontSize="18"
                      FontWeight="Bold"
-                     Foreground="#FFD700"/>
+                     Foreground="{DynamicResource AppAccentBrush}"/>
 
           <StackPanel Spacing="6">
-            <TextBlock Text="Project Name" Foreground="#FFFFFF"/>
+            <TextBlock Text="Project Name" />
             <TextBox Text="{Binding ExportProjectName}" />
           </StackPanel>
 
           <StackPanel Spacing="6">
-            <TextBlock Text="Export Mode" Foreground="#FFFFFF"/>
+            <TextBlock Text="Export Mode" />
             <RadioButton Content="Allow editing after import"
                          IsChecked="{Binding ExportIsEditable}" />
             <RadioButton Content="Play-only (locked for editing)"
@@ -401,13 +380,13 @@
 
     <!-- Import preview modal -->
     <Border Grid.ColumnSpan="3"
-            Background="#AA000000"
+            Background="{DynamicResource AppOverlayBrush}"
             IsVisible="{Binding IsImportPreviewOpen}">
       <Border Width="520"
               CornerRadius="10"
-              BorderBrush="#FFD700"
+              BorderBrush="{DynamicResource AppAccentBrush}"
               BorderThickness="2"
-              Background="#1E1E1E"
+              Background="{DynamicResource AppSurfaceBrush}"
               Padding="16"
               HorizontalAlignment="Center"
               VerticalAlignment="Center">
@@ -415,20 +394,20 @@
           <TextBlock Text="Import Pac-Man Project"
                      FontSize="18"
                      FontWeight="Bold"
-                     Foreground="#FFD700"/>
+                     Foreground="{DynamicResource AppAccentBrush}"/>
 
           <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,4,0,0">
-            <TextBlock Text="Name:" Foreground="#FFFFFF" />
-            <TextBlock Grid.Column="1" Text="{Binding ImportSummary.ProjectName}" Foreground="#DDDDDD" />
+            <TextBlock Text="Name:" />
+            <TextBlock Grid.Column="1" Text="{Binding ImportSummary.ProjectName}" Foreground="{DynamicResource AppTextMutedBrush}" />
 
-            <TextBlock Grid.Row="1" Text="Author:" Foreground="#FFFFFF" />
-            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ImportSummary.Author}" Foreground="#DDDDDD" />
+            <TextBlock Grid.Row="1" Text="Author:" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ImportSummary.Author}" Foreground="{DynamicResource AppTextMutedBrush}" />
 
-            <TextBlock Grid.Row="2" Text="Levels:" Foreground="#FFFFFF" />
-            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ImportSummary.LevelCount}" Foreground="#DDDDDD" />
+            <TextBlock Grid.Row="2" Text="Levels:" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ImportSummary.LevelCount}" Foreground="{DynamicResource AppTextMutedBrush}" />
 
-            <TextBlock Grid.Row="3" Text="Editable:" Foreground="#FFFFFF" />
-            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ImportSummary.IsEditable}" Foreground="#DDDDDD" />
+            <TextBlock Grid.Row="3" Text="Editable:" />
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ImportSummary.IsEditable}" Foreground="{DynamicResource AppTextMutedBrush}" />
           </Grid>
 
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
@@ -438,7 +417,7 @@
           </StackPanel>
 
           <TextBlock Text="This project is locked and cannot be edited."
-                     Foreground="#FF5555"
+                     Foreground="{DynamicResource AppDangerBrush}"
                      IsVisible="{Binding ImportCanEdit, Converter={StaticResource InverseBool}}"
                      HorizontalAlignment="Center"/>
         </StackPanel>

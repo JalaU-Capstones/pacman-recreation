@@ -6,21 +6,17 @@
              mc:Ignorable="d" d:DesignWidth="896" d:DesignHeight="1024"
              x:Class="PacmanGame.Views.CreateRoomView"
              x:DataType="vm:CreateRoomViewModel"
-             Background="Black">
+             Background="{DynamicResource AppBackgroundBrush}">
 
     <UserControl.Styles>
         <StyleInclude Source="/Styles/ButtonStyles.axaml" />
         <Style Selector="TextBox">
             <Setter Property="Padding" Value="10"/>
             <Setter Property="FontSize" Value="18"/>
-            <Setter Property="Background" Value="#333"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#FFFF00"/>
             <Setter Property="BorderThickness" Value="2"/>
             <Setter Property="CornerRadius" Value="5"/>
         </Style>
         <Style Selector="RadioButton">
-            <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontSize" Value="18"/>
         </Style>
     </UserControl.Styles>
@@ -34,14 +30,14 @@
             <TextBlock Text="CREATE ROOM"
                        FontSize="60"
                        FontWeight="Bold"
-                       Foreground="#FFFF00"
+                       Foreground="{DynamicResource AppAccentBrush}"
                        HorizontalAlignment="Center"
-                       FontFamily="Consolas, Courier New"
+                       FontFamily="{StaticResource ArcadeFont}"
                        Margin="0,0,0,40">
-                <TextBlock.Effect>
-                    <DropShadowEffect Color="#2121FF" BlurRadius="15"/>
-                </TextBlock.Effect>
-            </TextBlock>
+            <TextBlock.Effect>
+                    <DropShadowEffect Color="{DynamicResource AppColorBorderStrong}" BlurRadius="15"/>
+            </TextBlock.Effect>
+        </TextBlock>
 
             <TextBox Text="{Binding RoomName}" Watermark="Room Name" />
 
@@ -53,7 +49,7 @@
             <TextBox Text="{Binding Password}" Watermark="Password" IsVisible="{Binding IsPrivate}" />
 
             <TextBlock Text="{Binding ErrorMessage}"
-                       Foreground="Red"
+                       Foreground="{DynamicResource AppDangerBrush}"
                        IsVisible="{Binding !!ErrorMessage}"
                        HorizontalAlignment="Center"
                        Margin="0,0,0,10"/>

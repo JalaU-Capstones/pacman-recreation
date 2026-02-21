@@ -7,11 +7,11 @@
              x:Class="PacmanGame.Views.RoomLobbyView"
              x:DataType="vm:RoomLobbyViewModel"
              x:Name="PageRoot"
-             Background="Black">
+             Background="{DynamicResource AppBackgroundBrush}">
 
     <UserControl.Styles>
         <Style Selector="ComboBox.error">
-            <Setter Property="BorderBrush" Value="Red"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AppDangerBrush}"/>
             <Setter Property="BorderThickness" Value="2"/>
         </Style>
     </UserControl.Styles>
@@ -20,33 +20,33 @@
 
         <!-- Row 0: Header -->
         <StackPanel Grid.Row="0" Margin="20" HorizontalAlignment="Center">
-            <TextBlock Text="{Binding RoomName}" FontSize="48" Foreground="#FFFF00" HorizontalAlignment="Center"/>
-            <TextBlock Text="{Binding RoomVisibility}" FontSize="16" Foreground="#888888" HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding RoomName}" FontSize="48" Foreground="{DynamicResource AppAccentBrush}" HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding RoomVisibility}" FontSize="16" Foreground="{DynamicResource AppTextDimBrush}" HorizontalAlignment="Center"/>
         </StackPanel>
 
         <!-- Row 1: Main Content (2 columns) -->
         <Grid Grid.Row="1" ColumnDefinitions="3*,2*" Margin="20">
 
             <!-- Column 0: Player List -->
-            <Border Grid.Column="0" Background="#1A1A1A" BorderBrush="#FFFF00" BorderThickness="2" CornerRadius="8" Padding="20" Margin="0,0,10,0">
+            <Border Grid.Column="0" Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppAccentBrush}" BorderThickness="2" CornerRadius="8" Padding="20" Margin="0,0,10,0">
                 <StackPanel>
-                    <TextBlock Text="PLAYERS" FontSize="24" Foreground="#FFFF00" Margin="0,0,0,20"/>
+                    <TextBlock Text="PLAYERS" FontSize="24" Foreground="{DynamicResource AppAccentBrush}" Margin="0,0,0,20"/>
                     <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
                         <ItemsControl ItemsSource="{Binding Players}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:PlayerViewModel" x:CompileBindings="False">
-                                    <Border BorderBrush="#FFFF00" BorderThickness="0,0,0,1" Padding="10">
+                                    <Border BorderBrush="{DynamicResource AppAccentBrush}" BorderThickness="0,0,0,1" Padding="10">
                                         <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto">
                                             <!-- Player Info -->
                                             <StackPanel Grid.Column="0" Grid.Row="0" Spacing="5" VerticalAlignment="Center">
                                                 <WrapPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding Name}" Foreground="White" FontSize="18" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                                    <TextBlock Text="[YOU]" Foreground="Cyan" IsVisible="{Binding IsYou}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                                    <TextBlock Text="[ADMIN]" Foreground="Yellow" IsVisible="{Binding IsAdmin}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    <TextBlock Text="{Binding Name}" FontSize="18" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    <TextBlock Text="[YOU]" Foreground="{DynamicResource AppInfoBrush}" IsVisible="{Binding IsYou}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                    <TextBlock Text="[ADMIN]" Foreground="{DynamicResource AppAccentBrush}" IsVisible="{Binding IsAdmin}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                                 </WrapPanel>
                                                 <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding !$parent[UserControl].DataContext.IsAdmin}">
-                                                    <TextBlock Text="Role:" Foreground="Gray"/>
-                                                    <TextBlock Text="{Binding Role}" Foreground="White"/>
+                                                    <TextBlock Text="Role:" Foreground="{DynamicResource AppTextMutedBrush}"/>
+                                                    <TextBlock Text="{Binding Role}" />
                                                 </StackPanel>
                                             </StackPanel>
 
@@ -63,13 +63,13 @@
                                                         Command="{Binding $parent[UserControl].DataContext.KickPlayerCommand}"
                                                         CommandParameter="{Binding}"
                                                         IsVisible="{Binding $parent[UserControl].DataContext.IsAdmin}"
-                                                        Foreground="Red"/>
+                                                        Foreground="{DynamicResource AppDangerBrush}"/>
                                             </StackPanel>
 
                                             <!-- Error Message -->
                                             <TextBlock Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="1"
                                                        Text="This character is already assigned."
-                                                       Foreground="Red" FontSize="12"
+                                                       Foreground="{DynamicResource AppDangerBrush}" FontSize="12"
                                                        IsVisible="{Binding HasRoleConflict}"
                                                        Margin="0,5,0,0"/>
                                         </Grid>
@@ -82,29 +82,29 @@
             </Border>
 
             <!-- Column 1: Rules Panel -->
-            <Border Grid.Column="1" Background="#1A1A1A" BorderBrush="#2121FF" BorderThickness="2" CornerRadius="8" Padding="20" Margin="10,0,0,0">
+            <Border Grid.Column="1" Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderStrongBrush}" BorderThickness="2" CornerRadius="8" Padding="20" Margin="10,0,0,0">
                 <StackPanel Spacing="15">
-                    <TextBlock Text="GAME RULES" FontSize="24" Foreground="#FFFF00" Margin="0,0,0,10"/>
-                    <TextBlock TextWrapping="Wrap" Foreground="White">
+                    <TextBlock Text="GAME RULES" FontSize="24" Foreground="{DynamicResource AppAccentBrush}" Margin="0,0,0,10"/>
+                    <TextBlock TextWrapping="Wrap">
                         <Run Text="Pac-Man:" FontWeight="Bold"/> Collect all dots across 3 levels to win. A bonus of 5000 points is awarded for completing the game.
                     </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Foreground="White">
+                    <TextBlock TextWrapping="Wrap">
                         <Run Text="Ghosts:" FontWeight="Bold"/> Eliminate Pac-Man before he clears the levels. Pac-Man has 3 lives.
                     </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Foreground="White">
+                    <TextBlock TextWrapping="Wrap">
                         <Run Text="Victory:" FontWeight="Bold"/> The game ends when Pac-Man completes Level 3 or when the Ghosts deplete all of Pac-Man's lives.
                     </TextBlock>
-                    <TextBlock TextWrapping="Wrap" Foreground="White">
+                    <TextBlock TextWrapping="Wrap">
                         <Run Text="Respawn:" FontWeight="Bold"/> Eaten ghosts will respawn in the ghost house after 3 seconds.
                     </TextBlock>
-                    <TextBlock Text="{Binding SpectatorCount, StringFormat='Spectators: {0}/5'}" Foreground="Gray" Margin="0,20,0,0"/>
+                    <TextBlock Text="{Binding SpectatorCount, StringFormat='Spectators: {0}/5'}" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,20,0,0"/>
                 </StackPanel>
             </Border>
 
         </Grid>
 
         <!-- Row 2: Bottom Controls -->
-        <Border Grid.Row="2" Background="#1A1A1A" BorderBrush="#FFFF00" BorderThickness="0,2,0,0" Padding="20">
+        <Border Grid.Row="2" Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppAccentBrush}" BorderThickness="0,2,0,0" Padding="20">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20">
                 <Button Content="START GAME"
                         Command="{Binding StartGameCommand}"
@@ -116,7 +116,7 @@
                         Command="{Binding LeaveRoomCommand}"
                         Classes="arcade"
                         MinWidth="200"/>
-                <TextBlock Text="{Binding StatusText}" Foreground="Yellow" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource AppAccentBrush}" VerticalAlignment="Center"/>
             </StackPanel>
         </Border>
 

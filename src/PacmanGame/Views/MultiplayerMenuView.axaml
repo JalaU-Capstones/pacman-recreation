@@ -6,7 +6,7 @@
              mc:Ignorable="d" d:DesignWidth="896" d:DesignHeight="1024"
              x:Class="PacmanGame.Views.MultiplayerMenuView"
              x:DataType="vm:MultiplayerMenuViewModel"
-             Background="Black">
+             Background="{DynamicResource AppBackgroundBrush}">
 
     <UserControl.Styles>
         <StyleInclude Source="/Styles/ButtonStyles.axaml" />
@@ -22,12 +22,12 @@
             <TextBlock Text="MULTIPLAYER"
                        FontSize="60"
                        FontWeight="Bold"
-                       Foreground="#FFFF00"
+                       Foreground="{DynamicResource AppAccentBrush}"
                        HorizontalAlignment="Center"
-                       FontFamily="Consolas, Courier New"
+                       FontFamily="{StaticResource ArcadeFont}"
                        Margin="0,0,0,50">
                 <TextBlock.Effect>
-                    <DropShadowEffect Color="#2121FF"
+                    <DropShadowEffect Color="{DynamicResource AppColorBorderStrong}"
                                       BlurRadius="15"
                                       OffsetX="0"
                                       OffsetY="0"/>

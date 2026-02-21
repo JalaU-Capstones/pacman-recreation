@@ -24,30 +24,28 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="*,Auto,*" Background="Black">
+  <Grid RowDefinitions="*,Auto,*" Background="{DynamicResource AppBackgroundBrush}">
     <StackPanel Grid.Row="1" HorizontalAlignment="Center" Spacing="20" Width="400">
       <TextBlock Text="CREATE PROFILE"
                  Classes="h1"
                  HorizontalAlignment="Center"
-                 Foreground="#FFFF00"
+                 Foreground="{DynamicResource AppAccentBrush}"
                  FontFamily="{StaticResource ArcadeFont}"
                  FontSize="36"
                  Margin="0,0,0,20"/>
 
       <TextBlock Text="ENTER NAME:"
-                 Foreground="White"
-                 FontFamily="Consolas"
+                 FontFamily="{StaticResource ArcadeFont}"
                  FontSize="18"/>
 
       <TextBox Text="{Binding Name}"
                Watermark="Player Name (3-15 chars)"
                MaxLength="15"
-               FontFamily="Consolas"
+               FontFamily="{StaticResource ArcadeFont}"
                FontSize="20"/>
 
       <TextBlock Text="CHOOSE COLOR:"
-                 Foreground="White"
-                 FontFamily="Consolas"
+                 FontFamily="{StaticResource ArcadeFont}"
                  FontSize="18"
                  Margin="0,10,0,0"/>
 
@@ -71,7 +69,7 @@
               </Button.Styles>
               <Panel>
                  <!-- Selection Indicator -->
-                 <Border BorderBrush="White" BorderThickness="3" CornerRadius="20"
+                 <Border BorderBrush="{DynamicResource AppTextPrimaryBrush}" BorderThickness="3" CornerRadius="20"
                          IsVisible="{Binding $parent[UserControl].((vm:ProfileCreationViewModel)DataContext).SelectedColor, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={Binding}}" />
               </Panel>
             </Button>
@@ -80,8 +78,8 @@
       </ItemsControl>
 
       <TextBlock Text="{Binding ErrorMessage}"
-                 Foreground="Red"
-                 FontFamily="Consolas"
+                 Foreground="{DynamicResource AppDangerBrush}"
+                 FontFamily="{StaticResource ArcadeFont}"
                  FontSize="14"
                  TextWrapping="Wrap"
                  HorizontalAlignment="Center"/>

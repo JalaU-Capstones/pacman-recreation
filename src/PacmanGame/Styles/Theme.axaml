@@ -1,0 +1,82 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Styles.Resources>
+    <ResourceDictionary>
+      <FontFamily x:Key="ArcadeFont">Consolas, Courier New, monospace</FontFamily>
+
+      <!-- Shared palette -->
+      <Color x:Key="AppColorBackground">#000000</Color>
+      <Color x:Key="AppColorSurface">#1A1A1A</Color>
+      <Color x:Key="AppColorSurface2">#0E0E0E</Color>
+      <Color x:Key="AppColorBorder">#333333</Color>
+      <Color x:Key="AppColorBorderStrong">#2121FF</Color>
+      <Color x:Key="AppColorAccent">#FFFF00</Color>
+      <Color x:Key="AppColorTextPrimary">#FFFFFF</Color>
+      <Color x:Key="AppColorTextMuted">#AAAAAA</Color>
+      <Color x:Key="AppColorTextDim">#888888</Color>
+      <Color x:Key="AppColorTextSubtle">#666666</Color>
+      <Color x:Key="AppColorDanger">#FF0000</Color>
+      <Color x:Key="AppColorSuccess">#00FF00</Color>
+      <Color x:Key="AppColorInfo">#00FFFF</Color>
+      <Color x:Key="AppColorOverlay">#CC000000</Color>
+      <Color x:Key="AppColorGridLine">#2D2D2D</Color>
+      <Color x:Key="AppColorGridLineMajor">#404040</Color>
+
+      <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource AppColorBackground}" />
+      <SolidColorBrush x:Key="AppSurfaceBrush" Color="{StaticResource AppColorSurface}" />
+      <SolidColorBrush x:Key="AppSurface2Brush" Color="{StaticResource AppColorSurface2}" />
+      <SolidColorBrush x:Key="AppBorderBrush" Color="{StaticResource AppColorBorder}" />
+      <SolidColorBrush x:Key="AppBorderStrongBrush" Color="{StaticResource AppColorBorderStrong}" />
+      <SolidColorBrush x:Key="AppAccentBrush" Color="{StaticResource AppColorAccent}" />
+      <SolidColorBrush x:Key="AppTextPrimaryBrush" Color="{StaticResource AppColorTextPrimary}" />
+      <SolidColorBrush x:Key="AppTextMutedBrush" Color="{StaticResource AppColorTextMuted}" />
+      <SolidColorBrush x:Key="AppTextDimBrush" Color="{StaticResource AppColorTextDim}" />
+      <SolidColorBrush x:Key="AppTextSubtleBrush" Color="{StaticResource AppColorTextSubtle}" />
+      <SolidColorBrush x:Key="AppDangerBrush" Color="{StaticResource AppColorDanger}" />
+      <SolidColorBrush x:Key="AppSuccessBrush" Color="{StaticResource AppColorSuccess}" />
+      <SolidColorBrush x:Key="AppInfoBrush" Color="{StaticResource AppColorInfo}" />
+      <SolidColorBrush x:Key="AppOverlayBrush" Color="{StaticResource AppColorOverlay}" />
+      <SolidColorBrush x:Key="AppGridLineBrush" Color="{StaticResource AppColorGridLine}" />
+      <SolidColorBrush x:Key="AppGridLineMajorBrush" Color="{StaticResource AppColorGridLineMajor}" />
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <!-- App defaults -->
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{DynamicResource AppBackgroundBrush}" />
+  </Style>
+
+  <Style Selector="UserControl">
+    <Setter Property="Background" Value="{DynamicResource AppBackgroundBrush}" />
+  </Style>
+
+  <Style Selector="TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+  </Style>
+
+  <!-- Input styling for dark surfaces -->
+  <Style Selector="TextBox">
+    <Setter Property="Background" Value="{DynamicResource AppSurface2Brush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CaretBrush" Value="{DynamicResource AppAccentBrush}" />
+  </Style>
+
+  <Style Selector="ComboBox">
+    <Setter Property="Background" Value="{DynamicResource AppSurface2Brush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <Style Selector="NumericUpDown">
+    <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+  </Style>
+
+  <Style Selector="TabItem">
+    <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+  </Style>
+
+</Styles>

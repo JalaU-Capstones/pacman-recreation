@@ -6,7 +6,7 @@
              mc:Ignorable="d" d:DesignWidth="896" d:DesignHeight="1024"
              x:Class="PacmanGame.Views.MainMenuView"
              x:DataType="vm:MainMenuViewModel"
-             Background="Black">
+             Background="{DynamicResource AppBackgroundBrush}">
 
     <UserControl.Styles>
         <StyleInclude Source="/Styles/ButtonStyles.axaml" />
@@ -24,12 +24,12 @@
             <TextBlock Text="PAC-MAN"
                       FontSize="80"
                       FontWeight="ExtraBold"
-                      Foreground="#FFFF00"
+                      Foreground="{DynamicResource AppAccentBrush}"
                       HorizontalAlignment="Center"
-                      FontFamily="Consolas, Courier New"
+                      FontFamily="{StaticResource ArcadeFont}"
                       Margin="0,0,0,30">
                 <TextBlock.Effect>
-                    <DropShadowEffect Color="#2121FF"
+                    <DropShadowEffect Color="{DynamicResource AppColorBorderStrong}"
                                      BlurRadius="20"
                                      OffsetX="0"
                                      OffsetY="0"/>
@@ -39,18 +39,16 @@
             <!-- Subtitle -->
             <TextBlock Text="EDUCATIONAL RECREATION"
                       FontSize="16"
-                      Foreground="White"
                       HorizontalAlignment="Center"
                       Margin="0,0,0,10"
-                      FontFamily="Consolas, Courier New"/>
+                      FontFamily="{StaticResource ArcadeFont}"/>
 
             <!-- Press Start animation -->
             <TextBlock Text="PRESS START"
                       FontSize="18"
-                      Foreground="White"
                       HorizontalAlignment="Center"
                       Margin="0,0,0,50"
-                      FontFamily="Consolas, Courier New">
+                      FontFamily="{StaticResource ArcadeFont}">
                 <!-- TODO: Add blinking animation -->
             </TextBlock>
 
@@ -118,16 +116,16 @@
             <!-- Footer -->
             <TextBlock Text="© 2026 - Programming 3 Project"
                       FontSize="12"
-                      Foreground="#666666"
+                      Foreground="{DynamicResource AppTextSubtleBrush}"
                       HorizontalAlignment="Center"
                       Margin="0,40,0,0"
-                      FontFamily="Consolas, Courier New"/>
+                      FontFamily="{StaticResource ArcadeFont}"/>
 
             <TextBlock Text=".NET 9.0 + Avalonia UI"
                       FontSize="10"
-                      Foreground="#444444"
+                      Foreground="{DynamicResource AppTextSubtleBrush}"
                       HorizontalAlignment="Center"
-                      FontFamily="Consolas, Courier New"/>
+                      FontFamily="{StaticResource ArcadeFont}"/>
         </StackPanel>
     </Grid>
 

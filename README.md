@@ -5,6 +5,8 @@
        src='https://flathub.org/api/badge?locale=en'/>
 </a>
 
+<img alt='WinGet' src='https://img.shields.io/badge/WinGet-CodeWithBotina.PacmanRecreation-0078D4?style=for-the-badge' />
+
 A faithful recreation of the classic Pac-Man arcade game, built as an educational project.
 
 ## Installation

@@ -6,11 +6,7 @@
              mc:Ignorable="d" d:DesignWidth="896" d:DesignHeight="1024"
              x:Class="PacmanGame.Views.GlobalLeaderboardView"
              x:DataType="vm:GlobalLeaderboardViewModel"
-             Background="Black">
-
-    <Design.DataContext>
-        <vm:GlobalLeaderboardViewModel />
-    </Design.DataContext>
+             Background="{DynamicResource AppBackgroundBrush}">
 
     <UserControl.Styles>
         <StyleInclude Source="/Styles/ButtonStyles.axaml" />
@@ -24,11 +20,11 @@
             <TextBlock Text="GLOBAL TOP 10"
                       FontSize="60"
                       FontWeight="Bold"
-                      Foreground="#FFFF00"
+                      Foreground="{DynamicResource AppAccentBrush}"
                       HorizontalAlignment="Center"
-                      FontFamily="Consolas, Courier New">
+                      FontFamily="{StaticResource ArcadeFont}">
                 <TextBlock.Effect>
-                    <DropShadowEffect Color="#2121FF"
+                    <DropShadowEffect Color="{DynamicResource AppColorBorderStrong}"
                                      BlurRadius="15"
                                      OffsetX="0"
                                      OffsetY="0"/>
@@ -38,8 +34,8 @@
 
         <!-- Scores list -->
         <Border Grid.Row="1"
-                Background="#1A1A1A"
-                BorderBrush="#FFFF00"
+                Background="{DynamicResource AppSurfaceBrush}"
+                BorderBrush="{DynamicResource AppAccentBrush}"
                 BorderThickness="3"
                 CornerRadius="10"
                 Margin="100,0"
@@ -50,8 +46,8 @@
                 <ItemsControl ItemsSource="{Binding Top10Entries}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Background="#0A0A0A"
-                                   BorderBrush="#2121FF"
+                            <Border Background="{DynamicResource AppSurface2Brush}"
+                                   BorderBrush="{DynamicResource AppBorderStrongBrush}"
                                    BorderThickness="2"
                                    CornerRadius="5"
                                    Padding="20"
@@ -64,27 +60,26 @@
                                               Text="{Binding Rank, StringFormat='#{0}'}"
                                               FontSize="24"
                                               FontWeight="Bold"
-                                              Foreground="#FFFF00"
+                                              Foreground="{DynamicResource AppAccentBrush}"
                                               VerticalAlignment="Center"
-                                              FontFamily="Consolas, Courier New"/>
+                                              FontFamily="{StaticResource ArcadeFont}"/>
 
                                     <!-- Player Name -->
                                     <TextBlock Grid.Column="1"
                                               Text="{Binding ProfileName}"
                                               FontSize="24"
                                               FontWeight="Bold"
-                                              Foreground="White"
                                               VerticalAlignment="Center"
-                                              FontFamily="Consolas, Courier New"/>
+                                              FontFamily="{StaticResource ArcadeFont}"/>
 
                                     <!-- Score -->
                                     <TextBlock Grid.Column="2"
                                               Text="{Binding HighScore, StringFormat='{}{0:N0} pts'}"
                                               FontSize="22"
-                                              Foreground="#00FF00"
+                                              Foreground="{DynamicResource AppSuccessBrush}"
                                               VerticalAlignment="Center"
                                               HorizontalAlignment="Right"
-                                              FontFamily="Consolas, Courier New"/>
+                                              FontFamily="{StaticResource ArcadeFont}"/>
 
                                 </Grid>
                             </Border>
