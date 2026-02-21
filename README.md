@@ -1,6 +1,6 @@
 # Pacman Recreation
 
-<a href='https://flathub.org/apps/io.github.jalaucapstones.pacman-recreation'>
+<a href='https://flathub.org/apps/io.github.jalau_capstones.pacman-recreation'>
   <img width='240' alt='Download on Flathub' 
        src='https://flathub.org/api/badge?locale=en'/>
 </a>
@@ -14,8 +14,14 @@ A faithful recreation of the classic Pac-Man arcade game, built as an educationa
 The easiest way to install Pacman Recreation on Linux is via Flathub:
 
 ```bash
-flatpak install flathub io.github.jalaucapstones.pacman-recreation
-flatpak run io.github.jalaucapstones.pacman-recreation
+flatpak install flathub io.github.jalau_capstones.pacman-recreation
+flatpak run io.github.jalau_capstones.pacman-recreation
+```
+
+### WinGet (Windows)
+
+```powershell
+winget install CodeWithBotina.PacmanRecreation
 ```
 
 ### From Source
@@ -35,17 +41,16 @@ dotnet run --project src/PacmanGame/PacmanGame.csproj
 
 - Classic single-player mode with 3 progressively difficult levels
 - Online multiplayer for up to 5 players
-- **Global Top 10 Leaderboard** - Compete with players worldwide
-  - Unlock submission by completing all 3 levels
-  - Client-side cache + offline pending submission queue
 - Profile system with local and global high score tracking
-- **Creative Mode** - Design and share custom levels
-  - Up to 10 levels per project
-  - Configure lives, win score, and per-level difficulty settings
-  - Export/import shareable `.pacproj` packages
 - Original ghost AI behaviors (Blinky, Pinky, Inky, Clyde)
 - Authentic arcade sounds and graphics
 - Cross-platform support (Linux x64/ARM64, Windows)
+
+## Upcoming in v1.0.1
+
+- **Global Top 10 Leaderboard** (server-side persistence + client cache + offline queue)
+- **DevConsole** (developer console overlay for debugging and quick actions)
+- **Creative Mode** project editor (1-10 levels per project, configurable scoring and difficulty, export/import `.pacproj`)
 
 ## License
 

@@ -4,10 +4,12 @@
 
 The Global Top 10 Leaderboard allows players who have completed all 3 levels to compete for a spot in the worldwide top 10 highest scores.
 
+**Release target:** v1.0.1
+
 ## Architecture
 
 ### Storage
-- **Server:** SQLite database at `pacmanserver.codewithbotina.com`
+- **Server:** SQLite database on the relay server (example: `pacmanserver.yourdomain.com`)
 - **Client:** JSON cache file in `$XDG_CACHE_HOME/pacman-recreation/`
 
 ### Network Protocol

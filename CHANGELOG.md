@@ -8,24 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-02-17
 
 ### Added
-- Global Top 10 Leaderboard system with server-side persistence
-- Client-side leaderboard cache to minimize server requests
-- Profile progression system (must complete all 3 levels to submit scores)
-- Multiplayer score rewards and penalties system
-  - Pac-Man wins: +5000 bonus points
-  - Pac-Man loses: Ghosts get +1200 points each
-  - Score penalties for ghosts when Pac-Man wins
-- Creative Mode level editor (unlock after completing all 3 levels)
-  - 28x31 grid editor with tools (walls, ghost house, power pellets)
-  - Tools/Config tabs with zoom controls and cursor preview
-  - Per-project and per-level configuration (lives, win score, speed multipliers, points)
-  - Export/import .pacproj (editable or play-only) with preview
-  - Multi-level projects (1-10 levels) with Prev/Next navigation
-  - Play test launches GameView with custom maps/settings
-- New Profile database fields: HasCompletedAllLevels, GlobalProfileId
-- Global Leaderboard View with submission capability
-- Navigation from Local Scoreboard to Global Top 10
-- ARM64 architecture support for Flathub
 - Single-player mode with 3 levels
 - Classic Pac-Man gameplay with original maze design
 - Ghost AI with authentic behaviors (Blinky, Pinky, Inky, Clyde)
@@ -38,6 +20,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Audio system with background music and sound effects
 - Cross-platform support (Windows, Linux)
 - Flatpak distribution for Linux
+
+## [1.0.1] - Unreleased
+
+### Added
+- Global Top 10 Leaderboard system (server-side persistence + client cache + offline pending submission)
+- DevConsole (developer console overlay for debugging and quick actions)
+- Creative Mode level editor (projects with 1-10 levels, export/import `.pacproj`, play test)
+
+### Changed
+- Creative Mode configuration now scales dynamically with project level count:
+  - Victory reward (win score) limits:
+    - 1 level: 100 to 1,000
+    - 2 levels: 1,000 to 5,000
+    - 3 levels: 5,000 to 12,000
+    - 4+ levels: max increases by +5,000 per extra level (e.g. 4 levels: max 17,000)
+  - Frightened timer max starts at 20s (level 1) and decreases by 2s per level
+  - Fruit points max starts at 5 (level 1) and increases by +5 per level
+  - Ghost eat points max starts at 30 (level 1) and increases by +15 per level
+  - Speed multipliers are constrained to safe ranges to reduce collision clipping risk
+- Creative Mode exports now include `metadata.json` alongside `project.json` for richer project metadata.
 - Winget distribution for Windows
 - DDNS support for relay server deployment
 - Comprehensive documentation (README, DEPLOYMENT, MULTIPLAYER_DESIGN)

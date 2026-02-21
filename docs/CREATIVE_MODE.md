@@ -2,6 +2,8 @@
 
 Creative Mode is an in-game level editor for Pac-Man Recreation. It lets you design custom levels, tune gameplay settings, and share projects as `.pacproj` files.
 
+**Release target:** v1.0.1
+
 ## Unlock Requirement
 
 - Creative Mode is intended for players who have completed all 3 normal levels.
@@ -9,8 +11,8 @@ Creative Mode is an in-game level editor for Pac-Man Recreation. It lets you des
 
 ## Opening Creative Mode
 
-1. Open the in-game console with `Ctrl+C`.
-2. Run: `/active creative`
+1. From the Main Menu, select `Creative Mode`.
+2. If locked, complete all 3 single-player levels to unlock it.
 
 ## Editor Layout
 
@@ -38,6 +40,20 @@ Creative Mode is an in-game level editor for Pac-Man Recreation. It lets you des
 ## Configuration
 
 The Config tab supports:
+- 1 to 10 levels per project
+- Victory reward (win score) range scaling by project level count
+- Per-level scaling for:
+  - Frightened duration max: 20s (level 1), minus 2s per additional level
+  - Fruit points max: 5 (level 1), plus 5 per additional level
+  - Ghost eat points max: 30 (level 1), plus 15 per additional level
+- Speed multipliers for Pac-Man and Ghosts with safe bounds to reduce collision clipping risk
+
+## Export Format
+
+An exported `.pacproj` is a ZIP archive containing:
+- `project.json`: runtime configuration consumed by the game
+- `metadata.json`: export metadata (captures selected values and dynamic limits)
+- `levelN.txt`: level layouts (one per configured level)
 
 - Global settings: lives, win score, level count (1-10)
 - Per-level settings:
@@ -87,4 +103,3 @@ Map legend:
 - `G` ghost spawn/interior markers (editor)
 - `-` ghost house gate (ghost door)
 - space: empty
-

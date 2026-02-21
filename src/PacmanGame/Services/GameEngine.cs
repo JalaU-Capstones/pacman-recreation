@@ -263,10 +263,10 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         if (_pacman != null)
         {
             _pacman.PowerPelletDuration = Math.Max(1, levelConfig.FrightenedDuration);
-            _pacman.Speed = 3.0f * (float)Math.Clamp(levelConfig.PacmanSpeedMultiplier, 0.1, 10.0);
+            _pacman.Speed = 3.0f * (float)Math.Clamp(levelConfig.PacmanSpeedMultiplier, LevelConfig.MinSpeedMultiplier, LevelConfig.MaxSpeedMultiplier);
         }
 
-        var ghostMultiplier = (float)Math.Clamp(levelConfig.GhostSpeedMultiplier, 0.1, 10.0);
+        var ghostMultiplier = (float)Math.Clamp(levelConfig.GhostSpeedMultiplier, LevelConfig.MinSpeedMultiplier, LevelConfig.MaxSpeedMultiplier);
         foreach (var ghost in _ghosts)
         {
             ghost.SpeedMultiplier *= ghostMultiplier;

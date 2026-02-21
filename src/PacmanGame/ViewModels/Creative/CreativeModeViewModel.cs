@@ -86,8 +86,9 @@ public class CreativeModeViewModel : ViewModelBase
         get => ProjectConfig.GlobalConfig.LevelCount;
         set
         {
-            if (ProjectConfig.GlobalConfig.LevelCount == value) return;
-            ProjectConfig.GlobalConfig.LevelCount = value;
+            var clamped = Math.Clamp(value, 1, 10);
+            if (ProjectConfig.GlobalConfig.LevelCount == clamped) return;
+            ProjectConfig.GlobalConfig.LevelCount = clamped;
             EnsureLevelConfigs();
             // Keep win score within the allowed range for the selected level count.
             var clampedWin = Math.Clamp(ProjectConfig.GlobalConfig.WinScore, WinScoreMin, WinScoreMax);
@@ -148,8 +149,7 @@ public class CreativeModeViewModel : ViewModelBase
     {
         1 => 100,
         2 => 1000,
-        3 => 5000,
-        _ => 5000 + ((LevelCount - 3) * 5000)
+        _ => 5000
     };
 
     public int WinScoreMax => LevelCount switch
@@ -445,6 +445,14 @@ public class CreativeModeViewModel : ViewModelBase
             {
                 await writer.WriteAsync(JsonSerializer.Serialize(project, _jsonOptions));
             }
+
+            var metadataEntry = archive.CreateEntry("metadata.json");
+            await using (var metadataStream = metadataEntry.Open())
+            await using (var writer = new StreamWriter(metadataStream, Encoding.UTF8))
+            {
+                var metadata = BuildProjectMetadata(project);
+                await writer.WriteAsync(JsonSerializer.Serialize(metadata, _jsonOptions));
+            }
         }
 
         memory.Position = 0;
@@ -726,11 +734,19 @@ public class CreativeModeViewModel : ViewModelBase
             var cfg = ProjectConfig.LevelConfigs[i];
             cfg.LevelNumber = i + 1;
             cfg.Filename = $"level{cfg.LevelNumber}.txt";
+
             if (cfg.PacmanSpeedMultiplier <= 0) cfg.PacmanSpeedMultiplier = 1.0;
             if (cfg.GhostSpeedMultiplier <= 0) cfg.GhostSpeedMultiplier = 0.9;
             if (cfg.FrightenedDuration <= 0) cfg.FrightenedDuration = 10;
             if (cfg.FruitPoints <= 0) cfg.FruitPoints = 5 + (i * 5);
             if (cfg.GhostEatPoints <= 0) cfg.GhostEatPoints = 30 + (i * 15);
+
+            // Clamp to the dynamic per-level limits (Max* properties) and safe speed ranges.
+            cfg.PacmanSpeedMultiplier = Math.Clamp(cfg.PacmanSpeedMultiplier, LevelConfig.MinSpeedMultiplier, LevelConfig.MaxSpeedMultiplier);
+            cfg.GhostSpeedMultiplier = Math.Clamp(cfg.GhostSpeedMultiplier, LevelConfig.MinSpeedMultiplier, LevelConfig.MaxSpeedMultiplier);
+            cfg.FrightenedDuration = Math.Clamp(cfg.FrightenedDuration, 1, cfg.MaxFrightenedDuration);
+            cfg.FruitPoints = Math.Clamp(cfg.FruitPoints, 1, cfg.MaxFruitPoints);
+            cfg.GhostEatPoints = Math.Clamp(cfg.GhostEatPoints, 10, cfg.MaxGhostEatPoints);
         }
 
         if (CurrentLevelIndex > desired - 1)
@@ -1020,6 +1036,48 @@ public class CreativeModeViewModel : ViewModelBase
         EnsureLevelConfigs();
 
         return ProjectConfig;
+    }
+
+    private ProjectMetadata BuildProjectMetadata(ProjectConfig project)
+    {
+        var metadata = new ProjectMetadata
+        {
+            ProjectName = project.ProjectName,
+            Author = project.Author,
+            CreatedDate = project.CreatedDate,
+            IsEditable = project.IsEditable,
+            Global = new ProjectMetadataGlobal
+            {
+                Lives = project.GlobalConfig.Lives,
+                LevelCount = project.GlobalConfig.LevelCount,
+                WinScore = project.GlobalConfig.WinScore,
+                WinScoreMin = WinScoreMin,
+                WinScoreMax = WinScoreMax
+            }
+        };
+
+        foreach (var level in project.LevelConfigs.OrderBy(l => l.LevelNumber))
+        {
+            metadata.Levels.Add(new ProjectMetadataLevel
+            {
+                LevelNumber = level.LevelNumber,
+                Filename = level.Filename,
+                PacmanSpeedMultiplier = level.PacmanSpeedMultiplier,
+                GhostSpeedMultiplier = level.GhostSpeedMultiplier,
+                SpeedMinMultiplier = LevelConfig.MinSpeedMultiplier,
+                SpeedMaxMultiplier = LevelConfig.MaxSpeedMultiplier,
+                FrightenedDurationSeconds = level.FrightenedDuration,
+                FrightenedMaxSeconds = level.MaxFrightenedDuration,
+                FruitPoints = level.FruitPoints,
+                FruitMinPoints = 1,
+                FruitMaxPoints = level.MaxFruitPoints,
+                GhostEatPoints = level.GhostEatPoints,
+                GhostEatMinPoints = 10,
+                GhostEatMaxPoints = level.MaxGhostEatPoints
+            });
+        }
+
+        return metadata;
     }
 
     private void NavigateToLevel(int index)

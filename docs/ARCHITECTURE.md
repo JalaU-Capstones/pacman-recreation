@@ -23,6 +23,8 @@ This Pac-Man recreation follows the **MVVM (Model-View-ViewModel)** architectura
 - Maintainability
 - Reactive UI updates
 
+**Note:** Global Top 10, DevConsole, and Creative Mode are tracked as core deliverables for v1.0.1.
+
 ### Architecture Diagram
 
 ```
