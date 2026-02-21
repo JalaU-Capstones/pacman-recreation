@@ -71,7 +71,8 @@
           <Grid x:Name="CanvasLayer"
                 Width="{Binding GridPixelWidth}"
                 Height="{Binding GridPixelHeight}"
-                RenderTransformOrigin="0,0">
+                RenderTransformOrigin="0,0"
+                PointerPressed="OnCanvasPointerPressed">
             <Grid.RenderTransform>
               <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}" />
             </Grid.RenderTransform>
@@ -86,12 +87,20 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Border Width="22"
-                          Height="22"
-                          Margin="1"
-                          Background="{Binding TileType, Converter={StaticResource CellBrush}}"
-                          BorderBrush="{Binding IsCursor, Converter={StaticResource CursorBrush}}"
-                          BorderThickness="1" />
+                  <Grid Width="22" Height="22" Margin="1">
+                    <Image Source="{Binding Sprite}"
+                           Width="20"
+                           Height="20"
+                           Stretch="Fill"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center" />
+                    <Border BorderThickness="2"
+                            BorderBrush="{DynamicResource AppAccentBrush}"
+                            IsVisible="{Binding IsSelected}" />
+                    <Border BorderThickness="1"
+                            BorderBrush="{Binding IsCursor, Converter={StaticResource CursorBrush}}"
+                            IsVisible="{Binding IsCursor}" />
+                  </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -184,13 +193,26 @@
     <Border Grid.Column="2" Margin="12" CornerRadius="8" BorderBrush="{DynamicResource AppAccentBrush}" BorderThickness="2" Background="{DynamicResource AppSurfaceBrush}">
       <StackPanel Margin="12" Spacing="12">
         <TextBlock Text="Toolbox" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AppAccentBrush}"/>
+
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Button Content="◄" Command="{Binding PreviousLevelCommand}" IsEnabled="{Binding CanGoPreviousLevel}" Width="36" Height="32"/>
+          <TextBlock Text="Level" VerticalAlignment="Center" Foreground="{DynamicResource AppTextMutedBrush}"/>
+          <NumericUpDown Value="{Binding SelectedLevelNumber}"
+                         Minimum="1"
+                         Maximum="{Binding LevelCount}"
+                         Width="80" />
+          <TextBlock Text="{Binding LevelCount, StringFormat='/ {0}'}" VerticalAlignment="Center" Foreground="{DynamicResource AppTextMutedBrush}"/>
+          <Button Content="►" Command="{Binding NextLevelCommand}" IsEnabled="{Binding CanGoNextLevel}" Width="36" Height="32"/>
+        </StackPanel>
+
         <TabControl>
           <TabItem Header="Tools">
-            <ListBox x:Name="ToolList"
-                     Classes="tool-list"
-                     ItemsSource="{Binding ToolboxViewModel.Tools}"
-                     SelectedItem="{Binding ToolboxViewModel.SelectedToolEntry, Mode=TwoWay}"
-                     BorderBrush="Transparent">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+              <ListBox x:Name="ToolList"
+                       Classes="tool-list"
+                       ItemsSource="{Binding ToolboxViewModel.Tools}"
+                       SelectedItem="{Binding ToolboxViewModel.SelectedToolEntry, Mode=TwoWay}"
+                       BorderBrush="Transparent">
               <ListBox.Styles>
                 <Style Selector="ListBoxItem">
                   <Setter Property="Background" Value="Transparent"/>
@@ -268,7 +290,8 @@
                   </Grid>
                 </DataTemplate>
               </ListBox.ItemTemplate>
-            </ListBox>
+              </ListBox>
+            </ScrollViewer>
           </TabItem>
           <TabItem Header="Config">
             <ScrollViewer>

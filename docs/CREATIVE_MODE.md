@@ -30,12 +30,18 @@ Creative Mode is an in-game level editor for Pac-Man Recreation. It lets you des
 ## Keyboard Shortcuts
 
 - Arrow keys: move cursor
-- `Enter`: place selected tool
-- `Delete`: clear cell (clearing inside the ghost house removes the whole house)
+- `Enter`: select/move or place (WYSIWYG editor)
+- `Delete` / `Backspace`: delete selected tile (deleting inside the ghost house removes the whole house)
 - `Tab`: cycle tools
-- `R`: rotate selected wall piece
+- `R`: rotate selected object (and tool preview)
 - `Ctrl+P`: play test
 - `Ctrl+E`: export
+
+## Mouse Controls
+
+- Click empty cell: place selected tool
+- Click placed tile: select it for relocation
+- Click another cell: move the selected tile (previous cell is cleared)
 
 ## Configuration
 

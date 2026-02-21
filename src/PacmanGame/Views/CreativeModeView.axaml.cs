@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using PacmanGame.ViewModels.Creative;
 using System.Reactive;
+using System;
 
 namespace PacmanGame.Views;
 
@@ -39,9 +40,12 @@ public partial class CreativeModeView : UserControl
                 vm.CanvasViewModel.MoveCursor(1, 0);
                 break;
             case Key.Enter:
-                vm.CanvasViewModel.PlaceTool();
+                vm.CanvasViewModel.HandleCellActionAtCursor();
                 break;
             case Key.Delete:
+                vm.CanvasViewModel.ClearCell();
+                break;
+            case Key.Back:
                 vm.CanvasViewModel.ClearCell();
                 break;
             case Key.Tab:
@@ -64,6 +68,24 @@ public partial class CreativeModeView : UserControl
                 }
                 break;
         }
+    }
+
+    private void OnCanvasPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is not CreativeModeViewModel vm) return;
+        if (sender is not Control canvasLayer) return;
+
+        var position = e.GetPosition(canvasLayer);
+        var zoom = Math.Max(0.01, vm.ZoomLevel);
+        var unscaledX = position.X / zoom;
+        var unscaledY = position.Y / zoom;
+
+        var cellSize = LevelCanvasViewModel.TotalCellSize;
+        var gridX = (int)Math.Floor(unscaledX / cellSize);
+        var gridY = (int)Math.Floor(unscaledY / cellSize);
+
+        vm.CanvasViewModel.HandleCellClick(gridX, gridY);
+        e.Handled = true;
     }
 
     private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)

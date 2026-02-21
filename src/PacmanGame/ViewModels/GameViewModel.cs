@@ -60,8 +60,12 @@ public class GameViewModel : ViewModelBase
     private IReadOnlyList<LevelConfig>? _customProjectLevelSettings;
     public IReadOnlyList<LevelConfig>? CustomProjectLevelSettings { get => _customProjectLevelSettings; set => this.RaiseAndSetIfChanged(ref _customProjectLevelSettings, value); }
 
+    private int _customProjectWinScore;
+    public int CustomProjectWinScore { get => _customProjectWinScore; set => this.RaiseAndSetIfChanged(ref _customProjectWinScore, value); }
+
     private int _customProjectLevelIndex;
     private int _initialLives;
+    private bool _customProjectVictoryBonusAwarded;
 
     public IGameEngine Engine => _engine;
 
@@ -186,6 +190,7 @@ public class GameViewModel : ViewModelBase
         Lives = _initialLives;
         Level = 1;
         _customProjectLevelIndex = 0;
+        _customProjectVictoryBonusAwarded = false;
         _extraLifeThreshold = Constants.ExtraLifeScore;
         StartGame();
     }
@@ -293,6 +298,14 @@ public class GameViewModel : ViewModelBase
 
     private void OnVictory()
     {
+        if (CustomProjectMapPaths != null && CustomProjectMapPaths.Count > 0 &&
+            CustomProjectWinScore > 0 && !_customProjectVictoryBonusAwarded)
+        {
+            Score += CustomProjectWinScore;
+            _customProjectVictoryBonusAwarded = true;
+            _logger.LogInformation("Custom project victory bonus awarded: {Bonus}", CustomProjectWinScore);
+        }
+
         IsGameRunning = false;
         _engine.Stop();
         _audioManager.StopMusic();

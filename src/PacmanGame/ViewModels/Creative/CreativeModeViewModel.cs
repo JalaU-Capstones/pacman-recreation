@@ -135,6 +135,7 @@ public class CreativeModeViewModel : ViewModelBase
             if (_currentLevelIndex == value) return;
             _currentLevelIndex = value;
             this.RaisePropertyChanged();
+            this.RaisePropertyChanged(nameof(SelectedLevelNumber));
             this.RaisePropertyChanged(nameof(CanGoPreviousLevel));
             this.RaisePropertyChanged(nameof(CanGoNextLevel));
             this.RaisePropertyChanged(nameof(CurrentLevelInfo));
@@ -144,6 +145,12 @@ public class CreativeModeViewModel : ViewModelBase
     public bool CanGoPreviousLevel => CurrentLevelIndex > 0;
     public bool CanGoNextLevel => CurrentLevelIndex < (LevelCount - 1);
     public string CurrentLevelInfo => $"Editing Level {CurrentLevelIndex + 1} of {LevelCount}";
+
+    public int SelectedLevelNumber
+    {
+        get => CurrentLevelIndex + 1;
+        set => NavigateToLevel(value - 1);
+    }
 
     public int WinScoreMin => LevelCount switch
     {
@@ -405,6 +412,8 @@ public class CreativeModeViewModel : ViewModelBase
         await using var memory = new MemoryStream();
         using (var archive = new ZipArchive(memory, ZipArchiveMode.Create, true))
         {
+            var perLevelLayout = new Dictionary<int, (bool HasGhostHouse, List<GridPoint> GhostSpawns)>();
+
             // Export all levels (1..LevelCount).
             var originalLevelIndex = CurrentLevelIndex;
             try
@@ -423,8 +432,16 @@ public class CreativeModeViewModel : ViewModelBase
                         return;
                     }
 
-                    SaveCurrentLevelToMemory();
                     var levelText = BuildLevelText();
+
+                    perLevelLayout[index + 1] = (
+                        HasGhostHouse: CanvasViewModel.Cells.Any(c => c.IsPartOfGhostHouse),
+                        GhostSpawns: CanvasViewModel.Cells
+                            .Where(c => c.TileType == CreativeTileType.GhostSpawn)
+                            .Select(c => new GridPoint { X = c.X, Y = c.Y })
+                            .ToList()
+                    );
+
                     var levelEntry = archive.CreateEntry($"level{index + 1}.txt");
                     await using (var levelStream = levelEntry.Open())
                     await using (var writer = new StreamWriter(levelStream, Encoding.UTF8))
@@ -450,7 +467,7 @@ public class CreativeModeViewModel : ViewModelBase
             await using (var metadataStream = metadataEntry.Open())
             await using (var writer = new StreamWriter(metadataStream, Encoding.UTF8))
             {
-                var metadata = BuildProjectMetadata(project);
+                var metadata = BuildProjectMetadata(project, perLevelLayout);
                 await writer.WriteAsync(JsonSerializer.Serialize(metadata, _jsonOptions));
             }
         }
@@ -595,6 +612,7 @@ public class CreativeModeViewModel : ViewModelBase
             gameVm.Level = 1;
             gameVm.Score = 0;
             gameVm.Lives = config?.GlobalConfig.Lives ?? Lives;
+            gameVm.CustomProjectWinScore = config?.GlobalConfig.WinScore ?? WinScore;
             if (extractedPaths.Count > 1)
             {
                 gameVm.CustomProjectMapPaths = extractedPaths;
@@ -671,7 +689,6 @@ public class CreativeModeViewModel : ViewModelBase
                     return Task.CompletedTask;
                 }
 
-                SaveCurrentLevelToMemory();
                 var mapPath = Path.Combine(tempDir, $"playtest_{timestamp}_level{index + 1}.txt");
                 File.WriteAllText(mapPath, BuildLevelText(), Encoding.UTF8);
                 mapPaths.Add(mapPath);
@@ -689,6 +706,7 @@ public class CreativeModeViewModel : ViewModelBase
         gameVm.Level = 1;
         gameVm.Score = 0;
         gameVm.Lives = Lives;
+        gameVm.CustomProjectWinScore = WinScore;
         if (mapPaths.Count > 1)
         {
             gameVm.CustomProjectMapPaths = mapPaths;
@@ -812,7 +830,7 @@ public class CreativeModeViewModel : ViewModelBase
             return;
         }
 
-        var spawnCell = CanvasViewModel.Cells.FirstOrDefault(cell => cell.TileType == CreativeTileType.Empty);
+        var spawnCell = CanvasViewModel.Cells.FirstOrDefault(cell => cell.TileType == CreativeTileType.Empty && !cell.IsPartOfGhostHouse);
         if (spawnCell != null)
         {
             spawnCell.TileType = CreativeTileType.PacmanSpawn;
@@ -823,22 +841,20 @@ public class CreativeModeViewModel : ViewModelBase
     {
         var errors = new List<string>();
         var lines = CanvasViewModel.BuildLevelLines();
-        if (!lines.Any(line => line.Contains('P')))
+        if (!CanvasViewModel.Cells.Any(c => c.TileType == CreativeTileType.PacmanSpawn))
         {
             errors.Add("Pac-Man spawn is missing.");
         }
 
-        var ghostHouseCount = CountGhostHouses(lines);
-        if (ghostHouseCount == 0)
+        // Prefer the editor's ghost house marker; the structure may come from a template and
+        // is easier to validate via the flagged region than by ASCII pattern matching.
+        var hasGhostHouse = CanvasViewModel.Cells.Any(c => c.IsPartOfGhostHouse);
+        if (!hasGhostHouse)
         {
             errors.Add("Ghost House is missing. Place exactly one 7x5 Ghost House structure.");
         }
-        else if (ghostHouseCount > 1)
-        {
-            errors.Add("Multiple Ghost Houses detected. Only one 7x5 Ghost House is allowed.");
-        }
 
-        var ghostSpawnCount = lines.Sum(l => l.Count(c => c == 'G' || c == 'g'));
+        var ghostSpawnCount = CanvasViewModel.Cells.Count(c => c.TileType == CreativeTileType.GhostSpawn);
         if (ghostSpawnCount < 4)
         {
             errors.Add($"Ghost spawns are missing (need 4, found {ghostSpawnCount}). Place the Ghost House tool again.");
@@ -1038,7 +1054,7 @@ public class CreativeModeViewModel : ViewModelBase
         return ProjectConfig;
     }
 
-    private ProjectMetadata BuildProjectMetadata(ProjectConfig project)
+    private ProjectMetadata BuildProjectMetadata(ProjectConfig project, IReadOnlyDictionary<int, (bool HasGhostHouse, List<GridPoint> GhostSpawns)> perLevelLayout)
     {
         var metadata = new ProjectMetadata
         {
@@ -1058,6 +1074,10 @@ public class CreativeModeViewModel : ViewModelBase
 
         foreach (var level in project.LevelConfigs.OrderBy(l => l.LevelNumber))
         {
+            var layout = perLevelLayout.TryGetValue(level.LevelNumber, out var value)
+                ? value
+                : (HasGhostHouse: false, GhostSpawns: new List<GridPoint>());
+
             metadata.Levels.Add(new ProjectMetadataLevel
             {
                 LevelNumber = level.LevelNumber,
@@ -1073,7 +1093,9 @@ public class CreativeModeViewModel : ViewModelBase
                 FruitMaxPoints = level.MaxFruitPoints,
                 GhostEatPoints = level.GhostEatPoints,
                 GhostEatMinPoints = 10,
-                GhostEatMaxPoints = level.MaxGhostEatPoints
+                GhostEatMaxPoints = level.MaxGhostEatPoints,
+                HasGhostHouse = layout.HasGhostHouse,
+                GhostSpawns = layout.GhostSpawns
             });
         }
 

@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Window sizing issues where content exceeded the screen (common in VMs).
 - Contrast issues caused by hardcoded view-level colors.
+- Creative Mode ghost house validation now reliably detects a valid structure and seeds missing ghost spawns.
+- Creative Mode editor supports selecting, moving, and deleting placed objects.
+- Creative Mode canvas renders real sprites (WYSIWYG) instead of placeholder blocks.
 
 ## [1.0.0] - 2026-02-17
 

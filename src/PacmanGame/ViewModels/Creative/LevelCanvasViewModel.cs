@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Avalonia.Media.Imaging;
+using Microsoft.Extensions.Logging;
 using PacmanGame.Models.Creative;
 using PacmanGame.Models.Enums;
+using PacmanGame.Services.Interfaces;
 using ReactiveUI;
 
 namespace PacmanGame.ViewModels.Creative;
@@ -17,11 +20,14 @@ public class LevelCanvasViewModel : ViewModelBase
     private const int GhostHouseHeight = 5;
 
     private readonly LevelCell[,] _grid;
+    private readonly ISpriteManager _spriteManager;
+    private readonly ILogger<LevelCanvasViewModel> _logger;
     public ObservableCollection<LevelCell> Cells { get; }
 
     private int _cursorX;
     private int _cursorY;
     private string _statusMessage = string.Empty;
+    private PickedObject? _pickedObject;
 
     private ToolType _selectedTool = ToolType.WallBlock;
     public ToolType SelectedTool
@@ -30,8 +36,12 @@ public class LevelCanvasViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _selectedTool, value);
     }
 
-    public LevelCanvasViewModel()
+    public LevelCanvasViewModel(ISpriteManager spriteManager, ILogger<LevelCanvasViewModel> logger)
     {
+        _spriteManager = spriteManager;
+        _logger = logger;
+        _spriteManager.Initialize();
+
         _grid = new LevelCell[GridWidth, GridHeight];
         Cells = new ObservableCollection<LevelCell>();
 
@@ -47,12 +57,14 @@ public class LevelCanvasViewModel : ViewModelBase
 
         RefreshCursor();
         SeedDemoLayout();
+        RefreshAllSprites();
     }
 
     public int CursorX => _cursorX;
     public int CursorY => _cursorY;
     public int CurrentCellRotation => _grid[_cursorX, _cursorY].Rotation;
     public static int TotalCellSize => CellSize + 2;
+    public bool HasPickedObject => _pickedObject != null;
 
     public string StatusMessage
     {
@@ -74,8 +86,25 @@ public class LevelCanvasViewModel : ViewModelBase
         RefreshCursor();
     }
 
+    public void MoveCursorTo(int x, int y)
+    {
+        x = Math.Clamp(x, 0, GridWidth - 1);
+        y = Math.Clamp(y, 0, GridHeight - 1);
+        if (x == _cursorX && y == _cursorY) return;
+        _cursorX = x;
+        _cursorY = y;
+        RefreshCursor();
+    }
+
     public void PlaceTool()
     {
+        // If an object is picked up, Enter places it at the cursor (move).
+        if (_pickedObject != null)
+        {
+            PlacePickedObjectAtCursor();
+            return;
+        }
+
         var cell = _grid[_cursorX, _cursorY];
         if (cell.IsPartOfGhostHouse && SelectedTool != ToolType.GhostHouse)
         {
@@ -108,6 +137,7 @@ public class LevelCanvasViewModel : ViewModelBase
                 else
                 {
                     StatusMessage = "Ghost House placed.";
+                    RefreshAllSprites();
                 }
                 break;
             case ToolType.PowerPellet:
@@ -142,6 +172,8 @@ public class LevelCanvasViewModel : ViewModelBase
                 cell.IsPartOfGhostHouse = false;
                 break;
         }
+
+        RefreshSpritesAround(_cursorX, _cursorY);
     }
 
     private void SeedDemoLayout()
@@ -180,21 +212,85 @@ public class LevelCanvasViewModel : ViewModelBase
 
     public void ClearCell()
     {
+        if (_pickedObject != null)
+        {
+            CancelPickedObject();
+            return;
+        }
+
         var cell = _grid[_cursorX, _cursorY];
         if (cell.IsPartOfGhostHouse)
         {
             ClearGhostHouse();
+            RefreshAllSprites();
             return;
         }
         cell.TileType = CreativeTileType.Empty;
         cell.WallVariant = WallVariant.Block;
         cell.IsPartOfGhostHouse = false;
+        cell.Rotation = 0;
+
+        RefreshSpritesAround(_cursorX, _cursorY);
     }
 
     public void RotateCurrentCell()
     {
+        if (_pickedObject != null)
+        {
+            _pickedObject = _pickedObject.Value.RotateClockwise();
+            StatusMessage = "Rotated selected object.";
+            return;
+        }
+
         var cell = _grid[_cursorX, _cursorY];
         cell.Rotation = (cell.Rotation + 90) % 360;
+        RefreshSpritesAround(_cursorX, _cursorY);
+    }
+
+    public void HandleCellActionAtCursor()
+    {
+        // Enter semantics:
+        // - If carrying an object: place it.
+        // - Else if on non-empty: pick it up (move mode).
+        // - Else: place current tool.
+        var cell = _grid[_cursorX, _cursorY];
+        if (_pickedObject != null)
+        {
+            PlacePickedObjectAtCursor();
+            return;
+        }
+
+        if (cell.TileType != CreativeTileType.Empty)
+        {
+            PickUpAtCursor();
+            return;
+        }
+
+        PlaceTool();
+    }
+
+    public void HandleCellClick(int x, int y)
+    {
+        MoveCursorTo(x, y);
+
+        // Click semantics:
+        // - If carrying an object: place it at click position.
+        // - Else if clicked a non-empty cell: pick it up for relocation.
+        // - Else: place current tool.
+        var cell = _grid[_cursorX, _cursorY];
+        if (_pickedObject != null)
+        {
+            PlacePickedObjectAtCursor();
+            return;
+        }
+
+        if (cell.TileType != CreativeTileType.Empty)
+        {
+            PickUpAtCursor();
+            return;
+        }
+
+        PlaceTool();
     }
 
     public string[] BuildLevelLines()
@@ -233,12 +329,16 @@ public class LevelCanvasViewModel : ViewModelBase
                     cell.WallVariant = WallVariant.Block;
                 }
                 cell.IsPartOfGhostHouse = false;
+                cell.IsSelected = false;
+                cell.Rotation = 0;
             }
         }
         MarkGhostHouseFromStructure(lines);
         _cursorX = 0;
         _cursorY = 0;
         RefreshCursor();
+        _pickedObject = null;
+        RefreshAllSprites();
     }
 
     private char MapTileToChar(LevelCell cell)
@@ -343,6 +443,36 @@ public class LevelCanvasViewModel : ViewModelBase
                         _grid[x + dx, y + dy].IsPartOfGhostHouse = true;
                     }
                 }
+
+                // Some imported templates include the ghost house structure but omit 'G' spawn markers.
+                // Seed the canonical 4 spawn points inside the house so validation/export is reliable.
+                var existingSpawns = 0;
+                for (var dy = 0; dy < ghostHouseHeight; dy++)
+                {
+                    for (var dx = 0; dx < ghostHouseWidth; dx++)
+                    {
+                        if (_grid[x + dx, y + dy].TileType == CreativeTileType.GhostSpawn)
+                        {
+                            existingSpawns++;
+                        }
+                    }
+                }
+                if (existingSpawns < 4)
+                {
+                    var spawnOffsets = new (int Dx, int Dy)[]
+                    {
+                        (2, 2), (4, 2),
+                        (2, 3), (4, 3),
+                    };
+                    foreach (var (dx, dy) in spawnOffsets)
+                    {
+                        var spawnCell = _grid[x + dx, y + dy];
+                        spawnCell.TileType = CreativeTileType.GhostSpawn;
+                        spawnCell.IsPartOfGhostHouse = true;
+                    }
+                    _logger.LogInformation("Seeded missing ghost spawns for detected ghost house at ({X},{Y}).", x, y);
+                }
+
                 return;
             }
         }
@@ -353,6 +483,7 @@ public class LevelCanvasViewModel : ViewModelBase
         foreach (var ghostCell in Cells.Where(c => c.IsPartOfGhostHouse))
         {
             ghostCell.IsPartOfGhostHouse = false;
+            ghostCell.IsSelected = false;
             ghostCell.TileType = CreativeTileType.Empty;
             ghostCell.WallVariant = WallVariant.Block;
             ghostCell.Rotation = 0;
@@ -371,10 +502,11 @@ public class LevelCanvasViewModel : ViewModelBase
             return false;
         }
 
-        // Only allow one ghost house: clear any existing one first.
+        // Only allow one ghost house.
         if (Cells.Any(c => c.IsPartOfGhostHouse))
         {
-            ClearGhostHouse();
+            error = "Only one Ghost House is allowed. Select it and move it, or delete it first.";
+            return false;
         }
 
         for (int dy = 0; dy < GhostHouseHeight; dy++)
@@ -446,6 +578,299 @@ public class LevelCanvasViewModel : ViewModelBase
         }
 
         return true;
+    }
+
+    private void PickUpAtCursor()
+    {
+        var cell = _grid[_cursorX, _cursorY];
+        if (cell.IsPartOfGhostHouse)
+        {
+            // Pick up the full 7x5 ghost house as one object.
+            if (!TryGetGhostHouseBounds(out var bounds))
+            {
+                StatusMessage = "Unable to select Ghost House (structure not found).";
+                return;
+            }
+
+            var snapshot = new List<PickedCellSnapshot>(GhostHouseWidth * GhostHouseHeight);
+            for (var dy = 0; dy < GhostHouseHeight; dy++)
+            {
+                for (var dx = 0; dx < GhostHouseWidth; dx++)
+                {
+                    var c = _grid[bounds.TopLeftX + dx, bounds.TopLeftY + dy];
+                    snapshot.Add(new PickedCellSnapshot(dx, dy, c.TileType, c.WallVariant, c.Rotation));
+                }
+            }
+
+            SetSelectedBounds(bounds.TopLeftX, bounds.TopLeftY, GhostHouseWidth, GhostHouseHeight, selected: true);
+            _pickedObject = PickedObject.ForGhostHouse(bounds.TopLeftX, bounds.TopLeftY, snapshot);
+            StatusMessage = "Ghost House selected. Click a new location to move it.";
+            return;
+        }
+
+        // Single-cell pick up.
+        cell.IsSelected = true;
+        _pickedObject = PickedObject.ForSingleCell(_cursorX, _cursorY, cell.TileType, cell.WallVariant, cell.Rotation);
+        StatusMessage = "Tile selected. Click a new cell to move it.";
+    }
+
+    private void CancelPickedObject()
+    {
+        if (_pickedObject == null) return;
+        ClearSelection();
+        _pickedObject = null;
+        StatusMessage = "Selection cancelled.";
+    }
+
+    private void PlacePickedObjectAtCursor()
+    {
+        if (_pickedObject == null) return;
+        var picked = _pickedObject.Value;
+
+        if (picked.Kind == PickedKind.GhostHouse)
+        {
+            if (!CanPlaceGhostHouseAt(_cursorX, _cursorY, picked.OriginX, picked.OriginY))
+            {
+                StatusMessage = "Cannot move Ghost House here; the 7x5 area must be empty.";
+                return;
+            }
+
+            // Clear origin (only after we know the destination works).
+            ClearGhostHouseAt(picked.OriginX, picked.OriginY);
+
+            foreach (var snap in picked.Snapshot)
+            {
+                var target = _grid[_cursorX + snap.Dx, _cursorY + snap.Dy];
+                target.IsPartOfGhostHouse = true;
+                target.TileType = snap.TileType;
+                target.WallVariant = snap.WallVariant;
+                target.Rotation = snap.Rotation;
+            }
+
+            ClearSelection();
+            _pickedObject = null;
+            StatusMessage = "Ghost House moved.";
+            RefreshAllSprites();
+            return;
+        }
+
+        var originCell = _grid[picked.OriginX, picked.OriginY];
+        var destination = _grid[_cursorX, _cursorY];
+        if (destination.IsPartOfGhostHouse)
+        {
+            StatusMessage = "Cannot place tiles inside the Ghost House.";
+            return;
+        }
+
+        // Place at destination and clear origin.
+        destination.TileType = picked.TileType;
+        destination.WallVariant = picked.WallVariant;
+        destination.Rotation = picked.Rotation;
+        destination.IsPartOfGhostHouse = false;
+
+        originCell.TileType = CreativeTileType.Empty;
+        originCell.WallVariant = WallVariant.Block;
+        originCell.Rotation = 0;
+        originCell.IsPartOfGhostHouse = false;
+
+        ClearSelection();
+        _pickedObject = null;
+        StatusMessage = "Tile moved.";
+        RefreshSpritesAround(_cursorX, _cursorY);
+        RefreshSpritesAround(picked.OriginX, picked.OriginY);
+    }
+
+    private void ClearSelection()
+    {
+        foreach (var c in Cells.Where(c => c.IsSelected))
+        {
+            c.IsSelected = false;
+        }
+    }
+
+    private void SetSelectedBounds(int x, int y, int width, int height, bool selected)
+    {
+        for (var dy = 0; dy < height; dy++)
+        {
+            for (var dx = 0; dx < width; dx++)
+            {
+                _grid[x + dx, y + dy].IsSelected = selected;
+            }
+        }
+    }
+
+    private bool TryGetGhostHouseBounds(out (int TopLeftX, int TopLeftY) bounds)
+    {
+        bounds = default;
+        var cells = Cells.Where(c => c.IsPartOfGhostHouse).ToList();
+        if (cells.Count == 0) return false;
+        var minX = cells.Min(c => c.X);
+        var minY = cells.Min(c => c.Y);
+        // The placement is always 7x5.
+        bounds = (minX, minY);
+        return true;
+    }
+
+    private bool CanPlaceGhostHouseAt(int destX, int destY, int originX, int originY)
+    {
+        if (destX + GhostHouseWidth > GridWidth || destY + GhostHouseHeight > GridHeight)
+        {
+            return false;
+        }
+
+        // Check emptiness allowing overlap with the origin footprint.
+        for (var dy = 0; dy < GhostHouseHeight; dy++)
+        {
+            for (var dx = 0; dx < GhostHouseWidth; dx++)
+            {
+                var x = destX + dx;
+                var y = destY + dy;
+                var isOriginFootprint = x >= originX && x < originX + GhostHouseWidth && y >= originY && y < originY + GhostHouseHeight;
+                if (isOriginFootprint) continue;
+
+                if (_grid[x, y].TileType != CreativeTileType.Empty)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private void ClearGhostHouseAt(int originX, int originY)
+    {
+        for (var dy = 0; dy < GhostHouseHeight; dy++)
+        {
+            for (var dx = 0; dx < GhostHouseWidth; dx++)
+            {
+                var c = _grid[originX + dx, originY + dy];
+                c.TileType = CreativeTileType.Empty;
+                c.WallVariant = WallVariant.Block;
+                c.Rotation = 0;
+                c.IsPartOfGhostHouse = false;
+                c.IsSelected = false;
+            }
+        }
+    }
+
+    private void RefreshAllSprites()
+    {
+        for (var y = 0; y < GridHeight; y++)
+        {
+            for (var x = 0; x < GridWidth; x++)
+            {
+                UpdateSpriteForCell(x, y);
+            }
+        }
+    }
+
+    private void RefreshSpritesAround(int x, int y)
+    {
+        foreach (var (nx, ny) in new[] { (x, y), (x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1) })
+        {
+            if (nx < 0 || ny < 0 || nx >= GridWidth || ny >= GridHeight) continue;
+            UpdateSpriteForCell(nx, ny);
+        }
+    }
+
+    private void UpdateSpriteForCell(int x, int y)
+    {
+        var cell = _grid[x, y];
+
+        CroppedBitmap? sprite = cell.TileType switch
+        {
+            CreativeTileType.Wall when cell.WallVariant == WallVariant.GhostHouse => _spriteManager.GetTileSprite("special_ghost_door"),
+            CreativeTileType.Wall => _spriteManager.GetTileSprite(GetWallSpriteName(y, x)),
+            CreativeTileType.Dot => _spriteManager.GetItemSprite("dot"),
+            CreativeTileType.PowerPellet => _spriteManager.GetItemSprite("power_pellet", 0),
+            CreativeTileType.Fruit => _spriteManager.GetItemSprite("cherry"),
+            CreativeTileType.PacmanSpawn => _spriteManager.GetPacmanSprite("right", 0),
+            CreativeTileType.GhostSpawn => _spriteManager.GetGhostSprite("blinky", "left", 0),
+            _ => _spriteManager.GetTileSprite("special_empty")
+        };
+
+        cell.Sprite = sprite;
+    }
+
+    private string GetWallSpriteName(int row, int col)
+    {
+        bool hasUp = row > 0 && IsWallForAdjacency(col, row - 1);
+        bool hasDown = row < GridHeight - 1 && IsWallForAdjacency(col, row + 1);
+        bool hasLeft = col > 0 && IsWallForAdjacency(col - 1, row);
+        bool hasRight = col < GridWidth - 1 && IsWallForAdjacency(col + 1, row);
+
+        int neighbors = (hasUp ? 1 : 0) + (hasDown ? 1 : 0) + (hasLeft ? 1 : 0) + (hasRight ? 1 : 0);
+
+        if (neighbors == 4) return "walls_cross";
+
+        if (neighbors == 3)
+        {
+            if (!hasRight) return "walls_t_left";
+            if (!hasLeft) return "walls_t_right";
+            if (!hasDown) return "walls_t_up";
+            if (!hasUp) return "walls_t_down";
+        }
+
+        if (neighbors == 2)
+        {
+            if (hasUp && hasDown) return "walls_vertical";
+            if (hasLeft && hasRight) return "walls_horizontal";
+            if (hasDown && hasRight) return "walls_corner_br";
+            if (hasDown && hasLeft) return "walls_corner_bl";
+            if (hasUp && hasRight) return "walls_corner_tr";
+            if (hasUp && hasLeft) return "walls_corner_tl";
+        }
+
+        if (neighbors == 1)
+        {
+            if (hasUp) return "walls_end_down";
+            if (hasDown) return "walls_end_up";
+            if (hasLeft) return "walls_end_left";
+            if (hasRight) return "walls_end_right";
+        }
+
+        // Isolated walls are rendered as empty in the runtime wall renderer.
+        return "special_empty";
+    }
+
+    private bool IsWallForAdjacency(int x, int y)
+    {
+        var cell = _grid[x, y];
+        return cell.TileType == CreativeTileType.Wall && cell.WallVariant != WallVariant.GhostHouse;
+    }
+
+    private readonly record struct PickedCellSnapshot(int Dx, int Dy, CreativeTileType TileType, WallVariant WallVariant, int Rotation);
+
+    private enum PickedKind
+    {
+        SingleCell,
+        GhostHouse
+    }
+
+    private readonly record struct PickedObject(
+        PickedKind Kind,
+        int OriginX,
+        int OriginY,
+        CreativeTileType TileType,
+        WallVariant WallVariant,
+        int Rotation,
+        IReadOnlyList<PickedCellSnapshot> Snapshot)
+    {
+        public static PickedObject ForSingleCell(int originX, int originY, CreativeTileType tileType, WallVariant wallVariant, int rotation)
+            => new(PickedKind.SingleCell, originX, originY, tileType, wallVariant, rotation, Array.Empty<PickedCellSnapshot>());
+
+        public static PickedObject ForGhostHouse(int originX, int originY, IReadOnlyList<PickedCellSnapshot> snapshot)
+            => new(PickedKind.GhostHouse, originX, originY, CreativeTileType.Empty, WallVariant.Block, 0, snapshot);
+
+        public PickedObject RotateClockwise()
+        {
+            if (Kind != PickedKind.SingleCell)
+            {
+                return this;
+            }
+            return this with { Rotation = (Rotation + 90) % 360 };
+        }
     }
 
     private void RefreshCursor()

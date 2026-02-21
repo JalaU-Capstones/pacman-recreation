@@ -1,4 +1,5 @@
 using ReactiveUI;
+using Avalonia.Media.Imaging;
 
 namespace PacmanGame.Models.Creative;
 
@@ -28,7 +29,9 @@ public sealed class LevelCell : PacmanGame.ViewModels.ViewModelBase
     private WallVariant _wallVariant = WallVariant.Block;
     private int _rotation;
     private bool _isCursor;
+    private bool _isSelected;
     private bool _isPartOfGhostHouse;
+    private CroppedBitmap? _sprite;
 
     public int X { get; init; }
     public int Y { get; init; }
@@ -56,10 +59,22 @@ public sealed class LevelCell : PacmanGame.ViewModels.ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _isCursor, value);
     }
 
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => this.RaiseAndSetIfChanged(ref _isSelected, value);
+    }
+
     public bool IsPartOfGhostHouse
     {
         get => _isPartOfGhostHouse;
         set => this.RaiseAndSetIfChanged(ref _isPartOfGhostHouse, value);
+    }
+
+    public CroppedBitmap? Sprite
+    {
+        get => _sprite;
+        set => this.RaiseAndSetIfChanged(ref _sprite, value);
     }
 
     public LevelCell(int x, int y)

@@ -93,5 +93,19 @@ public sealed class ProjectMetadataLevel
 
     [JsonPropertyName("ghostEatMaxPoints")]
     public int GhostEatMaxPoints { get; set; }
+
+    [JsonPropertyName("hasGhostHouse")]
+    public bool HasGhostHouse { get; set; }
+
+    [JsonPropertyName("ghostSpawns")]
+    public List<GridPoint> GhostSpawns { get; set; } = new();
 }
 
+public sealed class GridPoint
+{
+    [JsonPropertyName("x")]
+    public int X { get; set; }
+
+    [JsonPropertyName("y")]
+    public int Y { get; set; }
+}
