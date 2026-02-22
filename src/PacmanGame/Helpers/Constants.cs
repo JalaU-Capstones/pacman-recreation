@@ -25,10 +25,24 @@ public static class Constants
     public const float FixedDeltaTime = 1.0f / TargetFps;
 
     // Entity Speeds (tiles per second)
-    public const float PacmanSpeed = 5.0f;
-    public const float GhostNormalSpeed = 4.7f;
-    public const float GhostVulnerableSpeed = 2.5f;
-    public const float GhostEatenSpeed = 7.5f;
+    // Level speeds are applied in GameEngine.ApplyDifficultySettings.
+    // Pac-Man should be slightly faster than ghosts in straight lines.
+    public const float Level1PacmanSpeed = 3.25f;
+    public const float Level2PacmanSpeed = 3.40f;
+    public const float Level3PacmanSpeed = 3.55f;
+
+    public const float Level1GhostBaseSpeed = 3.10f;
+    public const float Level2GhostBaseSpeed = 3.25f;
+    public const float Level3GhostBaseSpeed = 3.40f;
+
+    // Baseline for per-ghost type multipliers (Blinky 1.0x, Pinky/Inky 0.95x, Clyde 0.90x).
+    public const float GhostNormalSpeed = Level1GhostBaseSpeed;
+
+    public const float GhostVulnerableSpeed = 2.20f;
+    public const float GhostEatenSpeed = 5.20f;
+
+    // Kept for backwards-compatibility; initial Pac-Man speed before per-level config.
+    public const float PacmanSpeed = Level1PacmanSpeed;
 
     // Power Pellet
     public const float PowerPelletDuration = 6.0f;  // seconds
@@ -70,10 +84,10 @@ public static class Constants
     public const int ClydeScatterY = 30;
     public const int ClydeScatterX = 0;
 
-    // Level difficulty multipliers
+    // Level difficulty multipliers (unused for movement; kept for future tuning)
     public const float Level1GhostSpeedMultiplier = 1.0f;
-    public const float Level2GhostSpeedMultiplier = 1.05f;
-    public const float Level3GhostSpeedMultiplier = 1.10f;
+    public const float Level2GhostSpeedMultiplier = 1.0f;
+    public const float Level3GhostSpeedMultiplier = 1.0f;
 
     public const float Level1PowerPelletDuration = 6.0f;
     public const float Level2PowerPelletDuration = 5.0f;
@@ -91,7 +105,7 @@ public static class Constants
     public const float Level2GhostRespawnTime = 2.0f;
     public const float Level3GhostRespawnTime = 1.5f;
 
-    public const float Level3PacmanSpeedMultiplier = 0.95f;
+    public const float Level3PacmanSpeedMultiplier = 1.0f;
 
     // File Paths
     public const string AssetsPath = "Assets";

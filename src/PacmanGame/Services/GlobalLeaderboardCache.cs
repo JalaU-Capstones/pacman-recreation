@@ -30,6 +30,7 @@ public class GlobalLeaderboardCache
     private readonly ILogger<GlobalLeaderboardCache> _logger;
     private TaskCompletionSource<List<LeaderboardEntry>>? _fetchTcs;
     private TaskCompletionSource<LeaderboardSubmitScoreResponse>? _submitTcs;
+    private readonly object _sync = new();
     private static readonly JsonSerializerOptions JsonWriteOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
     private static readonly JsonSerializerOptions JsonReadOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -109,18 +110,33 @@ public class GlobalLeaderboardCache
         {
             await RefreshFromServerAsync();
         }
-        return _cache.Leaderboard;
+        lock (_sync)
+        {
+            return _cache.Leaderboard;
+        }
     }
 
     private async Task RefreshFromServerAsync()
     {
-        if (_fetchTcs != null)
+        TaskCompletionSource<List<LeaderboardEntry>> tcs;
+        lock (_sync)
         {
-            await _fetchTcs.Task;
-            return;
+            if (_fetchTcs != null)
+            {
+                tcs = _fetchTcs;
+            }
+            else
+            {
+                _fetchTcs = new TaskCompletionSource<List<LeaderboardEntry>>(TaskCreationOptions.RunContinuationsAsynchronously);
+                tcs = _fetchTcs;
+            }
         }
 
-        _fetchTcs = new TaskCompletionSource<List<LeaderboardEntry>>();
+        if (tcs != _fetchTcs)
+        {
+            await tcs.Task;
+            return;
+        }
 
         try
         {
@@ -133,96 +149,161 @@ public class GlobalLeaderboardCache
 
             if (_networkService.IsConnected)
             {
-                _networkService.SendLeaderboardGetTop10Request(_cache.CacheTimestamp);
+                long cacheTimestamp;
+                lock (_sync)
+                {
+                    cacheTimestamp = _cache.CacheTimestamp;
+                }
+                _networkService.SendLeaderboardGetTop10Request(cacheTimestamp);
 
                 // Wait for response or timeout
                 var timeoutTask = Task.Delay(5000);
-                var completedTask = await Task.WhenAny(_fetchTcs.Task, timeoutTask);
+                var completedTask = await Task.WhenAny(tcs.Task, timeoutTask);
 
                 if (completedTask == timeoutTask)
                 {
                     _logger.LogWarning("Timeout waiting for leaderboard response");
-                    _fetchTcs.TrySetResult(_cache.Leaderboard); // Fallback to cache
+                    List<LeaderboardEntry> fallback;
+                    lock (_sync)
+                    {
+                        fallback = _cache.Leaderboard;
+                    }
+                    tcs.TrySetResult(fallback); // Fallback to cache
                 }
             }
             else
             {
-                _fetchTcs.TrySetResult(_cache.Leaderboard);
+                List<LeaderboardEntry> fallback;
+                lock (_sync)
+                {
+                    fallback = _cache.Leaderboard;
+                }
+                tcs.TrySetResult(fallback);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error refreshing leaderboard");
-            _fetchTcs?.TrySetResult(_cache.Leaderboard);
+            List<LeaderboardEntry> fallback;
+            lock (_sync)
+            {
+                fallback = _cache.Leaderboard;
+            }
+            tcs.TrySetResult(fallback);
         }
         finally
         {
-            _fetchTcs = null;
+            lock (_sync)
+            {
+                if (ReferenceEquals(_fetchTcs, tcs))
+                {
+                    _fetchTcs = null;
+                }
+            }
         }
     }
 
     private void HandleTop10Response(LeaderboardGetTop10Response response)
     {
-        _cache.Leaderboard = response.Top10;
-        _cache.CacheTimestamp = response.ServerTimestamp;
+        TaskCompletionSource<List<LeaderboardEntry>>? tcs;
+        lock (_sync)
+        {
+            _cache.Leaderboard = response.Top10;
+            _cache.CacheTimestamp = response.ServerTimestamp;
+            tcs = _fetchTcs;
+        }
         SaveCache();
-        _fetchTcs?.TrySetResult(response.Top10);
+        tcs?.TrySetResult(response.Top10);
     }
 
     public async Task SubmitScoreAsync(string profileId, string profileName, int highScore)
     {
-        _cache.PendingUpdate = new PendingUpdate
+        lock (_sync)
         {
-            ProfileId = profileId,
-            ProfileName = profileName,
-            HighScore = highScore
-        };
+            _cache.PendingUpdate = new PendingUpdate
+            {
+                ProfileId = profileId,
+                ProfileName = profileName,
+                HighScore = highScore
+            };
+        }
         SaveCache();
         await FlushPendingUpdatesAsync();
     }
 
     public async Task FlushPendingUpdatesAsync()
     {
-        if (_cache.PendingUpdate != null)
+        PendingUpdate? pending;
+        TaskCompletionSource<LeaderboardSubmitScoreResponse>? existingSubmit;
+        lock (_sync)
+        {
+            pending = _cache.PendingUpdate;
+            existingSubmit = _submitTcs;
+        }
+
+        if (pending == null)
+        {
+            return;
+        }
+
+        if (existingSubmit != null)
+        {
+            // A submit is already in-flight.
+            await existingSubmit.Task;
+            return;
+        }
+
+        TaskCompletionSource<LeaderboardSubmitScoreResponse> submitTcs;
+        lock (_sync)
         {
             if (_submitTcs != null)
             {
-                // A submit is already in-flight.
-                await _submitTcs.Task;
-                return;
+                submitTcs = _submitTcs;
             }
-
-            if (!_networkService.IsConnected)
+            else
             {
-                _networkService.Start();
-                await Task.Delay(1000);
+                _submitTcs = new TaskCompletionSource<LeaderboardSubmitScoreResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
+                submitTcs = _submitTcs;
             }
+        }
 
-            if (_networkService.IsConnected)
+        if (!_networkService.IsConnected)
+        {
+            _networkService.Start();
+            await Task.Delay(1000);
+        }
+
+        if (_networkService.IsConnected)
+        {
+            try
             {
-                try
+                // Capture pending update snapshot to avoid races with HandleSubmitResponse clearing it.
+                var snapshot = pending;
+
+                _networkService.SendLeaderboardSubmitScoreRequest(
+                    snapshot.ProfileId,
+                    snapshot.ProfileName,
+                    snapshot.HighScore,
+                    DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+                var timeoutTask = Task.Delay(5000);
+                var completed = await Task.WhenAny(submitTcs.Task, timeoutTask);
+                if (completed == timeoutTask)
                 {
-                    _submitTcs = new TaskCompletionSource<LeaderboardSubmitScoreResponse>();
-                    _networkService.SendLeaderboardSubmitScoreRequest(
-                        _cache.PendingUpdate.ProfileId,
-                        _cache.PendingUpdate.ProfileName,
-                        _cache.PendingUpdate.HighScore,
-                        DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-
-                    var timeoutTask = Task.Delay(5000);
-                    var completed = await Task.WhenAny(_submitTcs.Task, timeoutTask);
-                    if (completed == timeoutTask)
-                    {
-                        _logger.LogWarning("Timeout waiting for leaderboard submit response");
-                        _submitTcs.TrySetResult(new LeaderboardSubmitScoreResponse { Success = false, Message = "Timeout" });
-                    }
-
-                    await _submitTcs.Task;
+                    _logger.LogWarning("Timeout waiting for leaderboard submit response");
+                    submitTcs.TrySetResult(new LeaderboardSubmitScoreResponse { Success = false, Message = "Timeout" });
                 }
-                finally
+
+                await submitTcs.Task;
+            }
+            finally
+            {
+                lock (_sync)
                 {
-                    // If a late response arrives, HandleSubmitResponse will safely no-op the cleared TCS.
-                    _submitTcs = null;
+                    if (ReferenceEquals(_submitTcs, submitTcs))
+                    {
+                        _submitTcs = null;
+                    }
                 }
             }
         }
@@ -230,19 +311,35 @@ public class GlobalLeaderboardCache
 
     private void HandleSubmitResponse(LeaderboardSubmitScoreResponse response)
     {
+        TaskCompletionSource<LeaderboardSubmitScoreResponse>? tcs;
+        bool shouldRefresh;
         if (response.Success)
         {
-            _cache.PendingUpdate = null;
+            lock (_sync)
+            {
+                _cache.PendingUpdate = null;
+                tcs = _submitTcs;
+                _submitTcs = null;
+            }
+            shouldRefresh = true;
             SaveCache();
-            // Trigger refresh to see updated leaderboard
-            _ = RefreshFromServerAsync();
         }
         else
         {
+            lock (_sync)
+            {
+                tcs = _submitTcs;
+                _submitTcs = null;
+            }
+            shouldRefresh = false;
             _logger.LogWarning("Score submission failed: {Message}", response.Message);
         }
 
-        _submitTcs?.TrySetResult(response);
-        _submitTcs = null;
+        tcs?.TrySetResult(response);
+        if (shouldRefresh)
+        {
+            // Trigger refresh to see updated leaderboard
+            _ = RefreshFromServerAsync();
+        }
     }
 }

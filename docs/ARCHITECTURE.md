@@ -545,8 +545,18 @@ Implements the A* pathfinding algorithm to find the shortest path from a ghost's
 
 ### Ghost State-Specific Behavior
 - **`Normal`**: Follows the `IGhostAI` strategy (Chase/Scatter).
-- **`Vulnerable` / `Warning`**: Ghosts temporarily move randomly (or flee from Pac-Man) and are slower.
-- **`Eaten`**: Ghosts ignore AI, target their spawn point, move faster, and respawn upon reaching it.
+- **`Vulnerable` / `Warning`**: Ghosts move randomly (prefer non-reverse), are slower, and can be eaten by Pac-Man.
+- **`Eaten`**: Ghosts ignore chase/scatter, return to the ghost house base, and only begin a respawn countdown once they reach it.
+
+### AI State Machine (v1.0.1)
+Ghosts are governed by a simple state machine driven by `GameEngine` timers and collisions:
+- **Modes (global):** `Chase` and `Scatter` toggle on a timer for all ghosts.
+- **States (per ghost):**
+  - `InHouse` -> `ExitingHouse`: released by a per-ghost release timer.
+  - `Normal`: uses `IGhostAI` (targets depend on the current global mode).
+  - `Vulnerable` -> `Warning`: triggered by power pellet; transitions to `Warning` near the end of the timer.
+  - `Eaten`: triggered when Pac-Man collides with a vulnerable ghost; the ghost heads back to the house.
+  - `Eaten` -> `InHouse`: when the ghost reaches its base/spawn, a respawn timer starts, then the ghost respawns and resumes normal behavior.
 
 ---
 

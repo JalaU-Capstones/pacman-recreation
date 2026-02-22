@@ -90,7 +90,7 @@ dotnet publish src/PacmanGame.Server/PacmanGame.Server.csproj -c Release -r linu
 Copy `artifacts/server` to the instance (example using `scp`):
 
 ```bash
-scp -r artifacts/server ubuntu@YOUR_SERVER_IP:/home/ubuntu/pacman-server
+scp -r artifacts/server/* ubuntu@YOUR_SERVER_IP:/home/ubuntu/pacman-server
 ```
 
 ### 3) Systemd Service

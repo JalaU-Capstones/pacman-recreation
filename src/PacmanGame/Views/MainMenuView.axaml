@@ -29,7 +29,7 @@
                       FontFamily="{StaticResource ArcadeFont}"
                       Margin="0,0,0,30">
                 <TextBlock.Effect>
-                    <DropShadowEffect Color="{DynamicResource AppColorBorderStrong}"
+                    <DropShadowEffect Color="{StaticResource AppColorBorderStrong}"
                                      BlurRadius="20"
                                      OffsetX="0"
                                      OffsetY="0"/>

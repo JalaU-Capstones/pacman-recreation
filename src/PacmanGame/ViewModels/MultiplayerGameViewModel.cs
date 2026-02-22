@@ -54,6 +54,12 @@ public class MultiplayerGameViewModel : ViewModelBase
     private bool _isSpectating;
     public bool IsSpectating { get => _isSpectating; set => this.RaiseAndSetIfChanged(ref _isSpectating, value); }
 
+    private bool _isReadyFreeze;
+    public bool IsReadyFreeze { get => _isReadyFreeze; set => this.RaiseAndSetIfChanged(ref _isReadyFreeze, value); }
+
+    private int _readySecondsRemaining;
+    public int ReadySecondsRemaining { get => _readySecondsRemaining; set => this.RaiseAndSetIfChanged(ref _readySecondsRemaining, value); }
+
     private bool _isLevelComplete;
     public bool IsLevelComplete { get => _isLevelComplete; set => this.RaiseAndSetIfChanged(ref _isLevelComplete, value); }
 
@@ -62,6 +68,12 @@ public class MultiplayerGameViewModel : ViewModelBase
 
     private bool _isVictory;
     public bool IsVictory { get => _isVictory; set => this.RaiseAndSetIfChanged(ref _isVictory, value); }
+
+    private bool _showFps;
+    public bool ShowFps { get => _showFps; set => this.RaiseAndSetIfChanged(ref _showFps, value); }
+
+    private int _fps;
+    public int Fps { get => _fps; set => this.RaiseAndSetIfChanged(ref _fps, value); }
 
     private bool _isSpectatorPromotion;
     public bool IsSpectatorPromotion { get => _isSpectatorPromotion; set => this.RaiseAndSetIfChanged(ref _isSpectatorPromotion, value); }
@@ -118,6 +130,7 @@ public class MultiplayerGameViewModel : ViewModelBase
     public ICommand TogglePauseCommand { get; }
     public ICommand ReturnToMenuCommand { get; }
     public ICommand RestartGameCommand { get; }
+    public ICommand ToggleFpsCommand { get; }
     public ReactiveCommand<Direction, Unit> SetDirectionCommand { get; }
 
     public IGameEngine Engine => _gameEngine;
@@ -149,6 +162,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         TogglePauseCommand = ReactiveCommand.Create(TogglePause);
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
         RestartGameCommand = ReactiveCommand.Create(RestartGame);
+        ToggleFpsCommand = ReactiveCommand.Create(() => ShowFps = !ShowFps);
         SetDirectionCommand = ReactiveCommand.Create<Direction>(SetDirection);
 
         Initialize();
@@ -158,6 +172,10 @@ public class MultiplayerGameViewModel : ViewModelBase
     private void Initialize()
     {
         _logger.LogInformation("[MULTIPLAYER] Initializing game for Room {RoomId} as {MyRole}", _roomId, _myRole);
+        Level = 1;
+        Lives = 3;
+        Score = 0;
+
         _gameEngine.LoadLevel(1);
         _gameEngine.IsMultiplayerClient = true; // Enable multiplayer client mode
 
@@ -172,6 +190,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         _networkService.OnGameStateUpdate += HandleGameStateUpdate;
         _networkService.OnGameEvent += HandleGameEvent;
         _networkService.OnGamePaused += HandleGamePaused;
+        _networkService.OnRoundReset += HandleRoundReset;
         _networkService.OnSpectatorPromotion += HandleSpectatorPromotion;
         _networkService.OnGameStart += HandleGameStart; // Handle restart/new game start
         _networkService.OnRoomStateUpdate += HandleRoomStateUpdate; // Listen for admin changes
@@ -192,7 +211,7 @@ public class MultiplayerGameViewModel : ViewModelBase
         var inputTimer = new System.Timers.Timer(1000.0 / 60.0);
         inputTimer.Elapsed += (s, e) =>
         {
-            if (IsPaused || IsPausedByHost) return;
+            if (IsPaused || IsPausedByHost || IsReadyFreeze) return;
 
             // Always send current direction (even if None)
             var inputMessage = new PlayerInputMessage
@@ -207,6 +226,62 @@ public class MultiplayerGameViewModel : ViewModelBase
         inputTimer.Start();
 
         _logger.LogInformation($"[CLIENT-VM] Input polling started for {_myRole}");
+    }
+
+    private void HandleRoundReset(RoundResetEvent reset)
+    {
+        if (reset.RoomId != _roomId) return;
+
+        if (reset.PacmanPosition != null && _gameEngine.Pacman != null)
+        {
+            _gameEngine.Pacman.X = (int)reset.PacmanPosition.X;
+            _gameEngine.Pacman.Y = (int)reset.PacmanPosition.Y;
+            _gameEngine.Pacman.ExactX = reset.PacmanPosition.X;
+            _gameEngine.Pacman.ExactY = reset.PacmanPosition.Y;
+            _gameEngine.Pacman.CurrentDirection = (Models.Enums.Direction)reset.PacmanPosition.Direction;
+            _gameEngine.Pacman.NextDirection = Models.Enums.Direction.None;
+        }
+
+        foreach (var ghostState in reset.Ghosts)
+        {
+            var ghost = _gameEngine.Ghosts.FirstOrDefault(g => g.Type.ToString() == ghostState.Type);
+            if (ghost == null) continue;
+            ghost.X = (int)ghostState.Position.X;
+            ghost.Y = (int)ghostState.Position.Y;
+            ghost.ExactX = ghostState.Position.X;
+            ghost.ExactY = ghostState.Position.Y;
+            ghost.CurrentDirection = (Models.Enums.Direction)ghostState.Position.Direction;
+
+            // Ensure frightened/eaten state is cleared/consistent after reset.
+            ghost.State = ghostState.State switch
+            {
+                GhostStateEnum.Normal => Models.Enums.GhostState.Normal,
+                GhostStateEnum.Vulnerable => Models.Enums.GhostState.Vulnerable,
+                GhostStateEnum.Eaten => Models.Enums.GhostState.Eaten,
+                _ => Models.Enums.GhostState.Normal
+            };
+        }
+
+        Lives = reset.Lives;
+
+        ReadySecondsRemaining = Math.Clamp(reset.ReadySeconds, 1, 5);
+        IsReadyFreeze = true;
+        _currentDirection = Direction.None;
+
+        var timer = new System.Timers.Timer(1000);
+        timer.Elapsed += (s, e) =>
+        {
+            ReadySecondsRemaining--;
+            if (ReadySecondsRemaining <= 0)
+            {
+                IsReadyFreeze = false;
+                timer.Stop();
+                timer.Dispose();
+            }
+        };
+        timer.Start();
+
+        _logger.LogInformation("[MULTIPLAYER] Global reset received for room {RoomId}. Ready {Seconds}s.", _roomId, reset.ReadySeconds);
     }
 
     public void Render(Canvas canvas)
@@ -316,10 +391,15 @@ public class MultiplayerGameViewModel : ViewModelBase
 
         Score = state.Score;
         Lives = state.Lives;
+        Level = state.CurrentLevel;
 
         if (state.CurrentLevel != _gameEngine.CurrentLevel)
         {
             _gameEngine.LoadLevel(state.CurrentLevel);
+            foreach (var ghost in _gameEngine.Ghosts)
+            {
+                ghost.IsAIControlled = false;
+            }
         }
     }
 
@@ -513,7 +593,16 @@ public class MultiplayerGameViewModel : ViewModelBase
         if (myState != null)
         {
             IsAdmin = myState.IsAdmin;
-            _logger.LogInformation($"[CLIENT-VM] Room state updated. IsAdmin: {IsAdmin}");
+            if (_myRole != myState.Role)
+            {
+                _myRole = myState.Role;
+                IsSpectating = _myRole == PlayerRole.Spectator;
+                this.RaisePropertyChanged(nameof(MyRoleText));
+                this.RaisePropertyChanged(nameof(ObjectiveText));
+                this.RaisePropertyChanged(nameof(GameOverTitle));
+                this.RaisePropertyChanged(nameof(GameOverMessage));
+            }
+            _logger.LogInformation("[CLIENT-VM] Room state updated. IsAdmin={IsAdmin} Role={Role}", IsAdmin, _myRole);
         }
     }
 

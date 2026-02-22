@@ -48,6 +48,12 @@ public class GameViewModel : ViewModelBase
     private bool _isVictory;
     public bool IsVictory { get => _isVictory; set => this.RaiseAndSetIfChanged(ref _isVictory, value); }
 
+    private bool _showFps;
+    public bool ShowFps { get => _showFps; set => this.RaiseAndSetIfChanged(ref _showFps, value); }
+
+    private int _fps;
+    public int Fps { get => _fps; set => this.RaiseAndSetIfChanged(ref _fps, value); }
+
     private string? _customMapPath;
     public string? CustomMapPath { get => _customMapPath; set => this.RaiseAndSetIfChanged(ref _customMapPath, value); }
 
@@ -73,6 +79,7 @@ public class GameViewModel : ViewModelBase
     public ICommand ResumeGameCommand { get; }
     public ICommand ReturnToMenuCommand { get; }
     public ICommand RestartGameCommand { get; }
+    public ICommand ToggleFpsCommand { get; }
     public ReactiveCommand<Direction, Unit> SetDirectionCommand { get; }
 
     public GameViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, IGameEngine gameEngine, ILogger<GameViewModel> logger)
@@ -104,6 +111,7 @@ public class GameViewModel : ViewModelBase
         ResumeGameCommand = ReactiveCommand.Create(ResumeGame);
         ReturnToMenuCommand = ReactiveCommand.Create(ReturnToMenu);
         RestartGameCommand = ReactiveCommand.Create(RestartGame);
+        ToggleFpsCommand = ReactiveCommand.Create(() => ShowFps = !ShowFps);
         SetDirectionCommand = ReactiveCommand.Create<Direction>(SetPacmanDirection);
     }
 

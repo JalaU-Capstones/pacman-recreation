@@ -13,6 +13,7 @@ namespace PacmanGame.Views;
 public partial class GameView : UserControl
 {
     private DispatcherTimer? _gameLoopTimer;
+    private FpsCounter? _fpsCounter;
 
     public GameView()
     {
@@ -49,6 +50,8 @@ public partial class GameView : UserControl
 
         if (engine == null) return;
 
+        _fpsCounter = new FpsCounter();
+
         _gameLoopTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(1000.0 / Constants.TargetFps)
@@ -69,6 +72,23 @@ public partial class GameView : UserControl
 
              GameCanvas.Children.Clear();
              engine.Render(GameCanvas);
+
+             // FPS overlay uses the actual render loop cadence.
+             if (_fpsCounter != null)
+             {
+                 var fps = _fpsCounter.OnFrame();
+                 if (fps.HasValue)
+                 {
+                     if (currentVm is GameViewModel g2)
+                     {
+                         g2.Fps = fps.Value;
+                     }
+                     else if (currentVm is MultiplayerGameViewModel m2)
+                     {
+                         m2.Fps = fps.Value;
+                     }
+                 }
+             }
         };
         _gameLoopTimer.Start();
 
@@ -81,12 +101,20 @@ public partial class GameView : UserControl
         base.OnDetachedFromVisualTree(e);
         _gameLoopTimer?.Stop();
         _gameLoopTimer = null;
+        _fpsCounter = null;
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is GameViewModel gvm)
         {
+            if (e.Key == Key.F1)
+            {
+                gvm.ToggleFpsCommand.Execute(null);
+                e.Handled = true;
+                return;
+            }
+
             var direction = e.Key switch
             {
                 Key.Up => LocalDirection.Up,
@@ -112,6 +140,13 @@ public partial class GameView : UserControl
         }
         else if (DataContext is MultiplayerGameViewModel mgvm)
         {
+            if (e.Key == Key.F1)
+            {
+                mgvm.ToggleFpsCommand.Execute(null);
+                e.Handled = true;
+                return;
+            }
+
             // Map Avalonia Key to SharedDirection (which is what the ViewModel expects)
             var direction = e.Key switch
             {

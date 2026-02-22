@@ -16,6 +16,8 @@ namespace PacmanGame.ViewModels;
 
 public class RoomLobbyViewModel : ViewModelBase
 {
+    private const string ConnectionFailedMessage = "Connection failed: Please try again later";
+
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly NetworkService _networkService;
     private readonly IAudioManager _audioManager;
@@ -27,6 +29,7 @@ public class RoomLobbyViewModel : ViewModelBase
     private int _myPlayerId;
     private PlayerRole _myRole;
     private bool _isAdmin;
+    private bool _leaveRequested;
 
     public string RoomName { get; }
     public string RoomVisibility { get; }
@@ -52,6 +55,21 @@ public class RoomLobbyViewModel : ViewModelBase
     public ICommand StartGameCommand { get; }
     public ICommand LeaveRoomCommand { get; }
     public ICommand KickPlayerCommand { get; }
+    public ICommand DismissConnectionAlertCommand { get; }
+
+    private bool _isConnectionAlertVisible;
+    public bool IsConnectionAlertVisible
+    {
+        get => _isConnectionAlertVisible;
+        set => this.RaiseAndSetIfChanged(ref _isConnectionAlertVisible, value);
+    }
+
+    private string _connectionAlertMessage = ConnectionFailedMessage;
+    public string ConnectionAlertMessage
+    {
+        get => _connectionAlertMessage;
+        set => this.RaiseAndSetIfChanged(ref _connectionAlertMessage, value);
+    }
 
     public RoomLobbyViewModel(
         int roomId,
@@ -108,10 +126,12 @@ public class RoomLobbyViewModel : ViewModelBase
         _networkService.OnKicked += HandleKicked;
         _networkService.OnGameStart += HandleGameStart;
         _networkService.OnLeftRoom += HandleLeftRoom;
+        _networkService.OnConnectionFailed += HandleConnectionFailed;
 
         LeaveRoomCommand = ReactiveCommand.Create(LeaveRoom);
         StartGameCommand = ReactiveCommand.Create(StartGame, this.WhenAnyValue(x => x.CanStartGame));
         KickPlayerCommand = ReactiveCommand.Create<PlayerViewModel>(KickPlayer);
+        DismissConnectionAlertCommand = ReactiveCommand.Create(DismissConnectionAlert);
 
         _logger.LogInformation("Entered lobby for room '{RoomName}' (ID: {RoomId}). Admin: {IsAdmin}", RoomName, _roomId, IsAdmin);
     }
@@ -204,6 +224,7 @@ public class RoomLobbyViewModel : ViewModelBase
     private void LeaveRoom()
     {
         _logger.LogInformation("Leaving room...");
+        _leaveRequested = true;
         _networkService.SendLeaveRoomRequest();
     }
 
@@ -252,6 +273,32 @@ public class RoomLobbyViewModel : ViewModelBase
     private void HandleLeftRoom()
     {
         _logger.LogInformation("Left room confirmation received or disconnected.");
+        if (_leaveRequested)
+        {
+            NavigateToMultiplayerMenu();
+            return;
+        }
+
+        // Unexpected disconnect while waiting in lobby.
+        ShowConnectionAlert();
+    }
+
+    private void HandleConnectionFailed(string technicalReason)
+    {
+        if (_leaveRequested) return;
+        _logger.LogError("Connection issue detected in lobby: {Reason}", technicalReason);
+        ShowConnectionAlert();
+    }
+
+    private void ShowConnectionAlert()
+    {
+        ConnectionAlertMessage = ConnectionFailedMessage;
+        IsConnectionAlertVisible = true;
+    }
+
+    private void DismissConnectionAlert()
+    {
+        IsConnectionAlertVisible = false;
         NavigateToMultiplayerMenu();
     }
 
@@ -270,5 +317,6 @@ public class RoomLobbyViewModel : ViewModelBase
         _networkService.OnKicked -= HandleKicked;
         _networkService.OnGameStart -= HandleGameStart;
         _networkService.OnLeftRoom -= HandleLeftRoom;
+        _networkService.OnConnectionFailed -= HandleConnectionFailed;
     }
 }

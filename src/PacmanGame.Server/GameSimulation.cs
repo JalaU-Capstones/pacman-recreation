@@ -12,6 +12,7 @@ public class GameSimulation
 {
     private readonly IMapLoader _mapLoader;
     private readonly ILogger<GameSimulation> _logger;
+    private int _roomId;
 
     private Pacman? _pacman;
     private List<Ghost> _ghosts = new();
@@ -33,6 +34,7 @@ public class GameSimulation
     private readonly Dictionary<GhostType, (int Row, int Col)> _ghostSpawns = new();
 
     public event Action<GameEventMessage>? OnGameEvent;
+    public event Action<RoundResetEvent>? OnRoundReset;
 
     public GameSimulation(IMapLoader mapLoader, ILogger<GameSimulation> logger)
     {
@@ -43,6 +45,7 @@ public class GameSimulation
 
     public void Initialize(int roomId, List<PlayerRole> assignedRoles)
     {
+        _roomId = roomId;
         _logger.LogInformation($"[SIMULATION] Initializing game for Room {roomId}");
         _assignedRoles = assignedRoles;
         _playerInputs.Clear();
@@ -176,11 +179,22 @@ public class GameSimulation
         _ghostSpawns.Clear();
         var ghostSpawnsData = _mapLoader.GetGhostSpawns($"level{level}.txt");
 
+        // Some maps may contain multiple 'G' markers (e.g., ghost house interior filler).
+        // Pick the 4 spawns closest to the map center for deterministic "ghost house" spawns.
+        var centerRow = _mapHeight / 2;
+        var centerCol = _mapWidth / 2;
+        var canonicalSpawns = ghostSpawnsData
+            .OrderBy(p => Math.Abs(p.Row - centerRow) + Math.Abs(p.Col - centerCol))
+            .Take(4)
+            .OrderBy(p => p.Row)
+            .ThenBy(p => p.Col)
+            .ToList();
+
         void AddGhostIfAssigned(PlayerRole role, GhostType type, int index)
         {
-            if (_assignedRoles.Contains(role) && index < ghostSpawnsData.Count)
+            if (_assignedRoles.Contains(role) && index < canonicalSpawns.Count)
             {
-                var spawn = ghostSpawnsData[index];
+                var spawn = canonicalSpawns[index];
                 _ghostSpawns[type] = spawn;
                 var ghost = new Ghost(type, spawn.Row, spawn.Col)
                 {
@@ -265,8 +279,12 @@ public class GameSimulation
         }
     }
 
-    private void ResetPacmanOnly()
+    private void ResetAllEntitiesAndBroadcastReady(int readySeconds)
     {
+        // Clear any active frightened state (power pellet) immediately.
+        _powerPelletTimer = 0f;
+
+        // Reset Pac-Man.
         if (_pacman != null)
         {
             var pacmanSpawn = _mapLoader.GetPacmanSpawn($"level{_currentLevel}.txt");
@@ -275,6 +293,38 @@ public class GameSimulation
             _pacman.CurrentDirection = Direction.None;
             _playerInputs[PlayerRole.Pacman] = Direction.None;
         }
+
+        // Reset all ghosts.
+        foreach (var ghost in _ghosts)
+        {
+            if (_ghostSpawns.TryGetValue(ghost.Type, out var spawn))
+            {
+                ghost.X = spawn.Col;
+                ghost.Y = spawn.Row;
+            }
+            ghost.CurrentDirection = Direction.None;
+            ghost.State = GhostStateEnum.Normal;
+            _playerInputs[GetRoleForGhost(ghost.Type)] = Direction.None;
+        }
+
+        var resetEvent = new RoundResetEvent
+        {
+            RoomId = 0, // populated by server; left as 0 here
+            ReadySeconds = readySeconds,
+            PacmanPosition = _pacman != null
+                ? new EntityPosition { X = _pacman.X, Y = _pacman.Y, Direction = _pacman.CurrentDirection }
+                : null,
+            Ghosts = _ghosts.Select(g => new GhostState
+            {
+                Type = g.Type.ToString(),
+                Position = new EntityPosition { X = g.X, Y = g.Y, Direction = g.CurrentDirection },
+                State = g.State
+            }).ToList(),
+            Lives = _lives
+        };
+
+        _logger.LogInformation("[SIMULATION] Multiplayer life lost in room {RoomId}. Broadcasting global reset (ready {Seconds}s).", _roomId, readySeconds);
+        OnRoundReset?.Invoke(resetEvent);
     }
 
     private void UpdatePacman(Pacman pacman, float deltaTime)
@@ -467,7 +517,8 @@ public class GameSimulation
                     }
                     else
                     {
-                        ResetPacmanOnly();
+                        // Global entity reset with a short READY freeze.
+                        ResetAllEntitiesAndBroadcastReady(2);
                     }
                 }
             }

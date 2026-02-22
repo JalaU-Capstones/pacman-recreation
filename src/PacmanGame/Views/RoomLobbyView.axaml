@@ -120,5 +120,38 @@
             </StackPanel>
         </Border>
 
+        <!-- Connection error alert -->
+        <Border IsVisible="{Binding IsConnectionAlertVisible}"
+                Background="{DynamicResource AppOverlayBrush}"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Grid.RowSpan="3"
+                ZIndex="500">
+            <Border Background="{DynamicResource AppSurfaceBrush}"
+                    BorderBrush="{DynamicResource AppAccentBrush}"
+                    BorderThickness="2"
+                    CornerRadius="10"
+                    Padding="24"
+                    MaxWidth="560"
+                    Margin="20"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="{Binding ConnectionAlertMessage}"
+                               FontFamily="{StaticResource ArcadeFont}"
+                               FontSize="22"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource AppAccentBrush}"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"/>
+                    <Button Classes="arcade"
+                            Content="OK"
+                            Command="{Binding DismissConnectionAlertCommand}"
+                            MinWidth="140"
+                            HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Border>
+
     </Grid>
 </UserControl>

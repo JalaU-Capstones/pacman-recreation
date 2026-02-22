@@ -11,6 +11,7 @@ namespace PacmanGame.Views;
 public partial class MultiplayerGameView : UserControl
 {
     private DispatcherTimer? _renderTimer;
+    private FpsCounter? _fpsCounter;
 
     public MultiplayerGameView()
     {
@@ -26,6 +27,13 @@ public partial class MultiplayerGameView : UserControl
         base.OnKeyDown(e);
 
         if (DataContext is not MultiplayerGameViewModel vm) return;
+
+        if (e.Key == Key.F1)
+        {
+            vm.ToggleFpsCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
 
         // Map key to direction
         var direction = e.Key switch
@@ -52,6 +60,7 @@ public partial class MultiplayerGameView : UserControl
 
         if (DataContext is MultiplayerGameViewModel vm)
         {
+            _fpsCounter = new FpsCounter();
             _renderTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(1000.0 / Constants.TargetFps)
@@ -66,6 +75,7 @@ public partial class MultiplayerGameView : UserControl
         base.OnDetachedFromVisualTree(e);
         _renderTimer?.Stop();
         _renderTimer = null;
+        _fpsCounter = null;
     }
 
     private void RenderFrame(MultiplayerGameViewModel vm)
@@ -73,5 +83,11 @@ public partial class MultiplayerGameView : UserControl
         vm.Engine.Update(Constants.FixedDeltaTime);
         GameCanvas.Children.Clear();
         vm.Render(GameCanvas);
+
+        var fps = _fpsCounter?.OnFrame();
+        if (fps.HasValue)
+        {
+            vm.Fps = fps.Value;
+        }
     }
 }

@@ -101,6 +101,22 @@
             </Canvas>
         </Border>
 
+        <!-- FPS overlay (F1) -->
+        <Border Grid.Column="1"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="8"
+                Padding="6,4"
+                Background="{DynamicResource AppOverlayBrush}"
+                CornerRadius="6"
+                IsVisible="{Binding ShowFps}"
+                ZIndex="200">
+            <TextBlock Text="{Binding Fps, StringFormat='FPS: {0}'}"
+                       Foreground="{DynamicResource AppAccentBrush}"
+                       FontFamily="{StaticResource ArcadeFont}"
+                       FontSize="14" />
+        </Border>
+
         <!-- Right Sidebar - Controls -->
         <Border Grid.Column="2"
                 Background="{DynamicResource AppSurfaceBrush}"
@@ -128,6 +144,18 @@
 
         <Border Grid.Column="1" Background="{DynamicResource AppOverlayBrush}" IsVisible="{Binding IsPausedByHost}" ZIndex="98">
             <TextBlock Text="GAME PAUSED" FontSize="60" FontWeight="Bold" Foreground="{DynamicResource AppAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+
+        <Border Grid.Column="1" Background="{DynamicResource AppOverlayBrush}" IsVisible="{Binding IsReadyFreeze}" ZIndex="99">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
+                <TextBlock Text="READY!" FontSize="72" FontWeight="Bold" Foreground="{DynamicResource AppAccentBrush}" HorizontalAlignment="Center" FontFamily="{StaticResource ArcadeFont}"/>
+                <TextBlock Text="{Binding ReadySecondsRemaining, StringFormat='{}{0}'}"
+                           FontSize="48"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource AppTextPrimaryBrush}"
+                           HorizontalAlignment="Center"
+                           FontFamily="{StaticResource ArcadeFont}"/>
+            </StackPanel>
         </Border>
 
         <Border Grid.Column="1" Background="{DynamicResource AppOverlayBrush}" IsVisible="{Binding IsSpectating}" ZIndex="98">

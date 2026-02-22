@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Global Top 10 Leaderboard system (server-side persistence + client cache + offline pending submission)
 - DevConsole overlay for debugging and quick actions
 - Creative Mode project editor (1-10 levels, export/import `.pacproj`, play test)
+- In-game FPS counter overlay (toggle with `F1`) in single-player, multiplayer, and creative playtests
 
 ### Changed
 - Creative Mode configuration now scales dynamically with project level count:
@@ -26,13 +27,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Creative Mode exports now include `metadata.json` alongside `project.json` for richer project metadata.
 - UI now scales responsively within VM/work-area constraints (downscales to prevent overflow).
 - Global UI theme resources applied for consistent contrast (no white-on-white).
+- Ghost frightened behavior now uses random movement (prefer non-reverse) and slowed speed for authentic feel.
+- Eaten ghosts now return to the ghost house base before respawning (no teleport respawns).
+- Level speed progression rebalanced: slower Level 1, consistent increases for Levels 2-3, Pac-Man slightly faster than ghosts in straight lines.
 
 ### Fixed
 - Window sizing issues where content exceeded the screen (common in VMs).
 - Contrast issues caused by hardcoded view-level colors.
 - Creative Mode ghost house validation now reliably detects a valid structure and seeds missing ghost spawns.
+- Creative Mode newly created levels now initialize with boundary walls and a valid ghost house template (prevents empty-canvas validation errors).
 - Creative Mode editor supports selecting, moving, and deleting placed objects.
 - Creative Mode canvas renders real sprites (WYSIWYG) instead of placeholder blocks.
+ - Eaten ghosts now path back to the ghost house base before respawning.
+ - FPS overlay calculation fixed (was incorrectly using Stopwatch ticks as TimeSpan ticks).
 
 ## [1.0.0] - 2026-02-17
 

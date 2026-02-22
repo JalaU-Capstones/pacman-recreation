@@ -740,11 +740,24 @@ public class CreativeModeViewModel : ViewModelBase
                 FruitPoints = 5 + ((levelNumber - 1) * 5),
                 GhostEatPoints = 30 + ((levelNumber - 1) * 15)
             });
+
+            // New levels must start from a valid template (border walls + ghost house) to avoid validation failures.
+            var levelIndex = levelNumber - 1;
+            if (!_levelLinesByIndex.ContainsKey(levelIndex))
+            {
+                _levelLinesByIndex[levelIndex] = CreateTemplateLevelLines();
+            }
         }
 
         while (ProjectConfig.LevelConfigs.Count > desired)
         {
             ProjectConfig.LevelConfigs.RemoveAt(ProjectConfig.LevelConfigs.Count - 1);
+        }
+
+        // Remove any stored layouts beyond the current level count.
+        foreach (var key in _levelLinesByIndex.Keys.Where(k => k >= desired).ToList())
+        {
+            _levelLinesByIndex.Remove(key);
         }
 
         for (var i = 0; i < ProjectConfig.LevelConfigs.Count; i++)
@@ -1119,7 +1132,7 @@ public class CreativeModeViewModel : ViewModelBase
     {
         var lines = _levelLinesByIndex.TryGetValue(index, out var stored)
             ? stored
-            : CreateBlankLevelLines();
+            : CreateTemplateLevelLines();
         CanvasViewModel.LoadFromLines(lines);
     }
 
@@ -1151,6 +1164,73 @@ public class CreativeModeViewModel : ViewModelBase
         for (var y = 0; y < LevelCanvasViewModel.GridHeight; y++)
         {
             lines[y] = new string(' ', LevelCanvasViewModel.GridWidth);
+        }
+        return lines;
+    }
+
+    private static string[] CreateTemplateLevelLines()
+    {
+        // Template mirrors LevelCanvasViewModel.SeedDemoLayout:
+        // - outer boundary walls
+        // - one 7x5 ghost house with '-' gate
+        // - Pac-Man spawn
+        // - 4 power pellets (required by validation)
+        const int width = LevelCanvasViewModel.GridWidth;
+        const int height = LevelCanvasViewModel.GridHeight;
+
+        var grid = new char[height, width];
+        for (var y = 0; y < height; y++)
+        for (var x = 0; x < width; x++)
+        {
+            grid[y, x] = ' ';
+        }
+
+        // Border walls.
+        for (var x = 0; x < width; x++)
+        {
+            grid[0, x] = '#';
+            grid[height - 1, x] = '#';
+        }
+
+        for (var y = 0; y < height; y++)
+        {
+            grid[y, 0] = '#';
+            grid[y, width - 1] = '#';
+        }
+
+        // Ghost house at a stable position (top-left of 7x5 region).
+        var houseX = 10;
+        var houseY = 11;
+        var gateRow = "##---##".ToCharArray();     // 7 chars
+        var middleRow = "#     #".ToCharArray();   // 7 chars
+        var wallRow = "#######".ToCharArray();     // 7 chars
+
+        for (var dx = 0; dx < 7; dx++) grid[houseY + 0, houseX + dx] = gateRow[dx];
+        for (var dx = 0; dx < 7; dx++) grid[houseY + 1, houseX + dx] = middleRow[dx];
+        for (var dx = 0; dx < 7; dx++) grid[houseY + 2, houseX + dx] = middleRow[dx];
+        for (var dx = 0; dx < 7; dx++) grid[houseY + 3, houseX + dx] = middleRow[dx];
+        for (var dx = 0; dx < 7; dx++) grid[houseY + 4, houseX + dx] = wallRow[dx];
+
+        // Pac-Man spawn.
+        var pacX = width / 2;
+        var pacY = height - 6;
+        if (grid[pacY, pacX] == ' ')
+        {
+            grid[pacY, pacX] = 'P';
+        }
+
+        // Required pellets.
+        grid[1, 1] = 'o';
+        grid[1, width - 2] = 'o';
+        grid[height - 2, 1] = 'o';
+        grid[height - 2, width - 2] = 'o';
+
+        var lines = new string[height];
+        for (var y = 0; y < height; y++)
+        {
+            var row = new char[width];
+            for (var x = 0; x < width; x++) row[x] = grid[y, x];
+            lines[y] = new string(row);
         }
         return lines;
     }

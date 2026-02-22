@@ -29,6 +29,7 @@ namespace PacmanGame.Shared;
 [Union(22, typeof(SpectatorPromotionEvent))]
 [Union(23, typeof(NewPlayerJoinedEvent))]
 [Union(24, typeof(SpectatorPromotionFailedEvent))]
+[Union(25, typeof(RoundResetEvent))]
 [Union(30, typeof(LeaderboardGetTop10Request))]
 [Union(31, typeof(LeaderboardGetTop10Response))]
 [Union(32, typeof(LeaderboardSubmitScoreRequest))]
@@ -417,6 +418,32 @@ public class GamePausedEvent : NetworkMessageBase
     [Key(0)]
     public bool IsPaused { get; set; }
 }
+
+#region Round Reset
+
+[MessagePackObject]
+public class RoundResetEvent : NetworkMessageBase
+{
+    [IgnoreMember]
+    public override MessageType Type => MessageType.RoundResetEvent;
+
+    [Key(0)]
+    public int RoomId { get; set; }
+
+    [Key(1)]
+    public int ReadySeconds { get; set; }
+
+    [Key(2)]
+    public EntityPosition? PacmanPosition { get; set; }
+
+    [Key(3)]
+    public List<GhostState> Ghosts { get; set; } = new();
+
+    [Key(4)]
+    public int Lives { get; set; }
+}
+
+#endregion
 
 #endregion
 

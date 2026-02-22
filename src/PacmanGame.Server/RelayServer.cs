@@ -37,6 +37,24 @@ public class RelayServer : INetEventListener
 
     private ConcurrentDictionary<int, PlayerSession> _playerSessions = new();
 
+    private static readonly PlayerRole[] PlayableRolesInOrder =
+    {
+        PlayerRole.Pacman,
+        PlayerRole.Blinky,
+        PlayerRole.Pinky,
+        PlayerRole.Inky,
+        PlayerRole.Clyde
+    };
+
+    private static readonly HashSet<PlayerRole> PlayableRoleSet = new()
+    {
+        PlayerRole.Pacman,
+        PlayerRole.Blinky,
+        PlayerRole.Pinky,
+        PlayerRole.Inky,
+        PlayerRole.Clyde
+    };
+
     public RelayServer(ILogger<RelayServer> logger, ILoggerFactory loggerFactory)
     {
         _netManager = new NetManager(this) { DisconnectTimeout = 30000 }; // Increased timeout
@@ -73,9 +91,16 @@ public class RelayServer : INetEventListener
                 // Update game simulations for ALL rooms (including private ones)
                 foreach (var room in _roomManager.GetAllRooms().Where(r => r.State == RoomState.Playing))
                 {
-                    if (room.Game != null && !room.IsPaused)
+                    if (room.Game != null && !room.IsPaused && !room.IsFrozen)
                     {
                         room.Game.Update(1f / 30f); // 30 FPS
+                        var state = room.Game.GetState();
+                        BroadcastToRoom(room, state);
+                    }
+                    else if (room.Game != null && !room.IsPaused && room.IsFrozen)
+                    {
+                        // During READY freeze: keep broadcasting the authoritative state so all clients converge
+                        // even if they missed the reset packet.
                         var state = room.Game.GetState();
                         BroadcastToRoom(room, state);
                     }
@@ -212,6 +237,12 @@ public class RelayServer : INetEventListener
         {
              _logger.LogWarning($"[SERVER] Player {input.PlayerId} room mismatch");
              return;
+        }
+
+        if (room.IsFrozen)
+        {
+            // Ignore inputs during the short "READY!" resync window.
+            return;
         }
 
         // Get the room's game simulation
@@ -424,23 +455,16 @@ public class RelayServer : INetEventListener
                         newAdmin.IsAdmin = true;
                         _logger.LogInformation($"Admin left. New admin is Player {newAdmin.Id} ({newAdmin.Name}).");
 
-                        if (role == PlayerRole.Pacman)
-                        {
-                            var oldRole = newAdmin.Role;
-                            newAdmin.Role = PlayerRole.Pacman;
-                            if (_playerSessions.TryGetValue(newAdmin.Id, out var session))
-                            {
-                                session.Role = PlayerRole.Pacman;
-                            }
-                            _logger.LogInformation($"Assigned Pacman role to new admin {newAdmin.Name}.");
-                            var roleEvent = new RoleAssignedEvent { PlayerId = newAdmin.Id, Role = PlayerRole.Pacman };
-                            BroadcastToRoom(room, roleEvent);
-                            role = oldRole != PlayerRole.Spectator && oldRole != PlayerRole.None ? oldRole : PlayerRole.None;
-                        }
+                        // If the admin leaves, do not implicitly change roles here.
                     }
                 }
 
-                if (role != PlayerRole.Spectator && role != PlayerRole.None && !room.Players.Any(p => p.Role == role))
+                // Ensure Pac-Man always exists (critical for a playable match).
+                EnsurePacmanAssigned(room, playerName);
+
+                // If the departing role was a ghost role and is now missing, fill it from spectators.
+                if (role != PlayerRole.Spectator && role != PlayerRole.None && role != PlayerRole.Pacman &&
+                    !room.Players.Any(p => p.Role == role))
                 {
                     PromoteNextSpectator(room, role, playerName);
                 }
@@ -448,14 +472,133 @@ public class RelayServer : INetEventListener
                 if (room.State == RoomState.Playing && room.Game != null)
                 {
                     room.Game.UpdateAssignedRoles(room.Players.Select(p => p.Role).ToList());
-                    if (!room.Players.Any(p => p.Role == PlayerRole.Pacman))
-                    {
-                        _logger.LogWarning("No Pacman player remaining. Ending game.");
-                        room.Game.TriggerGameOver();
-                    }
                 }
 
                 BroadcastRoomState(room);
+            }
+        }
+    }
+
+    private void EnsurePacmanAssigned(Room room, string previousPlayerName)
+    {
+        var ordered = room.Players.OrderBy(p => p.Id).ToList();
+        if (ordered.Count == 0)
+        {
+            return;
+        }
+
+        var pacmanPlayers = ordered.Where(p => p.Role == PlayerRole.Pacman).ToList();
+        if (pacmanPlayers.Count > 1)
+        {
+            // Keep the earliest, demote others.
+            foreach (var extra in pacmanPlayers.Skip(1))
+            {
+                extra.Role = PlayerRole.Spectator;
+                if (_playerSessions.TryGetValue(extra.Id, out var session))
+                {
+                    session.Role = extra.Role;
+                }
+            }
+        }
+
+        if (ordered.Any(p => p.Role == PlayerRole.Pacman))
+        {
+            return;
+        }
+
+        // Promote a spectator first, otherwise reassign a ghost.
+        var candidate = ordered.FirstOrDefault(p => p.Role == PlayerRole.Spectator) ?? ordered[0];
+        var oldRole = candidate.Role;
+        candidate.Role = PlayerRole.Pacman;
+        if (_playerSessions.TryGetValue(candidate.Id, out var candidateSession))
+        {
+            candidateSession.Role = PlayerRole.Pacman;
+        }
+
+        _logger.LogWarning("Pac-Man role was missing; reassigned Pac-Man to {PlayerName} (Room {RoomId}).", candidate.Name, room.Id);
+
+        // If we promoted a spectator, notify them (optional countdown).
+        if (oldRole == PlayerRole.Spectator)
+        {
+            SendMessageToPlayer(candidate, new SpectatorPromotionEvent
+            {
+                PreviousPlayerName = previousPlayerName,
+                NewRole = PlayerRole.Pacman,
+                PreparationTimeSeconds = 3
+            });
+        }
+    }
+
+    private void NormalizeRolesForStart(Room room)
+    {
+        var players = room.Players.OrderBy(p => p.Id).ToList();
+        if (players.Count == 0) return;
+
+        // Ensure a single Pac-Man.
+        var pacman = players.FirstOrDefault(p => p.Role == PlayerRole.Pacman);
+        if (pacman == null)
+        {
+            pacman = players.FirstOrDefault(p => p.IsAdmin) ?? players[0];
+            pacman.Role = PlayerRole.Pacman;
+        }
+
+        foreach (var extraPacman in players.Where(p => p.Id != pacman.Id && p.Role == PlayerRole.Pacman))
+        {
+            extraPacman.Role = PlayerRole.None;
+        }
+
+        // Ensure each ghost role is unique; duplicates become unassigned.
+        foreach (var ghostRole in new[] { PlayerRole.Blinky, PlayerRole.Pinky, PlayerRole.Inky, PlayerRole.Clyde })
+        {
+            var holders = players.Where(p => p.Role == ghostRole).OrderBy(p => p.Id).ToList();
+            foreach (var extra in holders.Skip(1))
+            {
+                extra.Role = PlayerRole.None;
+            }
+        }
+
+        var taken = players.Where(p => PlayableRoleSet.Contains(p.Role)).Select(p => p.Role).ToHashSet();
+        var availableGhosts = new Queue<PlayerRole>(new[] { PlayerRole.Blinky, PlayerRole.Pinky, PlayerRole.Inky, PlayerRole.Clyde }
+            .Where(r => !taken.Contains(r)));
+
+        foreach (var p in players.Where(p => p.Role == PlayerRole.None).OrderBy(p => p.Id))
+        {
+            if (availableGhosts.Count > 0)
+            {
+                p.Role = availableGhosts.Dequeue();
+            }
+            else
+            {
+                p.Role = PlayerRole.Spectator;
+            }
+        }
+
+        // Update sessions for all players.
+        foreach (var p in players)
+        {
+            if (_playerSessions.TryGetValue(p.Id, out var session))
+            {
+                session.Role = p.Role;
+            }
+        }
+    }
+
+    private void AssignRolesForRestart(Room room)
+    {
+        var players = room.Players.OrderBy(p => p.Id).ToList();
+        if (players.Count == 0) return;
+
+        room.RoleRotationOffset = (room.RoleRotationOffset + 1) % players.Count;
+        var startIndex = room.RoleRotationOffset;
+
+        for (var i = 0; i < players.Count; i++)
+        {
+            var p = players[(startIndex + i) % players.Count];
+            p.Role = i < PlayableRolesInOrder.Length ? PlayableRolesInOrder[i] : PlayerRole.Spectator;
+
+            if (_playerSessions.TryGetValue(p.Id, out var session))
+            {
+                session.Role = p.Role;
             }
         }
     }
@@ -545,6 +688,11 @@ public class RelayServer : INetEventListener
             _logger.LogInformation($"Admin {player.Id} is starting game in room '{room.Name}'");
             room.State = RoomState.Playing;
             room.Game = new GameSimulation(_mapLoader, _loggerFactory.CreateLogger<GameSimulation>());
+            room.IsPaused = false;
+            room.FreezeUntilUtcTicks = 0;
+
+            // Ensure roles are valid and Pac-Man exists before starting.
+            NormalizeRolesForStart(room);
 
             room.Game.OnGameEvent += (evt) =>
             {
@@ -553,6 +701,16 @@ public class RelayServer : INetEventListener
                 {
                     room.IsPaused = true;
                 }
+            };
+
+            room.Game.OnRoundReset += (reset) =>
+            {
+                _logger.LogInformation("[SERVER] Global reset for room {RoomId}", room.Id);
+                room.FreezeUntilUtcTicks = DateTime.UtcNow.AddSeconds(reset.ReadySeconds).Ticks;
+                reset.RoomId = room.Id;
+                BroadcastToRoom(room, reset);
+                // Immediately broadcast authoritative positions/lives after reset.
+                BroadcastToRoom(room, room.Game.GetState());
             };
 
             var assignedRoles = room.Players.Select(p => p.Role).Where(r => r != PlayerRole.None && r != PlayerRole.Spectator).ToList();
@@ -570,29 +728,10 @@ public class RelayServer : INetEventListener
         {
             _logger.LogInformation($"Admin {player.Id} is restarting game in room '{room.Name}'");
             room.IsPaused = false;
+            room.FreezeUntilUtcTicks = 0;
 
-            var allUsers = room.Players.ToList();
-            var roles = new List<PlayerRole> { PlayerRole.Pacman, PlayerRole.Blinky, PlayerRole.Pinky, PlayerRole.Inky, PlayerRole.Clyde };
-            var rng = new Random();
-            var shuffledRoles = roles.OrderBy(r => rng.Next()).ToList();
-
-            for (int i = 0; i < allUsers.Count; i++)
-            {
-                var user = allUsers[i];
-                if (i < shuffledRoles.Count)
-                {
-                    user.Role = shuffledRoles[i];
-                }
-                else
-                {
-                    user.Role = PlayerRole.Spectator;
-                }
-
-                if (_playerSessions.TryGetValue(user.Id, out var session))
-                {
-                    session.Role = user.Role;
-                }
-            }
+            // Deterministic role rotation: ensures exactly one Pac-Man after restart.
+            AssignRolesForRestart(room);
 
             room.Game = new GameSimulation(_mapLoader, _loggerFactory.CreateLogger<GameSimulation>());
             room.Game.OnGameEvent += (evt) =>
@@ -602,6 +741,15 @@ public class RelayServer : INetEventListener
                 {
                     room.IsPaused = true;
                 }
+            };
+
+            room.Game.OnRoundReset += (reset) =>
+            {
+                _logger.LogInformation("[SERVER] Global reset for room {RoomId}", room.Id);
+                room.FreezeUntilUtcTicks = DateTime.UtcNow.AddSeconds(reset.ReadySeconds).Ticks;
+                reset.RoomId = room.Id;
+                BroadcastToRoom(room, reset);
+                BroadcastToRoom(room, room.Game.GetState());
             };
 
             var assignedRoles = room.Players.Select(p => p.Role).Where(r => r != PlayerRole.None && r != PlayerRole.Spectator).ToList();

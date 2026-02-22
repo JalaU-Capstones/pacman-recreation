@@ -20,6 +20,8 @@ public class NetworkService : INetEventListener
     private NetPeer? _server;
     private bool _isConnected;
     private bool _isStarted;
+    private bool _isStopping;
+    private long _lastConnectionFailedTicks;
     private readonly MessagePackSerializerOptions _serializerOptions;
 
     // Room events
@@ -29,12 +31,14 @@ public class NetworkService : INetEventListener
     public event Action<List<PlayerState>>? OnRoomStateUpdate;
     public event Action<string>? OnKicked;
     public event Action<List<RoomInfo>>? OnRoomListReceived;
+    public event Action<string>? OnConnectionFailed;
 
     // Game events
     public event Action<GameStartEvent>? OnGameStart;
     public event Action<GameStateMessage>? OnGameStateUpdate;
     public event Action<GameEventMessage>? OnGameEvent;
     public event Action<bool>? OnGamePaused;
+    public event Action<RoundResetEvent>? OnRoundReset;
     public event Action<SpectatorPromotionEvent>? OnSpectatorPromotion;
     public event Action<NewPlayerJoinedEvent>? OnNewPlayerJoined;
     public event Action<SpectatorPromotionFailedEvent>? OnSpectatorPromotionFailed;
@@ -83,8 +87,23 @@ public class NetworkService : INetEventListener
     {
         if (!_isStarted) return;
         _isStarted = false;
+        _isStopping = true;
         _netManager.Stop();
+        _isStopping = false;
         _logger.LogInformation("Network service stopped.");
+    }
+
+    private void NotifyConnectionFailed(string technicalReason)
+    {
+        var now = DateTime.UtcNow.Ticks;
+        if (now - _lastConnectionFailedTicks < TimeSpan.FromSeconds(1).Ticks)
+        {
+            return;
+        }
+        _lastConnectionFailedTicks = now;
+
+        _logger.LogError("Connection failed: {Reason}", technicalReason);
+        Dispatcher.UIThread.Post(() => OnConnectionFailed?.Invoke(technicalReason));
     }
 
     private void SendMessage(NetworkMessageBase message, DeliveryMethod deliveryMethod = DeliveryMethod.ReliableOrdered)
@@ -92,6 +111,7 @@ public class NetworkService : INetEventListener
         if (_server == null || _server.ConnectionState != ConnectionState.Connected)
         {
             _logger.LogError("Cannot send message: not connected to server.");
+            NotifyConnectionFailed("Not connected to server");
             return;
         }
 
@@ -104,6 +124,7 @@ public class NetworkService : INetEventListener
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error serializing message");
+            NotifyConnectionFailed($"Send failed: {ex.GetType().Name}");
         }
     }
 
@@ -153,10 +174,18 @@ public class NetworkService : INetEventListener
     {
         _logger.LogWarning("Disconnected from server: {Reason}", disconnectInfo.Reason);
         _isConnected = false;
+        if (!_isStopping)
+        {
+            NotifyConnectionFailed($"Disconnected: {disconnectInfo.Reason}");
+        }
         Dispatcher.UIThread.Post(() => OnLeftRoom?.Invoke());
     }
 
-    public void OnNetworkError(IPEndPoint endPoint, SocketError socketError) => _logger.LogError("Network error: {SocketError}", socketError);
+    public void OnNetworkError(IPEndPoint endPoint, SocketError socketError)
+    {
+        _logger.LogError("Network error: {SocketError}", socketError);
+        NotifyConnectionFailed($"Network error: {socketError}");
+    }
 
     public void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channel, DeliveryMethod deliveryMethod)
     {
@@ -241,6 +270,9 @@ public class NetworkService : INetEventListener
                 break;
             case GamePausedEvent gamePausedEvent:
                 OnGamePaused?.Invoke(gamePausedEvent.IsPaused);
+                break;
+            case RoundResetEvent roundReset:
+                OnRoundReset?.Invoke(roundReset);
                 break;
             case SpectatorPromotionEvent promotionEvent:
                 OnSpectatorPromotion?.Invoke(promotionEvent);

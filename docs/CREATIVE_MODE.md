@@ -73,6 +73,7 @@ An exported `.pacproj` is a ZIP archive containing:
 
 - Increase **Number of Levels** to create a multi-level project.
 - Use **Prev Level / Next Level** to edit each level independently.
+- Newly created levels (2-10) start from a valid template: outer boundary walls, the required 7x5 Ghost House, a Pac-Man spawn, and 4 power pellets.
 - Export writes `level1.txt`..`levelN.txt` plus `project.json` into a `.pacproj`.
 - Play test and imported projects can run as multi-level sessions in `GameView`.
 

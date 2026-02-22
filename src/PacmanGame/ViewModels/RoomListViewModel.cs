@@ -16,12 +16,15 @@ namespace PacmanGame.ViewModels;
 
 public class RoomListViewModel : ViewModelBase
 {
+    private const string ConnectionFailedMessage = "Connection failed: Please try again later";
+
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly NetworkService _networkService;
     private readonly IAudioManager _audioManager;
     private readonly ILogger<RoomListViewModel> _logger;
     private readonly IProfileManager _profileManager;
     private readonly IServiceProvider _serviceProvider;
+    private System.Threading.CancellationTokenSource? _requestTimeoutCts;
 
     public ObservableCollection<RoomInfo> Rooms { get; } = new();
 
@@ -53,6 +56,20 @@ public class RoomListViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _errorMessage, value);
     }
 
+    private bool _isConnectionAlertVisible;
+    public bool IsConnectionAlertVisible
+    {
+        get => _isConnectionAlertVisible;
+        set => this.RaiseAndSetIfChanged(ref _isConnectionAlertVisible, value);
+    }
+
+    private string _connectionAlertMessage = ConnectionFailedMessage;
+    public string ConnectionAlertMessage
+    {
+        get => _connectionAlertMessage;
+        set => this.RaiseAndSetIfChanged(ref _connectionAlertMessage, value);
+    }
+
     private bool _showSpectatorPrompt;
     public bool ShowSpectatorPrompt
     {
@@ -77,6 +94,7 @@ public class RoomListViewModel : ViewModelBase
     public ICommand BackCommand { get; }
     public ICommand JoinAsSpectatorCommand { get; }
     public ICommand CancelSpectatorJoinCommand { get; }
+    public ICommand DismissConnectionAlertCommand { get; }
 
     public RoomListViewModel(MainWindowViewModel mainWindowViewModel, NetworkService networkService, IAudioManager audioManager, ILogger<RoomListViewModel> logger, IProfileManager profileManager, IServiceProvider serviceProvider)
     {
@@ -90,6 +108,7 @@ public class RoomListViewModel : ViewModelBase
         _networkService.OnJoinedRoom += HandleJoinedRoom;
         _networkService.OnJoinRoomFailed += HandleJoinRoomFailed;
         _networkService.OnRoomListReceived += HandleRoomListReceived;
+        _networkService.OnConnectionFailed += HandleConnectionFailed;
 
         JoinPublicRoomCommand = ReactiveCommand.Create<RoomInfo>(JoinPublicRoom);
         RefreshCommand = ReactiveCommand.Create(RefreshRooms);
@@ -99,6 +118,7 @@ public class RoomListViewModel : ViewModelBase
         BackCommand = ReactiveCommand.Create(Back);
         JoinAsSpectatorCommand = ReactiveCommand.Create(JoinAsSpectator);
         CancelSpectatorJoinCommand = ReactiveCommand.Create(CancelSpectatorJoin);
+        DismissConnectionAlertCommand = ReactiveCommand.Create(DismissConnectionAlert);
 
         RefreshRooms();
     }
@@ -114,11 +134,13 @@ public class RoomListViewModel : ViewModelBase
             PlayerName = _profileManager.GetActiveProfile()?.Name ?? "Player"
         };
         _networkService.SendJoinRoomRequest(request);
+        StartRequestTimeout("JoinRoom");
     }
 
     private void JoinPrivateRoom()
     {
         ErrorMessage = string.Empty;
+        IsConnectionAlertVisible = false;
         if (string.IsNullOrWhiteSpace(PrivateRoomName) || string.IsNullOrWhiteSpace(PrivateRoomPassword))
         {
             ErrorMessage = "Room name and password cannot be empty.";
@@ -133,6 +155,7 @@ public class RoomListViewModel : ViewModelBase
             PlayerName = _profileManager.GetActiveProfile()?.Name ?? "Player"
         };
         _networkService.SendJoinRoomRequest(request);
+        StartRequestTimeout("JoinRoom");
     }
 
     private void JoinAsSpectator()
@@ -149,6 +172,7 @@ public class RoomListViewModel : ViewModelBase
         _networkService.SendJoinRoomRequest(request);
         ShowSpectatorPrompt = false;
         ErrorMessage = string.Empty;
+        StartRequestTimeout("JoinRoom");
     }
 
     private void CancelSpectatorJoin()
@@ -163,10 +187,12 @@ public class RoomListViewModel : ViewModelBase
         _logger.LogInformation("Requesting room list from server...");
         _audioManager.PlaySoundEffect("menu-navigate");
         _networkService.SendGetRoomListRequest();
+        StartRequestTimeout("GetRoomList");
     }
 
     private void HandleRoomListReceived(List<RoomInfo> rooms)
     {
+        CancelRequestTimeout();
         Dispatcher.UIThread.Post(() =>
         {
             Rooms.Clear();
@@ -180,6 +206,7 @@ public class RoomListViewModel : ViewModelBase
 
     private void HandleJoinedRoom(int roomId, string roomName, RoomVisibility visibility, List<PlayerState> players, bool isGameStarted)
     {
+        CancelRequestTimeout();
         Dispatcher.UIThread.Post(() =>
         {
             _logger.LogInformation($"Successfully joined room '{roomName}'. GameStarted: {isGameStarted}");
@@ -218,6 +245,7 @@ public class RoomListViewModel : ViewModelBase
 
     private void HandleJoinRoomFailed(string message, JoinRoomFailureReason reason, bool canJoinAsSpectator)
     {
+        CancelRequestTimeout();
         Dispatcher.UIThread.Post(() =>
         {
             ErrorMessage = message;
@@ -231,6 +259,53 @@ public class RoomListViewModel : ViewModelBase
         });
     }
 
+    private void HandleConnectionFailed(string technicalReason)
+    {
+        CancelRequestTimeout();
+        _logger.LogError("Multiplayer request failed due to connection issue: {Reason}", technicalReason);
+        ShowConnectionAlert();
+    }
+
+    private void StartRequestTimeout(string operation)
+    {
+        CancelRequestTimeout();
+        _requestTimeoutCts = new System.Threading.CancellationTokenSource();
+        var token = _requestTimeoutCts.Token;
+        _ = System.Threading.Tasks.Task.Run(async () =>
+        {
+            try
+            {
+                await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(5), token);
+                if (token.IsCancellationRequested) return;
+                _logger.LogWarning("{Operation} timed out waiting for server response.", operation);
+                Dispatcher.UIThread.Post(ShowConnectionAlert);
+            }
+            catch (System.Threading.Tasks.TaskCanceledException)
+            {
+                // ignore
+            }
+        }, token);
+    }
+
+    private void CancelRequestTimeout()
+    {
+        try { _requestTimeoutCts?.Cancel(); } catch { }
+        _requestTimeoutCts?.Dispose();
+        _requestTimeoutCts = null;
+    }
+
+    private void ShowConnectionAlert()
+    {
+        ConnectionAlertMessage = ConnectionFailedMessage;
+        IsConnectionAlertVisible = true;
+    }
+
+    private void DismissConnectionAlert()
+    {
+        IsConnectionAlertVisible = false;
+        _mainWindowViewModel.NavigateTo<MultiplayerMenuViewModel>();
+    }
+
     private void Back()
     {
         _audioManager.PlaySoundEffect("menu-select");
@@ -242,5 +317,7 @@ public class RoomListViewModel : ViewModelBase
         _networkService.OnJoinedRoom -= HandleJoinedRoom;
         _networkService.OnJoinRoomFailed -= HandleJoinRoomFailed;
         _networkService.OnRoomListReceived -= HandleRoomListReceived;
+        _networkService.OnConnectionFailed -= HandleConnectionFailed;
+        CancelRequestTimeout();
     }
 }

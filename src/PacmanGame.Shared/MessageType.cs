@@ -27,6 +27,7 @@ public enum MessageType
     SpectatorPromotionEvent,
     NewPlayerJoinedEvent,
     SpectatorPromotionFailedEvent,
+    RoundResetEvent,
     LeaderboardGetTop10Request = 30,
     LeaderboardGetTop10Response = 31,
     LeaderboardSubmitScoreRequest = 32,

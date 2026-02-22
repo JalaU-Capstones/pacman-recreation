@@ -132,8 +132,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             var ghostSpawns = _mapLoader.GetGhostSpawns(fileName);
             _ghosts = new List<Ghost>();
 
-            ApplyDifficultySettings(level);
-
             GhostType[] ghostTypes = { GhostType.Blinky, GhostType.Pinky, GhostType.Inky, GhostType.Clyde };
             for (int i = 0; i < ghostSpawns.Count && i < ghostTypes.Length; i++)
             {
@@ -145,6 +143,9 @@ public class GameEngine : IGameEngine, IGameEngineInternal
                 ghost.ReleaseTimer = 0.5f + i * Constants.GhostReleaseInterval;
                 _ghosts.Add(ghost);
             }
+
+            // Must be applied after ghosts are created so their speed multipliers are updated correctly.
+            ApplyDifficultySettings(level);
 
             _ghostsEatenThisRound = 0;
             _modeTimer = 0f;
@@ -228,8 +229,6 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             var ghostSpawns = FindAllSpawns(lines, Constants.GhostChar);
             _ghosts = new List<Ghost>();
 
-            ApplyDifficultySettings(_currentLevel);
-
             GhostType[] ghostTypes = { GhostType.Blinky, GhostType.Pinky, GhostType.Inky, GhostType.Clyde };
             for (int i = 0; i < ghostSpawns.Count && i < ghostTypes.Length; i++)
             {
@@ -241,6 +240,9 @@ public class GameEngine : IGameEngine, IGameEngineInternal
                 ghost.ReleaseTimer = 0.5f + i * Constants.GhostReleaseInterval;
                 _ghosts.Add(ghost);
             }
+
+            // Must be applied after ghosts are created so their speed multipliers are updated correctly.
+            ApplyDifficultySettings(_currentLevel);
 
             _ghostsEatenThisRound = 0;
             _modeTimer = 0f;
@@ -348,7 +350,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         if (_pacman != null)
         {
             _pacman.PowerPelletDuration = Constants.Level1PowerPelletDuration;
-            _pacman.Speed = 3.0f;
+            _pacman.Speed = Constants.Level1PacmanSpeed;
         }
         _chaseDuration = Constants.Level1ChaseDuration;
         _scatterDuration = Constants.Level1ScatterDuration;
@@ -360,7 +362,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             if (_pacman != null)
             {
                 _pacman.PowerPelletDuration = Constants.Level2PowerPelletDuration;
-                _pacman.Speed = 3.4f;
+                _pacman.Speed = Constants.Level2PacmanSpeed;
             }
             _chaseDuration = Constants.Level2ChaseDuration;
             _scatterDuration = Constants.Level2ScatterDuration;
@@ -372,7 +374,7 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             if (_pacman != null)
             {
                 _pacman.PowerPelletDuration = Constants.Level3PowerPelletDuration;
-                _pacman.Speed = 3.6f;
+                _pacman.Speed = Constants.Level3PacmanSpeed;
             }
             _chaseDuration = Constants.Level3ChaseDuration;
             _scatterDuration = Constants.Level3ScatterDuration;
@@ -383,9 +385,9 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         {
             float baseGhostSpeed = level switch
             {
-                1 => 3.2f,
-                2 => 3.6f,
-                _ => 3.8f
+                1 => Constants.Level1GhostBaseSpeed,
+                2 => Constants.Level2GhostBaseSpeed,
+                _ => Constants.Level3GhostBaseSpeed
             };
 
             ghost.SpeedMultiplier = baseGhostSpeed / Constants.GhostNormalSpeed;
@@ -639,13 +641,23 @@ public class GameEngine : IGameEngine, IGameEngineInternal
     {
         if (!ghost.IsAIControlled) return ghost.CurrentDirection;
 
+        // If an eaten ghost has already reached home and is waiting on its respawn timer, hold position.
+        // Without this, the global fallback logic could make it wander during the countdown.
+        if (ghost.State == GhostState.Eaten && ghost.RespawnTimer > 0f)
+        {
+            return Direction.None;
+        }
+
         Direction nextMove = Direction.None;
 
         switch (ghost.State)
         {
             case GhostState.Eaten:
-                nextMove = _pathfinder.FindPath(ghost.Y, ghost.X, ghost.SpawnY, ghost.SpawnX, _map, ghost, _logger);
-                if (ghost.X == ghost.SpawnX && ghost.Y == ghost.SpawnY && ghost.RespawnTimer <= 0f)
+                var (homeY, homeX) = GetGhostHouseHomeTile(ghost);
+                nextMove = _pathfinder.FindPath(ghost.Y, ghost.X, homeY, homeX, _map, ghost, _logger);
+
+                // Start respawn countdown only after returning home (ghost house base).
+                if (ghost.X == homeX && ghost.Y == homeY && ghost.RespawnTimer <= 0f)
                 {
                     ghost.RespawnTimer = _ghostRespawnTime;
                 }
@@ -653,36 +665,20 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
             case GhostState.Vulnerable:
             case GhostState.Warning:
-                if (_pacman == null) break;
-                var fleeMoves = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
+                // Frightened: random movement (prefer not reversing).
+                var frightenedMoves = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right }
                     .Where(d => ghost.CanMove(d, _map))
                     .ToList();
 
-                var nonReversingFleeMoves = fleeMoves.Where(d => d != GetOppositeDirection(ghost.CurrentDirection)).ToList();
-                if (nonReversingFleeMoves.Any())
+                var nonReversing = frightenedMoves.Where(d => d != GetOppositeDirection(ghost.CurrentDirection)).ToList();
+                if (nonReversing.Any())
                 {
-                    fleeMoves = nonReversingFleeMoves;
+                    frightenedMoves = nonReversing;
                 }
 
-                if (fleeMoves.Any())
+                if (frightenedMoves.Any())
                 {
-                    Direction bestDirection = Direction.None;
-                    float maxDistance = -1;
-
-                    foreach (var direction in fleeMoves)
-                    {
-                        (int dx, int dy) = GetDirectionDeltas(direction);
-                        int newX = ghost.X + dx;
-                        int newY = ghost.Y + dy;
-                        float distance = (newX - _pacman.X) * (newX - _pacman.X) + (newY - _pacman.Y) * (newY - _pacman.Y);
-
-                        if (distance > maxDistance)
-                        {
-                            maxDistance = distance;
-                            bestDirection = direction;
-                        }
-                    }
-                    nextMove = bestDirection;
+                    nextMove = frightenedMoves[_random.Next(frightenedMoves.Count)];
                 }
                 break;
 
@@ -753,6 +749,29 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         }
 
         return nextMove;
+    }
+
+    private (int HomeY, int HomeX) GetGhostHouseHomeTile(Ghost ghost)
+    {
+        // Prefer the computed ghost-door center; return to the tile "inside" the house (opposite the exit side).
+        if (_ghostDoorInfo is { } info)
+        {
+            // exitY is the outside tile relative to doorY; inside is the opposite direction.
+            var insideY = info.DoorY + (info.DoorY - info.ExitY);
+            insideY = Math.Clamp(insideY, 0, Constants.MapHeight - 1);
+            var x = Math.Clamp(info.CenterX, 0, Constants.MapWidth - 1);
+
+            // If the computed inside tile is a wall (unexpected), fall back to the door tile.
+            if (_map[insideY, x] == TileType.Wall)
+            {
+                insideY = info.DoorY;
+            }
+
+            return (insideY, x);
+        }
+
+        // Fallback: use the ghost's spawn tile (typically inside the house on built-in maps).
+        return (ghost.SpawnY, ghost.SpawnX);
     }
 
     private void UpdateCollisions()

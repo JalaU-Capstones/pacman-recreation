@@ -24,7 +24,7 @@
                       HorizontalAlignment="Center"
                       FontFamily="{StaticResource ArcadeFont}">
                 <TextBlock.Effect>
-                    <DropShadowEffect Color="{DynamicResource AppColorBorderStrong}"
+                    <DropShadowEffect Color="{StaticResource AppColorBorderStrong}"
                                      BlurRadius="15"
                                      OffsetX="0"
                                      OffsetY="0"/>

@@ -35,7 +35,7 @@
                        FontFamily="{StaticResource ArcadeFont}"
                        Margin="0,0,0,40">
             <TextBlock.Effect>
-                    <DropShadowEffect Color="{DynamicResource AppColorBorderStrong}" BlurRadius="15"/>
+                    <DropShadowEffect Color="{StaticResource AppColorBorderStrong}" BlurRadius="15"/>
             </TextBlock.Effect>
         </TextBlock>
 
@@ -57,5 +57,37 @@
             <Button Classes="arcade" Content="CREATE" Command="{Binding CreateCommand}" HorizontalAlignment="Stretch"/>
             <Button Classes="arcade" Content="CANCEL" Command="{Binding CancelCommand}" HorizontalAlignment="Stretch" Margin="0,20,0,0"/>
         </StackPanel>
+
+        <!-- Connection error alert -->
+        <Border IsVisible="{Binding IsConnectionAlertVisible}"
+                Background="{DynamicResource AppOverlayBrush}"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                ZIndex="500">
+            <Border Background="{DynamicResource AppSurfaceBrush}"
+                    BorderBrush="{DynamicResource AppAccentBrush}"
+                    BorderThickness="2"
+                    CornerRadius="10"
+                    Padding="24"
+                    MaxWidth="520"
+                    Margin="20"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <TextBlock Text="{Binding ConnectionAlertMessage}"
+                               FontFamily="{StaticResource ArcadeFont}"
+                               FontSize="22"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource AppAccentBrush}"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"/>
+                    <Button Classes="arcade"
+                            Content="OK"
+                            Command="{Binding DismissConnectionAlertCommand}"
+                            MinWidth="140"
+                            HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Border>
     </Grid>
 </UserControl>

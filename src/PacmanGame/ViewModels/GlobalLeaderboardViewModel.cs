@@ -2,6 +2,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using PacmanGame.Services;
 using PacmanGame.Services.Interfaces;
 using ReactiveUI;
@@ -21,6 +23,7 @@ public class GlobalLeaderboardViewModel : ViewModelBase
     private readonly GlobalLeaderboardCache _cache;
     private readonly IProfileManager _profileManager;
     private readonly MainWindowViewModel _mainWindowViewModel;
+    private readonly ILogger<GlobalLeaderboardViewModel> _logger;
 
     public ObservableCollection<LeaderboardEntryViewModel> Top10Entries { get; } = new();
 
@@ -41,14 +44,38 @@ public class GlobalLeaderboardViewModel : ViewModelBase
     public ICommand SubmitScoreCommand { get; }
     public ICommand BackToLocalScoresCommand { get; }
 
+    /// <summary>
+    /// Parameterless constructor for the Avalonia XAML designer.
+    /// The runtime uses DI and the main constructor below.
+    /// </summary>
+    public GlobalLeaderboardViewModel()
+    {
+        _cache = null!;
+        _profileManager = null!;
+        _mainWindowViewModel = null!;
+        _logger = NullLogger<GlobalLeaderboardViewModel>.Instance;
+
+        CanSubmitScore = false;
+        IsLoading = false;
+
+        SubmitScoreCommand = ReactiveCommand.Create(() => { });
+        BackToLocalScoresCommand = ReactiveCommand.Create(() => { });
+
+        Top10Entries.Add(new LeaderboardEntryViewModel { Rank = 1, ProfileName = "PlayerOne", HighScore = 12345 });
+        Top10Entries.Add(new LeaderboardEntryViewModel { Rank = 2, ProfileName = "PlayerTwo", HighScore = 9000 });
+        Top10Entries.Add(new LeaderboardEntryViewModel { Rank = 3, ProfileName = "PlayerThree", HighScore = 7000 });
+    }
+
     public GlobalLeaderboardViewModel(
         GlobalLeaderboardCache cache,
         IProfileManager profileManager,
-        MainWindowViewModel mainWindowViewModel)
+        MainWindowViewModel mainWindowViewModel,
+        ILogger<GlobalLeaderboardViewModel> logger)
     {
         _cache = cache;
         _profileManager = profileManager;
         _mainWindowViewModel = mainWindowViewModel;
+        _logger = logger;
 
         SubmitScoreCommand = ReactiveCommand.CreateFromTask(SubmitScoreAsync);
         BackToLocalScoresCommand = ReactiveCommand.Create(BackToLocalScores);
@@ -58,10 +85,17 @@ public class GlobalLeaderboardViewModel : ViewModelBase
 
     private async void Initialize()
     {
-        var profile = await _profileManager.GetCurrentProfileAsync();
-        CanSubmitScore = profile != null && profile.HasCompletedAllLevels;
+        try
+        {
+            var profile = await _profileManager.GetCurrentProfileAsync();
+            CanSubmitScore = profile != null && profile.HasCompletedAllLevels;
 
-        await LoadLeaderboardAsync();
+            await LoadLeaderboardAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize GlobalLeaderboardViewModel");
+        }
     }
 
     public async Task LoadLeaderboardAsync()
@@ -83,6 +117,10 @@ public class GlobalLeaderboardViewModel : ViewModelBase
                 });
             }
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load global leaderboard");
+        }
         finally
         {
             IsLoading = false;
@@ -91,29 +129,37 @@ public class GlobalLeaderboardViewModel : ViewModelBase
 
     public async Task SubmitScoreAsync()
     {
-        var profile = await _profileManager.GetCurrentProfileAsync();
-
-        if (profile == null || !profile.HasCompletedAllLevels)
+        try
         {
-            return;
+            var profile = await _profileManager.GetCurrentProfileAsync();
+
+            if (profile == null || !profile.HasCompletedAllLevels)
+            {
+                return;
+            }
+
+            if (string.IsNullOrEmpty(profile.GlobalProfileId))
+            {
+                profile.GlobalProfileId = Guid.NewGuid().ToString();
+                await _profileManager.UpdateProfileAsync(profile);
+            }
+
+            var scoreToSend = profile.HighScore;
+            if (scoreToSend > 0)
+            {
+                await _cache.SubmitScoreAsync(
+                    profile.GlobalProfileId,
+                    profile.Name,
+                    scoreToSend);
+
+                // Refresh view
+                await LoadLeaderboardAsync();
+            }
         }
-
-        if (string.IsNullOrEmpty(profile.GlobalProfileId))
+        catch (Exception ex)
         {
-            profile.GlobalProfileId = Guid.NewGuid().ToString();
-            await _profileManager.UpdateProfileAsync(profile);
-        }
-
-        var scoreToSend = profile.HighScore;
-        if (scoreToSend > 0)
-        {
-             await _cache.SubmitScoreAsync(
-                profile.GlobalProfileId,
-                profile.Name,
-                scoreToSend);
-
-             // Refresh view
-             await LoadLeaderboardAsync();
+            // Prevent ReactiveCommand pipelines from faulting and terminating the app.
+            _logger.LogError(ex, "Failed to submit global score");
         }
     }
 

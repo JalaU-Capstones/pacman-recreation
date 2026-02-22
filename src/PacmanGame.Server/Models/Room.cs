@@ -1,3 +1,4 @@
+using System;
 using PacmanGame.Shared;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +14,10 @@ public class Room
     public RoomState State { get; set; }
     public GameSimulation? Game { get; set; }
     public bool IsPaused { get; set; }
+    public long FreezeUntilUtcTicks { get; set; }
+    public int RoleRotationOffset { get; set; }
+
+    public bool IsFrozen => DateTime.UtcNow.Ticks < FreezeUntilUtcTicks;
 
     private readonly List<Player> _players = new();
     public IReadOnlyCollection<Player> Players => _players.AsReadOnly();
@@ -25,6 +30,8 @@ public class Room
         Visibility = visibility;
         State = RoomState.Lobby;
         IsPaused = false;
+        FreezeUntilUtcTicks = 0;
+        RoleRotationOffset = 0;
     }
 
     public bool AddPlayer(Player player)

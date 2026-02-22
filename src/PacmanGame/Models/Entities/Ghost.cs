@@ -153,7 +153,15 @@ public class Ghost : Entity
     public void GetEaten()
     {
         State = GhostState.Eaten;
-        RespawnTimer = Constants.GhostRespawnTime; // Set respawn timer
+        // Snap to grid and force a fresh path decision next tick.
+        // This prevents cases where the ghost was mid-tile and never gets "centered" again,
+        // which could make it appear stuck after being eaten.
+        ExactX = X;
+        ExactY = Y;
+        CurrentDirection = Direction.None;
+        // Respawn timer starts when the ghost reaches the ghost house base.
+        // This prevents "teleport respawns" before the ghost returns home.
+        RespawnTimer = 0f;
     }
 
     /// <summary>

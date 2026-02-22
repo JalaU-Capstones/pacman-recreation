@@ -71,8 +71,57 @@
     <Setter Property="BorderThickness" Value="1" />
   </Style>
 
+  <!-- Ensure dropdown items remain high-contrast (Fluent defaults can be light). -->
+  <Style Selector="ComboBoxItem">
+    <Setter Property="Background" Value="{DynamicResource AppSurfaceBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+    <Setter Property="FontFamily" Value="{DynamicResource ArcadeFont}" />
+  </Style>
+
+  <Style Selector="ComboBoxItem:pointerover">
+    <Setter Property="Background" Value="{DynamicResource AppSurface2Brush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AppAccentBrush}" />
+  </Style>
+
+  <Style Selector="ComboBoxItem:selected">
+    <Setter Property="Background" Value="{DynamicResource AppBorderStrongBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AppAccentBrush}" />
+  </Style>
+
   <Style Selector="NumericUpDown">
     <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+  </Style>
+
+  <!-- Radio buttons: ensure labels are visible on dark surfaces. -->
+  <Style Selector="RadioButton">
+    <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+    <Setter Property="FontFamily" Value="{DynamicResource ArcadeFont}" />
+  </Style>
+
+  <Style Selector="RadioButton:pointerover">
+    <Setter Property="Foreground" Value="{DynamicResource AppAccentBrush}" />
+  </Style>
+
+  <Style Selector="RadioButton:checked">
+    <Setter Property="Foreground" Value="{DynamicResource AppAccentBrush}" />
+  </Style>
+
+  <!-- ListBox items: readable unselected, strong selected state. -->
+  <Style Selector="ListBoxItem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource AppTextPrimaryBrush}" />
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="FontFamily" Value="{DynamicResource ArcadeFont}" />
+  </Style>
+
+  <Style Selector="ListBoxItem:pointerover">
+    <Setter Property="Background" Value="{DynamicResource AppSurfaceBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AppAccentBrush}" />
+  </Style>
+
+  <Style Selector="ListBoxItem:selected">
+    <Setter Property="Background" Value="{DynamicResource AppBorderStrongBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AppAccentBrush}" />
   </Style>
 
   <Style Selector="TabItem">
