@@ -475,6 +475,13 @@ public class RelayServer : INetEventListener
                 }
 
                 BroadcastRoomState(room);
+
+                // If the match is running, broadcast an authoritative snapshot so clients can remove entities
+                // immediately (especially important if the game is paused/frozen and regular state ticks stop).
+                if (room.State == RoomState.Playing && room.Game != null)
+                {
+                    BroadcastToRoom(room, room.Game.GetState());
+                }
             }
         }
     }
@@ -506,7 +513,7 @@ public class RelayServer : INetEventListener
             return;
         }
 
-        // Promote a spectator first, otherwise reassign a ghost.
+        // Promote a spectator first, otherwise reassign the first remaining player.
         var candidate = ordered.FirstOrDefault(p => p.Role == PlayerRole.Spectator) ?? ordered[0];
         var oldRole = candidate.Role;
         candidate.Role = PlayerRole.Pacman;
@@ -526,6 +533,12 @@ public class RelayServer : INetEventListener
                 NewRole = PlayerRole.Pacman,
                 PreparationTimeSeconds = 3
             });
+        }
+        else if (oldRole != PlayerRole.Pacman && oldRole != PlayerRole.None && oldRole != PlayerRole.Spectator)
+        {
+            // Candidate previously held a ghost role; that role must not remain "ownerless".
+            // Promote a spectator to fill it, otherwise remove the entity from the simulation.
+            PromoteNextSpectator(room, oldRole, candidate.Name);
         }
     }
 

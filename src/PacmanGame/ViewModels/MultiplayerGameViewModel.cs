@@ -262,6 +262,19 @@ public class MultiplayerGameViewModel : ViewModelBase
             };
         }
 
+        // If the server removed a ghost role (disconnect with no replacement),
+        // remove it immediately on reset as well (avoid stale visuals during READY).
+        var resetGhostTypes = reset.Ghosts.Select(g => g.Type).ToHashSet();
+        var resetGhostsToRemove = _gameEngine.Ghosts
+            .Where(g => !resetGhostTypes.Contains(g.Type.ToString()))
+            .ToList();
+
+        foreach (var ghost in resetGhostsToRemove)
+        {
+            _gameEngine.Ghosts.Remove(ghost);
+            _logger.LogWarning("[MULTIPLAYER] Removed ghost {Type} during reset (not in server reset list)", ghost.Type);
+        }
+
         Lives = reset.Lives;
 
         ReadySecondsRemaining = Math.Clamp(reset.ReadySeconds, 1, 5);

@@ -22,6 +22,13 @@ public class CollisionDetector : ICollisionDetector
     {
         foreach (var ghost in ghosts)
         {
+            // Eyes returning to the ghost house should not block collisions with other ghosts
+            // and should not be treated as a hittable entity.
+            if (ghost.State == GhostState.Eaten)
+            {
+                continue;
+            }
+
             // Check if they're in the same grid position or very close
             if (pacman.X == ghost.X && pacman.Y == ghost.Y)
             {

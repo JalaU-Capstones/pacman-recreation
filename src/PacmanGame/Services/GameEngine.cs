@@ -570,14 +570,23 @@ public class GameEngine : IGameEngine, IGameEngineInternal
             return;
         }
 
-        const float centeringThreshold = 0.03f;
-        bool isCentered = Math.Abs(ghost.ExactX - ghost.X) < centeringThreshold && Math.Abs(ghost.ExactY - ghost.Y) < centeringThreshold;
+        const float snapThreshold = 0.03f;
+        float decisionThreshold = ghost.State == GhostState.Eaten ? 0.12f : snapThreshold;
+        bool atDecisionCenter =
+            Math.Abs(ghost.ExactX - ghost.X) < decisionThreshold &&
+            Math.Abs(ghost.ExactY - ghost.Y) < decisionThreshold;
+        bool atSnapCenter =
+            Math.Abs(ghost.ExactX - ghost.X) < snapThreshold &&
+            Math.Abs(ghost.ExactY - ghost.Y) < snapThreshold;
 
-        if (isCentered)
+        if (atSnapCenter)
         {
             ghost.ExactX = ghost.X;
             ghost.ExactY = ghost.Y;
+        }
 
+        if (atDecisionCenter)
+        {
             Direction nextMove = GetNextGhostMove(ghost);
             ghost.CurrentDirection = nextMove;
         }
@@ -654,7 +663,34 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         {
             case GhostState.Eaten:
                 var (homeY, homeX) = GetGhostHouseHomeTile(ghost);
+
+                // If we're close enough to home (but missed the exact integer center due to dt),
+                // snap to the home tile and start the respawn countdown.
+                if (ghost.RespawnTimer <= 0f &&
+                    Math.Abs(ghost.ExactX - homeX) < 0.2f &&
+                    Math.Abs(ghost.ExactY - homeY) < 0.2f)
+                {
+                    ghost.ExactX = homeX;
+                    ghost.ExactY = homeY;
+                    ghost.X = homeX;
+                    ghost.Y = homeY;
+                    ghost.CurrentDirection = Direction.None;
+                    ghost.RespawnTimer = _ghostRespawnTime;
+                    _logger.LogDebug("Eaten ghost {Ghost} reached home tile ({HomeX},{HomeY}); starting respawn timer {Seconds}s.", ghost.GetName(), homeX, homeY, _ghostRespawnTime);
+                    return Direction.None;
+                }
+
                 nextMove = _pathfinder.FindPath(ghost.Y, ghost.X, homeY, homeX, _map, ghost, _logger);
+
+                // If A* can't find a path (or returns None), fall back to a greedy step toward home.
+                // This prevents "stuck eyes" where the ghost never starts moving after being eaten.
+                if (nextMove == Direction.None && (ghost.X != homeX || ghost.Y != homeY))
+                {
+                    nextMove = ChooseGreedyMoveToward(ghost, homeY, homeX);
+                    _logger.LogDebug(
+                        "Eaten ghost {Ghost} A* returned None; greedy move {Move} toward ({HomeX},{HomeY}) from ({X},{Y})",
+                        ghost.GetName(), nextMove, homeX, homeY, ghost.X, ghost.Y);
+                }
 
                 // Start respawn countdown only after returning home (ghost house base).
                 if (ghost.X == homeX && ghost.Y == homeY && ghost.RespawnTimer <= 0f)
@@ -749,6 +785,54 @@ public class GameEngine : IGameEngine, IGameEngineInternal
         }
 
         return nextMove;
+    }
+
+    private Direction ChooseGreedyMoveToward(Ghost ghost, int targetY, int targetX)
+    {
+        // Prefer the move that reduces Manhattan distance and is legal.
+        // Avoid immediate reversal when possible to keep the eyes moving smoothly.
+        var candidates = new List<Direction> { Direction.Up, Direction.Down, Direction.Left, Direction.Right };
+        var nonReversing = candidates.Where(d => d != GetOppositeDirection(ghost.CurrentDirection)).ToList();
+        if (nonReversing.Any())
+        {
+            candidates = nonReversing;
+        }
+
+        Direction best = Direction.None;
+        int bestDist = int.MaxValue;
+
+        foreach (var dir in candidates)
+        {
+            if (!ghost.CanMove(dir, _map)) continue;
+
+            var (nx, ny) = GetNextPosition(ghost.X, ghost.Y, dir);
+            // Wrap tunnels like the movement layer does.
+            if (nx < 0) nx = Constants.MapWidth - 1;
+            else if (nx >= Constants.MapWidth) nx = 0;
+            if (ny < 0) ny = Constants.MapHeight - 1;
+            else if (ny >= Constants.MapHeight) ny = 0;
+
+            var dist = Math.Abs(ny - targetY) + Math.Abs(nx - targetX);
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                best = dir;
+            }
+        }
+
+        if (best != Direction.None)
+        {
+            return best;
+        }
+
+        // Last resort: allow reversal.
+        var opposite = GetOppositeDirection(ghost.CurrentDirection);
+        if (opposite != Direction.None && ghost.CanMove(opposite, _map))
+        {
+            return opposite;
+        }
+
+        return Direction.None;
     }
 
     private (int HomeY, int HomeX) GetGhostHouseHomeTile(Ghost ghost)

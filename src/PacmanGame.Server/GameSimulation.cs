@@ -269,8 +269,8 @@ public class GameSimulation
             if (ghost.RespawnTimer <= 0)
             {
                 ghost.State = GhostStateEnum.Normal;
-                // Ensure it's at spawn
-                if (_ghostSpawns.TryGetValue(ghost.Type, out var spawn))
+                // Ensure it's at spawn even if the cache was lost (e.g., role changes).
+                if (TryGetOrComputeGhostSpawn(ghost.Type, out var spawn))
                 {
                     ghost.X = spawn.Col;
                     ghost.Y = spawn.Row;
@@ -281,6 +281,8 @@ public class GameSimulation
 
     private void ResetAllEntitiesAndBroadcastReady(int readySeconds)
     {
+        EnsureSpawnCacheForExistingEntities();
+
         // Clear any active frightened state (power pellet) immediately.
         _powerPelletTimer = 0f;
 
@@ -304,6 +306,7 @@ public class GameSimulation
             }
             ghost.CurrentDirection = Direction.None;
             ghost.State = GhostStateEnum.Normal;
+            ghost.RespawnTimer = 0f;
             _playerInputs[GetRoleForGhost(ghost.Type)] = Direction.None;
         }
 
@@ -325,6 +328,83 @@ public class GameSimulation
 
         _logger.LogInformation("[SIMULATION] Multiplayer life lost in room {RoomId}. Broadcasting global reset (ready {Seconds}s).", _roomId, readySeconds);
         OnRoundReset?.Invoke(resetEvent);
+    }
+
+    private void EnsureSpawnCacheForExistingEntities()
+    {
+        // If the spawn cache is missing for a ghost (can happen after role changes),
+        // rebuild a deterministic "ghost house" spawn list and map it to existing ghosts.
+        if (_map.Length == 0)
+        {
+            return;
+        }
+
+        var missingSpawnForAnyGhost = _ghosts.Any(g => !_ghostSpawns.ContainsKey(g.Type));
+        if (!missingSpawnForAnyGhost)
+        {
+            return;
+        }
+
+        var ghostSpawnsData = _mapLoader.GetGhostSpawns($"level{_currentLevel}.txt");
+        if (ghostSpawnsData.Count == 0)
+        {
+            _logger.LogWarning("[SIMULATION] No ghost spawns found for level{Level}.txt; reset will not teleport missing-spawn ghosts.", _currentLevel);
+            return;
+        }
+
+        var centerRow = _mapHeight / 2;
+        var centerCol = _mapWidth / 2;
+        var canonicalSpawns = ghostSpawnsData
+            .OrderBy(p => Math.Abs(p.Row - centerRow) + Math.Abs(p.Col - centerCol))
+            .Take(4)
+            .OrderBy(p => p.Row)
+            .ThenBy(p => p.Col)
+            .ToList();
+
+        if (canonicalSpawns.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var ghost in _ghosts)
+        {
+            if (_ghostSpawns.ContainsKey(ghost.Type))
+            {
+                continue;
+            }
+
+            var index = GetGhostIndex(ghost.Type);
+            if (index >= 0 && index < canonicalSpawns.Count)
+            {
+                _ghostSpawns[ghost.Type] = canonicalSpawns[index];
+            }
+        }
+    }
+
+    private bool TryGetOrComputeGhostSpawn(GhostType type, out (int Row, int Col) spawn)
+    {
+        if (_ghostSpawns.TryGetValue(type, out spawn))
+        {
+            return true;
+        }
+
+        // Recompute cache from map markers (deterministic ghost house spawns near center).
+        EnsureSpawnCacheForExistingEntities();
+        if (_ghostSpawns.TryGetValue(type, out spawn))
+        {
+            return true;
+        }
+
+        // Last resort: center-ish fallback.
+        if (_map.Length != 0)
+        {
+            spawn = (_mapHeight / 2, _mapWidth / 2);
+            _logger.LogWarning("[SIMULATION] Ghost spawn missing for {Type} in room {RoomId}; using center fallback ({Row},{Col}).", type, _roomId, spawn.Row, spawn.Col);
+            return true;
+        }
+
+        spawn = default;
+        return false;
     }
 
     private void UpdatePacman(Pacman pacman, float deltaTime)
@@ -497,7 +577,7 @@ public class GameSimulation
                 {
                     ghost.State = GhostStateEnum.Eaten;
                     ghost.RespawnTimer = 3f;
-                    if (_ghostSpawns.TryGetValue(ghost.Type, out var spawn))
+                    if (TryGetOrComputeGhostSpawn(ghost.Type, out var spawn))
                     {
                         ghost.X = spawn.Col;
                         ghost.Y = spawn.Row;
