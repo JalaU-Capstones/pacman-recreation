@@ -124,6 +124,11 @@ public class CreativeModeViewModel : ViewModelBase
 
     public IReadOnlyList<LevelConfig> LevelConfigs => ProjectConfig.LevelConfigs;
 
+    public LevelConfig? SelectedLevelConfig
+        => CurrentLevelIndex >= 0 && CurrentLevelIndex < ProjectConfig.LevelConfigs.Count
+            ? ProjectConfig.LevelConfigs[CurrentLevelIndex]
+            : null;
+
     private readonly Dictionary<int, string[]> _levelLinesByIndex = new();
     private int _currentLevelIndex;
 
@@ -139,6 +144,7 @@ public class CreativeModeViewModel : ViewModelBase
             this.RaisePropertyChanged(nameof(CanGoPreviousLevel));
             this.RaisePropertyChanged(nameof(CanGoNextLevel));
             this.RaisePropertyChanged(nameof(CurrentLevelInfo));
+            this.RaisePropertyChanged(nameof(SelectedLevelConfig));
         }
     }
 
@@ -690,7 +696,14 @@ public class CreativeModeViewModel : ViewModelBase
                 }
 
                 var mapPath = Path.Combine(tempDir, $"playtest_{timestamp}_level{index + 1}.txt");
-                File.WriteAllText(mapPath, BuildLevelText(), Encoding.UTF8);
+                var levelText = BuildLevelText();
+                File.WriteAllText(mapPath, levelText, Encoding.UTF8);
+                _logger.LogInformation(
+                    "Playtest initialization: wrote level {Level} map to {Path} (walls {WallCount}, doors {DoorCount}).",
+                    index + 1,
+                    mapPath,
+                    levelText.Count(c => c == Constants.WallChar),
+                    levelText.Count(c => c == Constants.GhostDoorChar));
                 mapPaths.Add(mapPath);
             }
         }
@@ -785,6 +798,9 @@ public class CreativeModeViewModel : ViewModelBase
             CurrentLevelIndex = 0;
             LoadLevelIntoCanvas(0);
         }
+
+        // Selected level config instance can change when adding/removing levels.
+        this.RaisePropertyChanged(nameof(SelectedLevelConfig));
     }
 
     private void GenerateDotsForPlayability()

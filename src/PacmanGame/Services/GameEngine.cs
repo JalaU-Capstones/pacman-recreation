@@ -593,44 +593,30 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
         if (ghost.CurrentDirection != Direction.None)
         {
+            // Validate movement against the authoritative tilemap using the same rules as the ghost entity.
+            // This avoids rounding-based tunneling and ensures custom maps respect wall collisions.
+            if (!ghost.CanMove(ghost.CurrentDirection, _map))
+            {
+                ghost.CurrentDirection = Direction.None;
+                ghost.ExactX = ghost.X;
+                ghost.ExactY = ghost.Y;
+                return;
+            }
+
             (int dx, int dy) = GetDirectionDeltas(ghost.CurrentDirection);
             float nextX = ghost.ExactX + dx * ghost.GetSpeed() * deltaTime;
             float nextY = ghost.ExactY + dy * ghost.GetSpeed() * deltaTime;
 
-            // Validate movement to prevent passing through walls
-            // Check the tile ahead based on direction
-            int checkX = (int)Math.Round(nextX);
-            int checkY = (int)Math.Round(nextY);
+            ghost.ExactX = nextX;
+            ghost.ExactY = nextY;
 
-            // Special handling for ghost house gate
-            bool isGate = false;
-            if (checkX >= 0 && checkX < Constants.MapWidth && checkY >= 0 && checkY < Constants.MapHeight)
-            {
-                isGate = _map[checkY, checkX] == TileType.GhostDoor;
-            }
+            if (ghost.ExactX < 0) ghost.ExactX = Constants.MapWidth - 1;
+            else if (ghost.ExactX >= Constants.MapWidth) ghost.ExactX = 0;
+            if (ghost.ExactY < 0) ghost.ExactY = Constants.MapHeight - 1;
+            else if (ghost.ExactY >= Constants.MapHeight) ghost.ExactY = 0;
 
-            // Allow movement if valid tile OR if it's the gate and ghost is entering/exiting
-            bool canPass = CanMoveTo(checkX, checkY) || (isGate && (ghost.State == GhostState.Eaten || ghost.State == GhostState.ExitingHouse));
-
-            if (canPass)
-            {
-                ghost.ExactX = nextX;
-                ghost.ExactY = nextY;
-
-                if (ghost.ExactX < 0) ghost.ExactX = Constants.MapWidth - 1;
-                else if (ghost.ExactX >= Constants.MapWidth) ghost.ExactX = 0;
-                if (ghost.ExactY < 0) ghost.ExactY = Constants.MapHeight - 1;
-                else if (ghost.ExactY >= Constants.MapHeight) ghost.ExactY = 0;
-
-                ghost.X = (int)Math.Round(ghost.ExactX);
-                ghost.Y = (int)Math.Round(ghost.ExactY);
-            }
-            else
-            {
-                // Hit a wall, snap to grid
-                ghost.ExactX = ghost.X;
-                ghost.ExactY = ghost.Y;
-            }
+            ghost.X = (int)Math.Round(ghost.ExactX);
+            ghost.Y = (int)Math.Round(ghost.ExactY);
         }
 
         ghost.UpdateVulnerability(deltaTime, _logger);
