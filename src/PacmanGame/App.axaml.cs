@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using PacmanGame.Services;
 using PacmanGame.Services.ConsoleCommands;
 using PacmanGame.Services.Interfaces;
+using PacmanGame.Services.Logging;
 using PacmanGame.ViewModels;
 using PacmanGame.ViewModels.Creative;
 using PacmanGame.Views;
@@ -40,6 +41,7 @@ public partial class App : Application
             {
                 builder.AddConsole();
                 builder.AddDebug();
+                builder.AddProvider(new FileLoggerProvider(LogPaths.GetLogFilePath(), LogLevel.Debug));
                 builder.SetMinimumLevel(LogLevel.Debug);
             });
 

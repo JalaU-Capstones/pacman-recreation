@@ -38,8 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Creative Mode newly created levels now initialize with boundary walls and a valid ghost house template (prevents empty-canvas validation errors).
 - Creative Mode editor supports selecting, moving, and deleting placed objects.
 - Creative Mode canvas renders real sprites (WYSIWYG) instead of placeholder blocks.
- - Eaten ghosts now path back to the ghost house base before respawning.
- - FPS overlay calculation fixed (was incorrectly using Stopwatch ticks as TimeSpan ticks).
+- Eaten ghosts now path back to the ghost house base before respawning.
+- FPS overlay calculation fixed (was incorrectly using Stopwatch ticks as TimeSpan ticks).
+- Fixed Windows shortcut shell integration (Desktop + Start Menu shortcuts) and icon persistence (shortcuts point at `Assets/icon.ico`).
 
 ## [1.0.0] - 2026-02-17
 

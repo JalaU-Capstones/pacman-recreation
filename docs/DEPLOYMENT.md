@@ -187,6 +187,10 @@ sudo systemctl status pacman-server --no-pager
 dotnet publish src/PacmanGame/PacmanGame.csproj -c Release -r win-x64 --self-contained
 ```
 
+### Desktop Shortcut (Icon)
+On first run, the app creates Desktop and Start Menu shortcuts (best-effort).
+As of `v1.0.1`, shortcut icons resolve correctly by pointing the shortcut icon to `Assets/icon.ico` in the install/run directory (copied on publish).
+
 ### Installation
 Users can install via:
 ```powershell

@@ -54,6 +54,7 @@ dotnet run --project src/PacmanGame/PacmanGame.csproj
 - **DevConsole** (developer console overlay for debugging and quick actions)
 - **Creative Mode** project editor (1-10 levels per project, configurable scoring and difficulty, export/import `.pacproj`)
 - **FPS Overlay**: press `F1` during gameplay to toggle an FPS counter
+- **Windows Shell Integration**: first-run creation of Desktop + Start Menu shortcuts with the official `icon.ico`
 
 ## License
 

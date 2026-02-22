@@ -20,7 +20,7 @@ class Program
         {
             if (OperatingSystem.IsWindows())
             {
-                CreateWindowsShortcuts();
+                CreateWindowsShortcuts(logger);
             }
 
             logger.LogDebug("DEBUG: Building Avalonia app...");
@@ -42,7 +42,7 @@ class Program
             .LogToTrace()
             .UseReactiveUI();
 
-    private static void CreateWindowsShortcuts()
+    private static void CreateWindowsShortcuts(ILogger logger)
     {
         if (!OperatingSystem.IsWindows()) return;
 
@@ -51,21 +51,36 @@ class Program
             "PacmanRecreation", "shortcuts_created.flag"
         );
 
-        if (File.Exists(flagPath)) return;
+        if (File.Exists(flagPath))
+        {
+            logger.LogDebug("Windows shortcuts already created (flag present at {FlagPath}).", flagPath);
+            return;
+        }
 
         try
         {
             var shellType = Type.GetTypeFromProgID("WScript.Shell");
-            if (shellType == null) return;
+            if (shellType == null)
+            {
+                logger.LogWarning("WScript.Shell is unavailable; skipping shortcut creation.");
+                return;
+            }
 
             var shell = Activator.CreateInstance(shellType);
-            if (shell == null) return;
+            if (shell == null)
+            {
+                logger.LogWarning("Failed to create WScript.Shell instance; skipping shortcut creation.");
+                return;
+            }
 
             var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            var startMenuPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.Programs),
-                "Pacman Recreation"
+            // Explicit per requirement:
+            // %APPDATA%\Microsoft\Windows\Start Menu\Programs\Pacman Recreation\
+            var startMenuProgramsRoot = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Microsoft", "Windows", "Start Menu", "Programs"
             );
+            var startMenuPath = Path.Combine(startMenuProgramsRoot, "Pacman Recreation");
 
             var flagDir = Path.GetDirectoryName(flagPath);
             if (!string.IsNullOrEmpty(flagDir))
@@ -74,18 +89,20 @@ class Program
             }
             Directory.CreateDirectory(startMenuPath);
 
-            CreateShortcut(shell, desktopPath, "Pacman Recreation.lnk");
-            CreateShortcut(shell, startMenuPath, "Pacman Recreation.lnk");
+                CreateShortcut(shell, desktopPath, "Pacman Recreation.lnk", logger);
+                CreateShortcut(shell, startMenuPath, "Pacman Recreation.lnk", logger);
 
             File.WriteAllText(flagPath, DateTime.UtcNow.ToString());
+            logger.LogInformation("Windows shortcuts created (Desktop + Start Menu).");
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Best-effort only; avoid writing to console in production.
+            // Best-effort only; log details for troubleshooting.
+            logger.LogWarning(ex, "Failed to create Windows shortcuts (permissions or shell unavailable).");
         }
     }
 
-    private static void CreateShortcut(object shell, string folder, string name)
+    private static void CreateShortcut(object shell, string folder, string name, ILogger logger)
     {
         var shortcutPath = Path.Combine(folder, name);
         var shortcut = shell.GetType().InvokeMember("CreateShortcut",
@@ -100,17 +117,25 @@ class Program
 
         shortcut.GetType().InvokeMember("WorkingDirectory",
             System.Reflection.BindingFlags.SetProperty, null, shortcut,
-            new object[] { AppContext.BaseDirectory });
+            new object[] { AppDomain.CurrentDomain.BaseDirectory });
 
-        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
+        // Prefer a stable absolute path to an .ico on disk for persistent branding.
+        // This also works when the app isn't installed as an MSI/MSIX and has no embedded exe icon metadata.
+        var iconPath = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "icon.ico"));
         if (File.Exists(iconPath))
         {
             shortcut.GetType().InvokeMember("IconLocation",
                 System.Reflection.BindingFlags.SetProperty, null, shortcut,
-                new object[] { iconPath });
+                new object[] { $"{iconPath},0" });
+        }
+        else
+        {
+            logger.LogWarning("icon.ico was not found at {IconPath}; shortcut will use the default icon.", iconPath);
         }
 
         shortcut.GetType().InvokeMember("Save",
             System.Reflection.BindingFlags.InvokeMethod, null, shortcut, null);
+
+        logger.LogInformation("Shortcut created successfully at {Path}", shortcutPath);
     }
 }

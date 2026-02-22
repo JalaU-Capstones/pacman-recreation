@@ -1,22 +1,30 @@
-# 📝 Logging System Documentation
+# Logging
 
-This document outlines the logging system implemented in the Pac-Man recreation project. The system is designed to provide clear, timestamped, and categorized messages for debugging, troubleshooting, and monitoring application behavior without cluttering the console.
+This project uses `Microsoft.Extensions.Logging` for runtime diagnostics.
 
----
+## Log File Location (Persistent)
 
-## 📍 Log File Location
+The app writes to a text file named `pacman.log` (appends across runs).
 
-The application logs all important events to a text file named `pacman.log`. The location of this file varies depending on the operating system:
+- Windows (Roaming AppData):
+  - `%APPDATA%\\PacmanRecreation\\logs\\pacman.log`
+  - Example: `C:\\Users\\JohnDoe\\AppData\\Roaming\\PacmanRecreation\\logs\\pacman.log`
+- Linux (non-Flatpak):
+  - `~/.local/share/pacman-recreation/logs/pacman.log`
+- Linux (Flatpak):
+  - `$XDG_DATA_HOME/pacman-recreation/logs/pacman.log` (sandboxed)
 
--   **Windows:**
-    `C:\Users\{Username}\AppData\Roaming\PacmanGame\pacman.log`
-    (e.g., `C:\Users\JohnDoe\AppData\Roaming\PacmanGame\pacman.log`)
+The `logs/` directory is created automatically.
 
--   **Linux:**
-    `~/.config/PacmanGame/pacman.log`
-    (e.g., `/home/johndoe/.config/PacmanGame/pacman.log`)
+## Live Logs (Console)
 
-The log directory (`PacmanGame`) is automatically created if it does not exist.
+When launching the app from a terminal, logs also print to stdout.
+
+- Windows:
+  - Run from PowerShell or CMD to see console logs:
+    - `dotnet run --project src\\PacmanGame\\PacmanGame.csproj`
+- Linux:
+  - `dotnet run --project src/PacmanGame/PacmanGame.csproj`
 
 ---
 
@@ -25,22 +33,22 @@ The log directory (`PacmanGame`) is automatically created if it does not exist.
 Each entry in the `pacman.log` file follows a consistent format:
 
 ```
-[YYYY-MM-DD HH:mm:ss] [LEVEL] Message
+[YYYY-MM-DD HH:mm:ss] [LEVEL] [Category] Message
 ```
 
 -   **`[YYYY-MM-DD HH:mm:ss]`**: A timestamp indicating when the log entry was recorded, in `Year-Month-Day Hour:Minute:Second` format.
 -   **`[LEVEL]`**: The severity level of the log message.
 -   **`Message`**: A descriptive text explaining the event or issue.
 
-**Example Log Entries:**
+Example log entries:
 
 ```
-[2026-02-10 18:45:32] [INFO] Game started - Level 1
-[2026-02-10 18:45:33] [INFO] Audio system initialized successfully
-[2026-02-10 18:45:35] [ERROR] Failed to load sprite 'ghost_blinky_up_3': File not found
-[2026-02-10 18:45:40] [WARNING] Ghost pathfinding failed - using fallback random move
-[2026-02-10 18:46:12] [INFO] Power pellet collected - Ghosts now vulnerable
-[2026-02-10 18:46:15] [DEBUG] Blinky target=(0,27) mode=Scatter
+[2026-02-10 18:45:32] [INFO] [PacmanGame.ViewModels.GameViewModel] Game started - Level 1
+[2026-02-10 18:45:33] [INFO] [PacmanGame.Services.AudioManager] Audio system initialized successfully
+[2026-02-10 18:45:35] [ERROR] [PacmanGame.Services.SpriteManager] Failed to load sprite 'ghost_blinky_up_3': File not found
+[2026-02-10 18:45:40] [WARNING] [PacmanGame.Services.GameEngine] Ghost pathfinding failed - using fallback random move
+[2026-02-10 18:46:12] [INFO] [PacmanGame.Services.GameEngine] Power pellet collected - Ghosts now vulnerable
+[2026-02-10 18:46:15] [DEBUG] [PacmanGame.Services.AI.BlinkyAI] Blinky target=(0,27) mode=Scatter
 ```
 
 ---
