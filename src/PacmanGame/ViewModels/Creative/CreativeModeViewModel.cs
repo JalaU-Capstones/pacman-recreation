@@ -9,12 +9,14 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Microsoft.Extensions.Logging;
 using PacmanGame.Helpers;
 using PacmanGame.Models.Creative;
 using PacmanGame.Models.CustomLevel;
 using PacmanGame.Services.Interfaces;
+using PacmanGame.Services.KeyBindings;
 using PacmanGame.ViewModels;
 using ReactiveUI;
 
@@ -27,6 +29,7 @@ public class CreativeModeViewModel : ViewModelBase
     private readonly ICustomLevelManagerService _customLevelManager;
     private readonly IProfileManager _profileManager;
     private readonly IStorageProvider _storageProvider;
+    private readonly IKeyBindingService _keyBindings;
 
     public LevelCanvasViewModel CanvasViewModel { get; }
     public ToolboxViewModel ToolboxViewModel { get; }
@@ -227,7 +230,8 @@ public class CreativeModeViewModel : ViewModelBase
         IAudioManager audioManager,
         ICustomLevelManagerService customLevelManager,
         IProfileManager profileManager,
-        IStorageProvider storageProvider)
+        IStorageProvider storageProvider,
+        IKeyBindingService keyBindings)
     {
         _mainWindowViewModel = mainWindowViewModel;
         CanvasViewModel = canvasViewModel;
@@ -236,6 +240,7 @@ public class CreativeModeViewModel : ViewModelBase
         _customLevelManager = customLevelManager;
         _profileManager = profileManager;
         _storageProvider = storageProvider;
+        _keyBindings = keyBindings;
 
         CloseCommand = ReactiveCommand.Create(CloseEditor);
         ExportCommand = ReactiveCommand.Create(OpenExportOptions);
@@ -280,6 +285,25 @@ public class CreativeModeViewModel : ViewModelBase
                 this.RaisePropertyChanged(nameof(CursorRotationLabelLeft));
                 this.RaisePropertyChanged(nameof(CursorRotationLabelTop));
             });
+
+        _keyBindings.BindingsChanged += (_, _) => RaiseKeyboardHelpText();
+    }
+
+    public bool IsActionTriggered(string action, Key key, KeyModifiers modifiers)
+    {
+        return _keyBindings.IsActionTriggered(action, key, modifiers);
+    }
+
+    private void RaiseKeyboardHelpText()
+    {
+        this.RaisePropertyChanged(nameof(MoveCursorKeyText));
+        this.RaisePropertyChanged(nameof(PlaceTileKeyText));
+        this.RaisePropertyChanged(nameof(DeleteTileKeyText));
+        this.RaisePropertyChanged(nameof(CycleToolsKeyText));
+        this.RaisePropertyChanged(nameof(RotateTileKeyText));
+        this.RaisePropertyChanged(nameof(PlayTestKeyText));
+        this.RaisePropertyChanged(nameof(ExportKeyText));
+        this.RaisePropertyChanged(nameof(ImportKeyText));
     }
 
     private double _zoomLevel = 1.0;
@@ -300,6 +324,19 @@ public class CreativeModeViewModel : ViewModelBase
 
     public ReactiveCommand<Unit, Unit> ZoomInCommand { get; }
     public ReactiveCommand<Unit, Unit> ZoomOutCommand { get; }
+
+    public string MoveCursorKeyText =>
+        $"{_keyBindings.GetKeyText(KeyBindingActions.MoveUp)}/" +
+        $"{_keyBindings.GetKeyText(KeyBindingActions.MoveDown)}/" +
+        $"{_keyBindings.GetKeyText(KeyBindingActions.MoveLeft)}/" +
+        $"{_keyBindings.GetKeyText(KeyBindingActions.MoveRight)}: Move cursor";
+    public string PlaceTileKeyText => $"{_keyBindings.GetKeyText(KeyBindingActions.PlaceTile)}: Place tile";
+    public string DeleteTileKeyText => $"{_keyBindings.GetKeyText(KeyBindingActions.DeleteTile)}: Clear tile";
+    public string CycleToolsKeyText => $"{_keyBindings.GetKeyText(KeyBindingActions.CycleTools)}: Cycle tools";
+    public string RotateTileKeyText => $"{_keyBindings.GetKeyText(KeyBindingActions.RotateTile)}: Rotate";
+    public string PlayTestKeyText => $"{_keyBindings.GetKeyText(KeyBindingActions.PlayTest)}: Play test";
+    public string ExportKeyText => $"{_keyBindings.GetKeyText(KeyBindingActions.ExportProject)}: Export";
+    public string ImportKeyText => $"{_keyBindings.GetKeyText(KeyBindingActions.ImportProject)}: Import";
 
     private void OpenExportOptions()
     {

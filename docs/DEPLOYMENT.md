@@ -1,6 +1,6 @@
 # Deployment Guide
 
-**Release target:** v1.0.1
+**Release target:** v1.0.2
 
 ## Flathub Submission
 
@@ -209,3 +209,30 @@ winget install CodeWithBotina.PacmanRecreation
 4. Validate locally before PR:
    - `winget validate --manifest <path>`
    - `winget install --manifest <path>`
+
+## Database Security (v1.0.2+)
+
+Starting with `v1.0.2`, the local profile database is encrypted using SQLCipher.
+
+### Local Paths
+- Linux (non-Flatpak): `~/.local/share/pacman-recreation/profiles.db`
+- Linux (Flatpak): `${XDG_DATA_HOME}/pacman-recreation/profiles.db` (sandboxed)
+- Windows: `%APPDATA%\\PacmanRecreation\\profiles.db`
+
+The encryption key is stored per-installation alongside the database as `profiles.db.secret`.
+
+### Migration From v1.0.1
+- Automatic on first launch after upgrading to `v1.0.2`.
+- Existing profiles, scores, settings, and progression are preserved.
+- The old plaintext database is replaced after successful migration.
+
+### Backup Considerations
+- Encrypted databases cannot be opened with external tools without the key.
+- If `profiles.db.secret` is lost, `profiles.db` becomes unreadable by design.
+
+### Troubleshooting
+If the database becomes corrupted or unreadable:
+1. Close the game.
+2. Delete `profiles.db` and `profiles.db.secret` from the local data folder.
+3. Restart the game (a new encrypted database will be created).
+4. Profiles will be lost (by design for integrity).

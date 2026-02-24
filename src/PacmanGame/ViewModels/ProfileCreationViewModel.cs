@@ -13,6 +13,7 @@ public class ProfileCreationViewModel : ViewModelBase
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly IProfileManager _profileManager;
     private readonly IAudioManager _audioManager;
+    private readonly IKeyBindingService _keyBindings;
     private readonly ILogger<ProfileCreationViewModel> _logger;
 
     private string _name = string.Empty;
@@ -52,11 +53,12 @@ public class ProfileCreationViewModel : ViewModelBase
     public ReactiveCommand<string?, Unit> SelectColorCommand { get; }
     public ICommand CancelCommand { get; }
 
-    public ProfileCreationViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger<ProfileCreationViewModel> logger)
+    public ProfileCreationViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, IKeyBindingService keyBindings, ILogger<ProfileCreationViewModel> logger)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _profileManager = profileManager;
         _audioManager = audioManager;
+        _keyBindings = keyBindings;
         _logger = logger;
 
         CreateProfileCommand = ReactiveCommand.Create(CreateProfile);
@@ -108,6 +110,9 @@ public class ProfileCreationViewModel : ViewModelBase
             _audioManager.SetGameMusicVolume((float)settings.GameMusicVolume);
             _audioManager.SetSfxVolume((float)settings.SfxVolume);
             _audioManager.SetMuted(settings.IsMuted);
+            _mainWindowViewModel.IsMuted = settings.IsMuted;
+
+            _keyBindings.GetBindingsForActiveProfile();
 
             _mainWindowViewModel.NavigateTo<MainMenuViewModel>();
         }

@@ -3,10 +3,13 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:PacmanGame.ViewModels"
+             xmlns:conv="using:PacmanGame.Converters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:Class="PacmanGame.Views.SettingsView"
              x:DataType="vm:SettingsViewModel"
-             Background="{DynamicResource AppBackgroundBrush}">
+             Background="{DynamicResource AppBackgroundBrush}"
+             KeyDown="OnKeyDown"
+             Focusable="True">
 
   <UserControl.Styles>
     <StyleInclude Source="/Styles/ButtonStyles.axaml" />
@@ -23,6 +26,10 @@
     </Style>
   </UserControl.Styles>
 
+  <UserControl.Resources>
+    <conv:StringNotEmptyConverter x:Key="StringNotEmpty" />
+  </UserControl.Resources>
+
   <Grid RowDefinitions="Auto,*,Auto">
     <TextBlock Grid.Row="0"
                Text="SETTINGS"
@@ -33,70 +40,132 @@
                FontSize="36"
                Margin="0,40,0,20"/>
 
-    <StackPanel Grid.Row="1" HorizontalAlignment="Center" Spacing="30" Width="500">
+    <TabControl Grid.Row="1" HorizontalAlignment="Center" Width="700">
+      <TabItem Header="General">
+        <StackPanel Spacing="20" Margin="0,20,0,0">
+          <Border BorderBrush="{DynamicResource AppBorderStrongBrush}" BorderThickness="2" CornerRadius="5" Padding="20">
+            <StackPanel Spacing="15">
+              <TextBlock Text="PROFILE MANAGEMENT"
+                         FontFamily="{StaticResource ArcadeFont}"
+                         FontSize="20"
+                         FontWeight="Bold"
+                         HorizontalAlignment="Center"/>
 
-      <!-- Profile Management Section -->
-      <Border BorderBrush="{DynamicResource AppBorderStrongBrush}" BorderThickness="2" CornerRadius="5" Padding="20">
-        <StackPanel Spacing="15">
-          <TextBlock Text="PROFILE MANAGEMENT"
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
+                <TextBlock Text="Current Profile:" Foreground="{DynamicResource AppTextMutedBrush}" FontFamily="{StaticResource ArcadeFont}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding ActiveProfile.Name}"
+                           Foreground="{Binding ActiveProfile.AvatarColor}"
+                           FontFamily="{StaticResource ArcadeFont}"
+                           FontSize="18"
+                           FontWeight="Bold"
+                           VerticalAlignment="Center"/>
+              </StackPanel>
+
+              <Button Classes="arcade"
+                      Command="{Binding SwitchProfileCommand}"
+                      Content="SWITCH PROFILE"
+                      HorizontalAlignment="Center"/>
+
+              <Button Classes="arcade danger"
+                      Command="{Binding ShowDeleteConfirmationCommand}"
+                      Content="DELETE PROFILE"
+                      HorizontalAlignment="Center"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </TabItem>
+
+      <TabItem Header="Audio">
+        <StackPanel Spacing="20" Margin="0,20,0,0">
+          <Border BorderBrush="{DynamicResource AppBorderStrongBrush}" BorderThickness="2" CornerRadius="5" Padding="20">
+            <StackPanel Spacing="15">
+              <TextBlock Text="AUDIO"
+                         FontFamily="{StaticResource ArcadeFont}"
+                         FontSize="20"
+                         FontWeight="Bold"
+                         HorizontalAlignment="Center"/>
+
+              <CheckBox Classes="arcade" IsChecked="{Binding IsMusicEnabled}"
+                        Content="Enable Audio"
+                        HorizontalAlignment="Center"/>
+
+              <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" Margin="0,10,0,0">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Menu Music" VerticalAlignment="Center"/>
+                <Slider Grid.Row="0" Grid.Column="1" Classes="arcade" Minimum="0" Maximum="100" Value="{Binding MenuMusicVolume}" Margin="10,0"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding MenuMusicVolume}" VerticalAlignment="Center"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Game Music" VerticalAlignment="Center"/>
+                <Slider Grid.Row="1" Grid.Column="1" Classes="arcade" Minimum="0" Maximum="100" Value="{Binding GameMusicVolume}" Margin="10,0"/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding GameMusicVolume}" VerticalAlignment="Center"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Sound Effects" VerticalAlignment="Center"/>
+                <Slider Grid.Row="2" Grid.Column="1" Classes="arcade" Minimum="0" Maximum="100" Value="{Binding SfxVolume}" Margin="10,0"/>
+                <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding SfxVolume}" VerticalAlignment="Center"/>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </TabItem>
+
+      <TabItem Header="Keybindings">
+        <StackPanel Spacing="15" Margin="0,20,0,0">
+          <TextBlock Text="KEYBINDINGS"
                      FontFamily="{StaticResource ArcadeFont}"
                      FontSize="20"
                      FontWeight="Bold"
                      HorizontalAlignment="Center"/>
 
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
-            <TextBlock Text="Current Profile:" Foreground="{DynamicResource AppTextMutedBrush}" FontFamily="{StaticResource ArcadeFont}" VerticalAlignment="Center"/>
-            <TextBlock Text="{Binding ActiveProfile.Name}"
-                       Foreground="{Binding ActiveProfile.AvatarColor}"
-                       FontFamily="{StaticResource ArcadeFont}"
-                       FontSize="18"
-                       FontWeight="Bold"
-                       VerticalAlignment="Center"/>
-          </StackPanel>
+          <ScrollViewer Height="520" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding KeyBindingCategories}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Spacing="10" Margin="0,0,0,18">
+                    <TextBlock Text="{Binding Name}"
+                               FontFamily="{StaticResource ArcadeFont}"
+                               FontSize="16"
+                               Foreground="{DynamicResource AppAccentBrush}"/>
+
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2" VerticalAlignment="Center">
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding DisplayName}"
+                                       FontFamily="{StaticResource ArcadeFont}"
+                                       VerticalAlignment="Center"/>
+                            <Border Grid.Column="1"
+                                    Margin="10,0"
+                                    Padding="10,4"
+                                    BorderBrush="{DynamicResource AppBorderStrongBrush}"
+                                    BorderThickness="2"
+                                    CornerRadius="6"
+                                    VerticalAlignment="Center">
+                              <TextBlock Text="{Binding BindingText}"
+                                         FontFamily="{StaticResource ArcadeFont}"
+                                         Foreground="{DynamicResource AppTextMutedBrush}"/>
+                            </Border>
+                            <Button Grid.Column="2"
+                                    Classes="arcade"
+                                    Content="CHANGE"
+                                    Command="{Binding ChangeCommand}"
+                                    CommandParameter="{Binding Action}"/>
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
 
           <Button Classes="arcade"
-                  Command="{Binding SwitchProfileCommand}"
-                  Content="SWITCH PROFILE"
-                  HorizontalAlignment="Center"/>
-
-          <Button Classes="arcade danger"
-                  Command="{Binding ShowDeleteConfirmationCommand}"
-                  Content="DELETE PROFILE"
+                  Command="{Binding ResetKeyBindingsCommand}"
+                  Content="RESET TO DEFAULTS"
                   HorizontalAlignment="Center"/>
         </StackPanel>
-      </Border>
-
-      <!-- Audio Settings -->
-      <Border BorderBrush="{DynamicResource AppBorderStrongBrush}" BorderThickness="2" CornerRadius="5" Padding="20">
-        <StackPanel Spacing="15">
-          <TextBlock Text="AUDIO"
-                     FontFamily="{StaticResource ArcadeFont}"
-                     FontSize="20"
-                     FontWeight="Bold"
-                     HorizontalAlignment="Center"/>
-
-          <CheckBox Classes="arcade" IsChecked="{Binding IsMusicEnabled}"
-                    Content="Enable Audio"
-                    HorizontalAlignment="Center"/>
-
-          <!-- Volume Sliders -->
-          <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" Margin="0,10,0,0">
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="Menu Music" VerticalAlignment="Center"/>
-            <Slider Grid.Row="0" Grid.Column="1" Classes="arcade" Minimum="0" Maximum="100" Value="{Binding MenuMusicVolume}" Margin="10,0"/>
-            <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding MenuMusicVolume}" VerticalAlignment="Center"/>
-
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="Game Music" VerticalAlignment="Center"/>
-            <Slider Grid.Row="1" Grid.Column="1" Classes="arcade" Minimum="0" Maximum="100" Value="{Binding GameMusicVolume}" Margin="10,0"/>
-            <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding GameMusicVolume}" VerticalAlignment="Center"/>
-
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="Sound Effects" VerticalAlignment="Center"/>
-            <Slider Grid.Row="2" Grid.Column="1" Classes="arcade" Minimum="0" Maximum="100" Value="{Binding SfxVolume}" Margin="10,0"/>
-            <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding SfxVolume}" VerticalAlignment="Center"/>
-          </Grid>
-        </StackPanel>
-      </Border>
-
-    </StackPanel>
+      </TabItem>
+    </TabControl>
 
     <!-- Delete Confirmation Overlay -->
     <Grid Grid.Row="0" Grid.RowSpan="3"
@@ -129,6 +198,78 @@
             <Button Classes="arcade danger"
                     Command="{Binding ConfirmDeleteCommand}"
                     Content="DELETE" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- Key Capture Overlay -->
+    <Grid Grid.Row="0" Grid.RowSpan="3"
+          Background="{DynamicResource AppOverlayBrush}"
+          IsVisible="{Binding IsKeyCaptureVisible}">
+      <Border Background="{DynamicResource AppSurface2Brush}"
+              BorderBrush="{DynamicResource AppAccentBrush}"
+              BorderThickness="3"
+              CornerRadius="10"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              Padding="30"
+              Width="460">
+        <StackPanel Spacing="14">
+          <TextBlock Text="{Binding KeyCaptureTitle}"
+                     Foreground="{DynamicResource AppAccentBrush}"
+                     FontFamily="{StaticResource ArcadeFont}"
+                     FontSize="20"
+                     TextAlignment="Center"
+                     TextWrapping="Wrap"
+                     HorizontalAlignment="Center"/>
+          <TextBlock Text="Press any key combination now..."
+                     FontFamily="{StaticResource ArcadeFont}"
+                     TextAlignment="Center"
+                     HorizontalAlignment="Center"/>
+          <TextBlock Text="{Binding KeyCaptureErrorMessage}"
+                     Foreground="{DynamicResource AppDangerBrush}"
+                     FontFamily="{StaticResource ArcadeFont}"
+                     TextAlignment="Center"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding KeyCaptureErrorMessage, Converter={StaticResource StringNotEmpty}}"/>
+          <Button Classes="arcade"
+                  Command="{Binding CancelKeyCaptureCommand}"
+                  Content="CANCEL"
+                  HorizontalAlignment="Center"/>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- Conflict Dialog Overlay -->
+    <Grid Grid.Row="0" Grid.RowSpan="3"
+          Background="{DynamicResource AppOverlayBrush}"
+          IsVisible="{Binding IsConflictDialogVisible}">
+      <Border Background="{DynamicResource AppSurface2Brush}"
+              BorderBrush="{DynamicResource AppDangerBrush}"
+              BorderThickness="3"
+              CornerRadius="10"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              Padding="30"
+              Width="460">
+        <StackPanel Spacing="18">
+          <TextBlock Text="KEY CONFLICT"
+                     Foreground="{DynamicResource AppDangerBrush}"
+                     FontFamily="{StaticResource ArcadeFont}"
+                     FontSize="24"
+                     HorizontalAlignment="Center"/>
+          <TextBlock Text="{Binding ConflictMessage}"
+                     FontFamily="{StaticResource ArcadeFont}"
+                     TextWrapping="Wrap"
+                     TextAlignment="Center"/>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20">
+            <Button Classes="arcade"
+                    Command="{Binding CancelConflictCommand}"
+                    Content="CANCEL" />
+            <Button Classes="arcade"
+                    Command="{Binding ConfirmReassignCommand}"
+                    Content="REASSIGN" />
           </StackPanel>
         </StackPanel>
       </Border>

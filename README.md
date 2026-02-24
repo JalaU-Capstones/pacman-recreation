@@ -46,15 +46,14 @@ dotnet run --project src/PacmanGame/PacmanGame.csproj
 - Profile system with local and global high score tracking
 - Original ghost AI behaviors (Blinky, Pinky, Inky, Clyde)
 - Authentic arcade sounds and graphics
+- Custom keybindings (per profile) for gameplay, system, and Creative Mode controls
+- Global mute keybinding (default: `M`) with persistent mute state and UI indicator
 - Cross-platform support (Linux x64/ARM64, Windows)
 
-## Upcoming in v1.0.1
+## Recent Releases
 
-- **Global Top 10 Leaderboard** (server-side persistence + client cache + offline queue)
-- **DevConsole** (developer console overlay for debugging and quick actions)
-- **Creative Mode** project editor (1-10 levels per project, configurable scoring and difficulty, export/import `.pacproj`)
-- **FPS Overlay**: press `F1` during gameplay to toggle an FPS counter
-- **Windows Shell Integration**: first-run creation of Desktop + Start Menu shortcuts with the official `icon.ico`
+- v1.0.1: Global Top 10 Leaderboard, DevConsole, Creative Mode editor, FPS overlay, Windows shortcuts
+- v1.0.2: Level 3 completion unlocks, encrypted local profile DB, custom keybindings, global mute key
 
 ## License
 

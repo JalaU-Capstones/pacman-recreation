@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using PacmanGame.Models.Game;
 using PacmanGame.Services.Interfaces;
 using Dapper;
+using PacmanGame.Services.KeyBindings;
 
 namespace PacmanGame.Services;
 
@@ -14,6 +16,10 @@ public class ProfileManager : IProfileManager
 {
     private readonly ILogger<ProfileManager> _logger;
     private readonly string _connectionString;
+    private readonly string _dbPath;
+    private readonly string _installSecretPath;
+    private readonly string _dbKey;
+    private bool _useEncryption;
     private Profile? _activeProfile;
     private bool _isInitialized;
 
@@ -21,8 +27,115 @@ public class ProfileManager : IProfileManager
     {
         _logger = logger;
         string path = dbPath ?? GetDatabasePath();
+        _dbPath = path;
+        _installSecretPath = Path.Combine(Path.GetDirectoryName(_dbPath) ?? AppContext.BaseDirectory,
+            Path.GetFileName(_dbPath) + ".secret");
+        _dbKey = EnsureInstallSecretAndGetKey();
         _connectionString = $"Data Source={path}";
         _logger.LogInformation("ProfileManager initialized with database at {DbPath}", path);
+    }
+
+    private string EnsureInstallSecretAndGetKey()
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(_installSecretPath);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            if (!File.Exists(_installSecretPath))
+            {
+                var secret = Convert.ToBase64String(Guid.NewGuid().ToByteArray()) + Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+                File.WriteAllText(_installSecretPath, secret);
+
+                if (OperatingSystem.IsLinux())
+                {
+                    try
+                    {
+                        File.SetUnixFileMode(_installSecretPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                    }
+                    catch
+                    {
+                        // Best-effort hardening; ignore if unsupported.
+                    }
+                }
+            }
+
+            var key = File.ReadAllText(_installSecretPath).Trim();
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                key = Convert.ToBase64String(Guid.NewGuid().ToByteArray()) + Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+                File.WriteAllText(_installSecretPath, key);
+            }
+
+            return key;
+        }
+        catch (Exception ex)
+        {
+            // If the key file can't be created/read, fall back to a process-only key.
+            // This weakens integrity, but keeps the app functional.
+            _logger.LogWarning(ex, "Failed to load install secret; using a temporary key for this run only.");
+            return Convert.ToBase64String(Guid.NewGuid().ToByteArray()) + Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+        }
+    }
+
+    private static string SqlQuote(string value)
+    {
+        return "'" + value.Replace("'", "''") + "'";
+    }
+
+    private static bool IsNotADatabase(SqliteException ex)
+    {
+        var msg = ex.Message ?? string.Empty;
+        return msg.Contains("not a database", StringComparison.OrdinalIgnoreCase)
+               || msg.Contains("file is not a database", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void ApplyEncryptionKey(SqliteConnection connection)
+    {
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = $"PRAGMA key = {SqlQuote(_dbKey)};";
+        cmd.ExecuteNonQuery();
+    }
+
+    private SqliteConnection OpenConnection(bool applyEncryptionKey)
+    {
+        var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+
+        if (applyEncryptionKey)
+        {
+            ApplyEncryptionKey(connection);
+        }
+
+        using (var pragma = connection.CreateCommand())
+        {
+            pragma.CommandText = "PRAGMA foreign_keys = ON;";
+            pragma.ExecuteNonQuery();
+        }
+
+        return connection;
+    }
+
+    private async Task<SqliteConnection> OpenConnectionAsync(bool applyEncryptionKey)
+    {
+        var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync();
+
+        if (applyEncryptionKey)
+        {
+            ApplyEncryptionKey(connection);
+        }
+
+        await using (var pragma = connection.CreateCommand())
+        {
+            pragma.CommandText = "PRAGMA foreign_keys = ON;";
+            await pragma.ExecuteNonQueryAsync();
+        }
+
+        return connection;
     }
 
     private string GetDatabasePath()
@@ -82,8 +195,9 @@ public class ProfileManager : IProfileManager
         try
         {
             _logger.LogDebug("ProfileManager.InitializeAsync started");
-            await using var connection = new SqliteConnection(_connectionString);
-            await connection.OpenAsync();
+            _useEncryption = DetermineAndMigrateEncryptionIfNeeded();
+
+            await using var connection = await OpenConnectionAsync(_useEncryption);
             _logger.LogDebug("Database connection opened");
 
             var command = connection.CreateCommand();
@@ -114,6 +228,19 @@ public class ProfileManager : IProfileManager
                     IsMuted INTEGER NOT NULL DEFAULT 0,
                     FOREIGN KEY (ProfileId) REFERENCES Profiles(Id) ON DELETE CASCADE
                 );
+                CREATE TABLE IF NOT EXISTS KeyBindings (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ProfileId INTEGER NOT NULL,
+                    Action TEXT NOT NULL,
+                    KeyCode TEXT NOT NULL,
+                    ModifierKeys TEXT,
+                    CreatedAt INTEGER NOT NULL,
+                    UpdatedAt INTEGER NOT NULL,
+                    FOREIGN KEY (ProfileId) REFERENCES Profiles(Id) ON DELETE CASCADE,
+                    UNIQUE(ProfileId, Action)
+                );
+                CREATE INDEX IF NOT EXISTS idx_keybindings_profile ON KeyBindings(ProfileId);
+                CREATE INDEX IF NOT EXISTS idx_keybindings_action ON KeyBindings(Action);
             ";
             await command.ExecuteNonQueryAsync();
 
@@ -161,6 +288,8 @@ public class ProfileManager : IProfileManager
             }
             catch { /* Index might already exist */ }
 
+            await SeedDefaultKeyBindingsAsync(connection);
+
             _isInitialized = true;
             _logger.LogInformation("Database initialized successfully.");
         }
@@ -171,6 +300,148 @@ public class ProfileManager : IProfileManager
         }
     }
 
+    private bool DetermineAndMigrateEncryptionIfNeeded()
+    {
+        // New installs: create encrypted DB from the start.
+        if (!File.Exists(_dbPath))
+        {
+            _logger.LogInformation("No existing database found; creating encrypted database.");
+            return true;
+        }
+
+        // Existing installs: try to open as encrypted; if that fails, attempt migration from plaintext.
+        try
+        {
+            using var testEncrypted = OpenConnection(applyEncryptionKey: true);
+            using var cmd = testEncrypted.CreateCommand();
+            cmd.CommandText = "SELECT count(*) FROM sqlite_master;";
+            _ = cmd.ExecuteScalar();
+            _logger.LogInformation("Encrypted database detected.");
+            return true;
+        }
+        catch (SqliteException ex) when (IsNotADatabase(ex))
+        {
+            try
+            {
+                // Verify we can open it as plaintext before attempting SQLCipher export.
+                using var testPlain = OpenConnection(applyEncryptionKey: false);
+                using var plainCmd = testPlain.CreateCommand();
+                plainCmd.CommandText = "SELECT count(*) FROM sqlite_master;";
+                _ = plainCmd.ExecuteScalar();
+
+                _logger.LogInformation("Plaintext database detected; starting migration to encrypted database.");
+                MigratePlaintextToEncrypted();
+                _logger.LogInformation("Database migration to encrypted format completed.");
+                return true;
+            }
+            catch (Exception migEx) when (migEx is SqliteException or IOException or UnauthorizedAccessException)
+            {
+                // If the DB can't be opened as plaintext or migration fails, treat it as corrupted or key-mismatched.
+                // Keep the app booting by moving it aside and starting fresh encrypted DB.
+                var quarantinePath = _dbPath + ".corrupt." + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+                try
+                {
+                    File.Move(_dbPath, quarantinePath, overwrite: true);
+                    _logger.LogError(migEx, "Database could not be migrated; moved to {QuarantinePath}. A new encrypted database will be created.", quarantinePath);
+                }
+                catch (Exception moveEx)
+                {
+                    _logger.LogError(moveEx, "Database could not be migrated and could not be moved aside; continuing without encryption.");
+                    return false;
+                }
+
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Unexpected failure: don't brick the app; fall back to plaintext mode.
+            _logger.LogError(ex, "Failed to determine database encryption state; continuing without encryption.");
+            return false;
+        }
+    }
+
+    private void MigratePlaintextToEncrypted()
+    {
+        var tempPath = _dbPath + ".encrypted.tmp";
+        var backupPath = _dbPath + ".bak";
+
+        if (File.Exists(tempPath))
+        {
+            File.Delete(tempPath);
+        }
+
+        // Open the existing database without a key (plaintext), then export into an attached encrypted DB.
+        using (var plaintext = OpenConnection(applyEncryptionKey: false))
+        using (var cmd = plaintext.CreateCommand())
+        {
+            cmd.CommandText = $"ATTACH DATABASE {SqlQuote(tempPath)} AS encrypted KEY {SqlQuote(_dbKey)};";
+            cmd.ExecuteNonQuery();
+
+            cmd.CommandText = "SELECT sqlcipher_export('encrypted');";
+            cmd.ExecuteNonQuery();
+
+            cmd.CommandText = "DETACH DATABASE encrypted;";
+            cmd.ExecuteNonQuery();
+        }
+
+        // Swap in the encrypted DB.
+        File.Move(_dbPath, backupPath, overwrite: true);
+        File.Move(tempPath, _dbPath, overwrite: true);
+        try
+        {
+            File.Delete(backupPath);
+        }
+        catch
+        {
+            // Best-effort cleanup.
+        }
+    }
+
+    private static async Task SeedDefaultKeyBindingsAsync(SqliteConnection connection)
+    {
+        // Ensure each profile has the full set of default bindings.
+        var profileIds = (await connection.QueryAsync<int>("SELECT Id FROM Profiles;")).ToList();
+        if (profileIds.Count == 0)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        foreach (var profileId in profileIds)
+        {
+            foreach (var kvp in KeyBindingDefaults.Defaults)
+            {
+                await connection.ExecuteAsync(@"
+                    INSERT INTO KeyBindings (ProfileId, Action, KeyCode, ModifierKeys, CreatedAt, UpdatedAt)
+                    VALUES (@ProfileId, @Action, @KeyCode, @ModifierKeys, @CreatedAt, @UpdatedAt)
+                    ON CONFLICT(ProfileId, Action) DO NOTHING;
+                ", new
+                {
+                    ProfileId = profileId,
+                    Action = kvp.Key,
+                    KeyCode = kvp.Value.Key.ToString(),
+                    ModifierKeys = kvp.Value.Modifiers == Avalonia.Input.KeyModifiers.None
+                        ? null
+                        : SerializeModifiersForDb(kvp.Value.Modifiers),
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
+        }
+    }
+
+    private static string SerializeModifiersForDb(Avalonia.Input.KeyModifiers modifiers)
+    {
+        modifiers &= (Avalonia.Input.KeyModifiers.Control | Avalonia.Input.KeyModifiers.Shift | Avalonia.Input.KeyModifiers.Alt);
+        if (modifiers == Avalonia.Input.KeyModifiers.None) return string.Empty;
+        var parts = new List<string>();
+        if (modifiers.HasFlag(Avalonia.Input.KeyModifiers.Control)) parts.Add("Ctrl");
+        if (modifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift)) parts.Add("Shift");
+        if (modifiers.HasFlag(Avalonia.Input.KeyModifiers.Alt)) parts.Add("Alt");
+        return string.Join("+", parts);
+    }
+
     public List<Profile> GetAllProfiles()
     {
         var profiles = new List<Profile>();
@@ -179,8 +450,7 @@ public class ProfileManager : IProfileManager
         try
         {
             _logger.LogDebug("GetAllProfiles started");
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
+            using var connection = OpenConnection(_useEncryption);
 
             var command = connection.CreateCommand();
             command.CommandText = @"
@@ -224,8 +494,7 @@ public class ProfileManager : IProfileManager
         try
         {
             _logger.LogDebug("CreateProfile called with name={Name}", name);
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
+            using var connection = OpenConnection(_useEncryption);
 
             var command = connection.CreateCommand();
             command.CommandText = @"
@@ -254,6 +523,15 @@ public class ProfileManager : IProfileManager
             };
 
             SaveSettings((int)id, new Settings { ProfileId = (int)id });
+            try
+            {
+                // Populate default keybindings for this new profile.
+                SeedDefaultKeyBindingsForProfile(connection, (int)id);
+            }
+            catch
+            {
+                // Best-effort; keybindings are also seeded on app startup migration.
+            }
 
             _activeProfile = profile;
             _logger.LogInformation("New profile created: {Name}", name);
@@ -266,14 +544,36 @@ public class ProfileManager : IProfileManager
         }
     }
 
+    private static void SeedDefaultKeyBindingsForProfile(SqliteConnection connection, int profileId)
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        foreach (var kvp in KeyBindingDefaults.Defaults)
+        {
+            connection.Execute(@"
+                INSERT INTO KeyBindings (ProfileId, Action, KeyCode, ModifierKeys, CreatedAt, UpdatedAt)
+                VALUES (@ProfileId, @Action, @KeyCode, @ModifierKeys, @CreatedAt, @UpdatedAt)
+                ON CONFLICT(ProfileId, Action) DO NOTHING;
+            ", new
+            {
+                ProfileId = profileId,
+                Action = kvp.Key,
+                KeyCode = kvp.Value.Key.ToString(),
+                ModifierKeys = kvp.Value.Modifiers == Avalonia.Input.KeyModifiers.None
+                    ? null
+                    : SerializeModifiersForDb(kvp.Value.Modifiers),
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+    }
+
     public Profile? GetProfileById(int id)
     {
         if (!_isInitialized) return null;
 
         try
         {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
+            using var connection = OpenConnection(_useEncryption);
 
             var command = connection.CreateCommand();
             command.CommandText = @"
@@ -337,8 +637,7 @@ public class ProfileManager : IProfileManager
 
         try
         {
-            using var connection = new SqliteConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await OpenConnectionAsync(_useEncryption);
 
             await connection.ExecuteAsync(@"
                 UPDATE Profiles
@@ -376,8 +675,7 @@ public class ProfileManager : IProfileManager
 
         try
         {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
+            using var connection = OpenConnection(_useEncryption);
 
             var command = connection.CreateCommand();
             command.CommandText = "DELETE FROM Profiles WHERE Id = $id";
@@ -403,8 +701,7 @@ public class ProfileManager : IProfileManager
 
         try
         {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
+            using var connection = OpenConnection(_useEncryption);
 
             // Check if this is a new high score for this profile
             var checkCmd = connection.CreateCommand();
@@ -462,8 +759,7 @@ public class ProfileManager : IProfileManager
         if (existingScore == null || score > existingScore.Score)
         {
             // Update or insert
-            using var connection = new SqliteConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await OpenConnectionAsync(_useEncryption);
 
             // We need to find the ProfileId first
             var profileId = await connection.ExecuteScalarAsync<int?>("SELECT Id FROM Profiles WHERE Name = @Name", new { Name = profileName });
@@ -487,8 +783,7 @@ public class ProfileManager : IProfileManager
 
         try
         {
-            using var connection = new SqliteConnection(_connectionString);
-            await connection.OpenAsync();
+            await using var connection = await OpenConnectionAsync(_useEncryption);
 
             var command = connection.CreateCommand();
             command.CommandText = @"
@@ -527,8 +822,7 @@ public class ProfileManager : IProfileManager
 
         try
         {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
+            using var connection = OpenConnection(_useEncryption);
 
             var command = connection.CreateCommand();
             command.CommandText = @"
@@ -569,8 +863,7 @@ public class ProfileManager : IProfileManager
 
         try
         {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
+            using var connection = OpenConnection(_useEncryption);
 
             var command = connection.CreateCommand();
             command.CommandText = @"
@@ -604,8 +897,7 @@ public class ProfileManager : IProfileManager
 
         try
         {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
+            using var connection = OpenConnection(_useEncryption);
 
             var command = connection.CreateCommand();
             command.CommandText = @"
@@ -639,5 +931,25 @@ public class ProfileManager : IProfileManager
     public void CleanupDuplicateScores()
     {
         // Placeholder for cleanup logic if needed
+    }
+
+    internal SqliteConnection OpenConnectionForServices()
+    {
+        if (!_isInitialized)
+        {
+            throw new InvalidOperationException("ProfileManager not initialized.");
+        }
+
+        return OpenConnection(_useEncryption);
+    }
+
+    internal Task<SqliteConnection> OpenConnectionForServicesAsync()
+    {
+        if (!_isInitialized)
+        {
+            throw new InvalidOperationException("ProfileManager not initialized.");
+        }
+
+        return OpenConnectionAsync(_useEncryption);
     }
 }

@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 24-02-2026
+
+### Fixed
+- `HasCompletedAllLevels` now correctly persists to the profile after completing Level 3 in single-player normal mode.
+- Completing all 3 levels now unlocks:
+    - Global Leaderboard submission
+    - Creative Mode access
+
+### Added
+- Custom keybindings system (per-profile)
+    - Movement, pause, system shortcuts, and Creative Mode controls can be remapped in Settings.
+    - Conflict detection with optional reassign (previous action becomes unbound).
+    - Changes apply immediately (no restart).
+- Mute audio keybinding (default: `M`)
+    - Works globally (menus, gameplay, creative mode)
+    - Persists across sessions per profile
+    - Visual “MUTED” indicator in the UI
+
+### Changed
+- Local profile database is now encrypted (SQLCipher) to prevent external tampering.
+- Existing v1.0.1 plaintext databases are migrated to encrypted format on first v1.0.2 launch (data preserved).
+
+### Security
+- Database encryption blocks external tools (e.g., `sqlite3`) from reading/modifying:
+    - `HasCompletedAllLevels`
+    - Scores
+    - Settings (including mute state)
+    - Keybindings
+
 ## [1.0.1] - 21-02-2026
 
 ### Added

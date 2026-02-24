@@ -111,4 +111,35 @@ public class GameEngineTests
         // Assert
         _sut.Pacman.IsDying.Should().BeTrue();
     }
+
+    [Fact]
+    public void Update_WhenLastDotEaten_ShouldFreezeBeforeCheckingGhostCollision()
+    {
+        // Arrange: one dot that will be collected on this update.
+        var collectibles = new List<Collectible> { new Collectible(1, 1, CollectibleType.SmallDot) };
+        _mockMapLoader.Setup(m => m.GetCollectibles(It.IsAny<string>())).Returns(collectibles.Select(c => (c.Y, c.X, c.Type)).ToList());
+        _sut.LoadLevel(1);
+        _sut.Start();
+
+        var ghost = _sut.Ghosts[0];
+        ghost.State = GhostState.Normal;
+
+        _mockCollisionDetector
+            .Setup(c => c.CheckPacmanCollectibleCollision(It.IsAny<Pacman>(), It.IsAny<List<Collectible>>()))
+            .Returns((Pacman _, List<Collectible> list) => list[0]);
+        _mockCollisionDetector
+            .Setup(c => c.CheckPacmanGhostCollision(It.IsAny<Pacman>(), It.IsAny<List<Ghost>>()))
+            .Returns(ghost);
+
+        var levelCompleteRaised = false;
+        _sut.LevelComplete += () => levelCompleteRaised = true;
+
+        // Act
+        _sut.Update(0.1f);
+
+        // Assert: engine froze and did not start death sequence from the same frame's ghost collision.
+        _sut.IsPaused.Should().BeTrue();
+        _sut.Pacman.IsDying.Should().BeFalse();
+        levelCompleteRaised.Should().BeTrue();
+    }
 }

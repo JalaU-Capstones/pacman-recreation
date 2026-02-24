@@ -18,6 +18,9 @@ class Program
         logger.LogInformation("DEBUG: Client App Entry Point reached");
         try
         {
+            // Ensure SQLite provider is initialized early (SQLCipher bundle when available).
+            SQLitePCL.Batteries_V2.Init();
+
             if (OperatingSystem.IsWindows())
             {
                 CreateWindowsShortcuts(logger);

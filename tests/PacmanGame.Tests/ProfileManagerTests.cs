@@ -45,6 +45,19 @@ public class ProfileManagerTests : IAsyncLifetime
                 // Ignore if file is locked
             }
         }
+        var secretPath = Path.Combine(Path.GetDirectoryName(_testDbPath) ?? Path.GetTempPath(),
+            Path.GetFileName(_testDbPath) + ".secret");
+        if (File.Exists(secretPath))
+        {
+            try
+            {
+                File.Delete(secretPath);
+            }
+            catch
+            {
+                // Ignore
+            }
+        }
         return Task.CompletedTask;
     }
 

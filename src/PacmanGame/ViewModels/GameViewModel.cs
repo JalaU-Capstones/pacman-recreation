@@ -9,6 +9,8 @@ using PacmanGame.Helpers;
 using PacmanGame.Models.CustomLevel;
 using PacmanGame.Models.Enums;
 using PacmanGame.Services.Interfaces;
+using PacmanGame.Services.KeyBindings;
+using Avalonia.Input;
 
 namespace PacmanGame.ViewModels;
 
@@ -18,6 +20,7 @@ public class GameViewModel : ViewModelBase
     private readonly IProfileManager _profileManager;
     private readonly IGameEngine _engine;
     private readonly IAudioManager _audioManager;
+    private readonly IKeyBindingService _keyBindings;
     private readonly ILogger<GameViewModel> _logger;
     private int _extraLifeThreshold;
 
@@ -47,6 +50,9 @@ public class GameViewModel : ViewModelBase
 
     private bool _isVictory;
     public bool IsVictory { get => _isVictory; set => this.RaiseAndSetIfChanged(ref _isVictory, value); }
+
+    private string _victoryUnlockMessage = string.Empty;
+    public string VictoryUnlockMessage { get => _victoryUnlockMessage; set => this.RaiseAndSetIfChanged(ref _victoryUnlockMessage, value); }
 
     private bool _showFps;
     public bool ShowFps { get => _showFps; set => this.RaiseAndSetIfChanged(ref _showFps, value); }
@@ -82,12 +88,13 @@ public class GameViewModel : ViewModelBase
     public ICommand ToggleFpsCommand { get; }
     public ReactiveCommand<Direction, Unit> SetDirectionCommand { get; }
 
-    public GameViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, IGameEngine gameEngine, ILogger<GameViewModel> logger)
+    public GameViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, IGameEngine gameEngine, IKeyBindingService keyBindings, ILogger<GameViewModel> logger)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _profileManager = profileManager;
         _engine = gameEngine;
         _audioManager = audioManager;
+        _keyBindings = keyBindings;
         _logger = logger;
 
         _score = 0;
@@ -113,6 +120,11 @@ public class GameViewModel : ViewModelBase
         RestartGameCommand = ReactiveCommand.Create(RestartGame);
         ToggleFpsCommand = ReactiveCommand.Create(() => ShowFps = !ShowFps);
         SetDirectionCommand = ReactiveCommand.Create<Direction>(SetPacmanDirection);
+    }
+
+    public bool IsActionTriggered(string action, Key key, KeyModifiers modifiers)
+    {
+        return _keyBindings.IsActionTriggered(action, key, modifiers);
     }
 
     public void StartGame()
@@ -194,6 +206,7 @@ public class GameViewModel : ViewModelBase
     {
         IsGameOver = false;
         IsVictory = false;
+        VictoryUnlockMessage = string.Empty;
         Score = 0;
         Lives = _initialLives;
         Level = 1;
@@ -254,6 +267,8 @@ public class GameViewModel : ViewModelBase
         _audioManager.PlaySoundEffect("level-complete");
         _logger.LogInformation("Level {Level} complete! Starting level {NextLevel}", Level, Level + 1);
 
+        // Engine freezes itself immediately when the last dot is eaten; keep view state in sync.
+        IsPaused = true;
         IsLevelComplete = true;
         await Task.Delay(3000);
         IsLevelComplete = false;
@@ -274,6 +289,8 @@ public class GameViewModel : ViewModelBase
                 _engine.ApplyCustomLevelSettings(CustomProjectLevelSettings[_customProjectLevelIndex]);
             }
 
+            _engine.Resume();
+            IsPaused = false;
             return;
         }
 
@@ -283,19 +300,12 @@ public class GameViewModel : ViewModelBase
         {
             // Game completed!
             OnVictory();
-
-            // Mark profile as completed all levels
-            var profile = await _profileManager.GetCurrentProfileAsync();
-            if (profile != null && !profile.HasCompletedAllLevels)
-            {
-                profile.HasCompletedAllLevels = true;
-                await _profileManager.UpdateProfileAsync(profile);
-                _logger.LogInformation("Profile {Name} has completed all levels!", profile.Name);
-            }
         }
         else
         {
             _engine.LoadLevel(Level);
+            _engine.Resume();
+            IsPaused = false;
         }
     }
 
@@ -314,6 +324,9 @@ public class GameViewModel : ViewModelBase
             _logger.LogInformation("Custom project victory bonus awarded: {Bonus}", CustomProjectWinScore);
         }
 
+        _ = TryMarkAllLevelsCompletedAsync();
+
+        IsPaused = true;
         IsGameRunning = false;
         _engine.Stop();
         _audioManager.StopMusic();
@@ -327,6 +340,55 @@ public class GameViewModel : ViewModelBase
         if (activeProfile != null)
         {
             _profileManager.SaveScore(activeProfile.Id, Score, Level);
+        }
+    }
+
+    private async Task TryMarkAllLevelsCompletedAsync()
+    {
+        try
+        {
+            // Only permanent-unlock after finishing the built-in campaign (levels 1-3) in single-player.
+            if (_engine.IsMultiplayerClient)
+            {
+                return;
+            }
+
+            if (CustomProjectMapPaths != null && CustomProjectMapPaths.Count > 0)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(CustomMapPath))
+            {
+                return;
+            }
+
+            if (_engine.CurrentLevel != 3)
+            {
+                return;
+            }
+
+            var profile = await _profileManager.GetCurrentProfileAsync();
+            if (profile == null)
+            {
+                return;
+            }
+
+            if (profile.HasCompletedAllLevels)
+            {
+                return;
+            }
+
+            profile.HasCompletedAllLevels = true;
+            await _profileManager.UpdateProfileAsync(profile);
+
+            VictoryUnlockMessage = "Creative Mode and Global Leaderboard unlocked!";
+            _logger.LogInformation("Profile {Name} has completed all levels; unlocks granted.", profile.Name);
+        }
+        catch (Exception ex)
+        {
+            // Don't fail victory flow if persistence fails; just log.
+            _logger.LogError(ex, "Failed to update HasCompletedAllLevels on victory");
         }
     }
 }

@@ -870,6 +870,10 @@ public class GameEngine : IGameEngine, IGameEngineInternal
 
             if (_collectibles.All(c => !c.IsActive))
             {
+                // Freeze immediately on completion so entities stop moving and no further collisions occur.
+                // This prevents "death during transition" glitches when the last dot is collected near a ghost.
+                _isPaused = true;
+
                 if (_currentLevel == 3)
                 {
                     Victory?.Invoke();
@@ -878,6 +882,8 @@ public class GameEngine : IGameEngine, IGameEngineInternal
                 {
                     LevelComplete?.Invoke();
                 }
+
+                return;
             }
         }
 

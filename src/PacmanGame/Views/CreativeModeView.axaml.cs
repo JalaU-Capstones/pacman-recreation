@@ -5,6 +5,7 @@ using Avalonia.Markup.Xaml;
 using PacmanGame.ViewModels.Creative;
 using System.Reactive;
 using System;
+using PacmanGame.Services.KeyBindings;
 
 namespace PacmanGame.Views;
 
@@ -24,6 +25,73 @@ public partial class CreativeModeView : UserControl
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not CreativeModeViewModel vm) return;
+
+        if (vm.IsActionTriggered(KeyBindingActions.MoveUp, e.Key, e.KeyModifiers))
+        {
+            vm.CanvasViewModel.MoveCursor(0, -1);
+            e.Handled = true;
+            return;
+        }
+        if (vm.IsActionTriggered(KeyBindingActions.MoveDown, e.Key, e.KeyModifiers))
+        {
+            vm.CanvasViewModel.MoveCursor(0, 1);
+            e.Handled = true;
+            return;
+        }
+        if (vm.IsActionTriggered(KeyBindingActions.MoveLeft, e.Key, e.KeyModifiers))
+        {
+            vm.CanvasViewModel.MoveCursor(-1, 0);
+            e.Handled = true;
+            return;
+        }
+        if (vm.IsActionTriggered(KeyBindingActions.MoveRight, e.Key, e.KeyModifiers))
+        {
+            vm.CanvasViewModel.MoveCursor(1, 0);
+            e.Handled = true;
+            return;
+        }
+        if (vm.IsActionTriggered(KeyBindingActions.PlaceTile, e.Key, e.KeyModifiers))
+        {
+            vm.CanvasViewModel.HandleCellActionAtCursor();
+            e.Handled = true;
+            return;
+        }
+        if (vm.IsActionTriggered(KeyBindingActions.DeleteTile, e.Key, e.KeyModifiers) || e.Key == Key.Back)
+        {
+            vm.CanvasViewModel.ClearCell();
+            e.Handled = true;
+            return;
+        }
+        if (vm.IsActionTriggered(KeyBindingActions.CycleTools, e.Key, e.KeyModifiers))
+        {
+            vm.ToolboxViewModel.CycleToNextTool();
+            e.Handled = true;
+            return;
+        }
+        if (vm.IsActionTriggered(KeyBindingActions.RotateTile, e.Key, e.KeyModifiers))
+        {
+            vm.CanvasViewModel.RotateCurrentCell();
+            e.Handled = true;
+            return;
+        }
+        if (vm.IsActionTriggered(KeyBindingActions.PlayTest, e.Key, e.KeyModifiers))
+        {
+            vm.PlayTestCommand.Execute().Subscribe(Observer.Create<System.Reactive.Unit>(_ => { }));
+            e.Handled = true;
+            return;
+        }
+        if (vm.IsActionTriggered(KeyBindingActions.ExportProject, e.Key, e.KeyModifiers))
+        {
+            vm.ExportCommand.Execute().Subscribe(Observer.Create<System.Reactive.Unit>(_ => { }));
+            e.Handled = true;
+            return;
+        }
+        if (vm.IsActionTriggered(KeyBindingActions.ImportProject, e.Key, e.KeyModifiers))
+        {
+            vm.ImportCommand.Execute().Subscribe(Observer.Create<System.Reactive.Unit>(_ => { }));
+            e.Handled = true;
+            return;
+        }
 
         switch (e.Key)
         {

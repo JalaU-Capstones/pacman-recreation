@@ -24,6 +24,13 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _currentViewModel, value);
     }
 
+    private bool _isMuted;
+    public bool IsMuted
+    {
+        get => _isMuted;
+        set => this.RaiseAndSetIfChanged(ref _isMuted, value);
+    }
+
     // Default constructor for Moq
     public MainWindowViewModel()
     {
@@ -31,6 +38,7 @@ public class MainWindowViewModel : ViewModelBase
         _logger = null!;
         ConsoleViewModel = null!;
         _currentViewModel = new ViewModelBase();
+        _isMuted = false;
     }
 
     public MainWindowViewModel(IServiceProvider serviceProvider, ILogger<MainWindowViewModel> logger, ConsoleViewModel consoleViewModel)
@@ -39,6 +47,7 @@ public class MainWindowViewModel : ViewModelBase
         _logger = logger;
         _currentViewModel = new ViewModelBase(); // Placeholder
         ConsoleViewModel = consoleViewModel;
+        _isMuted = false;
     }
 
     // Back-compat constructor for tests/mocks that only pass serviceProvider + logger.
@@ -49,6 +58,7 @@ public class MainWindowViewModel : ViewModelBase
         _logger = logger;
         _currentViewModel = new ViewModelBase(); // Placeholder
         ConsoleViewModel = null!;
+        _isMuted = false;
     }
 
     public virtual async Task InitializeAsync()

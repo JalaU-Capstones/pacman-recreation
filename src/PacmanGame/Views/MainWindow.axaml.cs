@@ -3,6 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
 using PacmanGame.ViewModels;
+using PacmanGame.Services.Interfaces;
+using PacmanGame.Services.KeyBindings;
 
 namespace PacmanGame.Views;
 
@@ -71,13 +73,54 @@ public partial class MainWindow : Window
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.C && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        var keyBindings = App.GetService<IKeyBindingService>();
+
+        if ((keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.OpenConsole, e.Key, e.KeyModifiers))
+            || (e.Key == Key.C && e.KeyModifiers.HasFlag(KeyModifiers.Control)))
         {
             if (DataContext is MainWindowViewModel viewModel && viewModel.ConsoleViewModel != null && IsConsoleAvailable(viewModel))
             {
                 ToggleConsole();
             }
             e.Handled = true;
+            return;
+        }
+
+        if (keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.MuteAudio, e.Key, e.KeyModifiers))
+        {
+            ToggleMute();
+            e.Handled = true;
+            return;
+        }
+
+        if (keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.Fullscreen, e.Key, e.KeyModifiers))
+        {
+            WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen;
+            e.Handled = true;
+            return;
+        }
+    }
+
+    private void ToggleMute()
+    {
+        var audio = App.GetService<IAudioManager>();
+        var profiles = App.GetService<IProfileManager>();
+
+        if (DataContext is not MainWindowViewModel viewModel || audio == null)
+        {
+            return;
+        }
+
+        var newMuted = !audio.IsMuted;
+        audio.SetMuted(newMuted);
+        viewModel.IsMuted = newMuted;
+
+        var active = profiles?.GetActiveProfile();
+        if (active != null && profiles != null)
+        {
+            var settings = profiles.LoadSettings(active.Id);
+            settings.IsMuted = newMuted;
+            profiles.SaveSettings(active.Id, settings);
         }
     }
 

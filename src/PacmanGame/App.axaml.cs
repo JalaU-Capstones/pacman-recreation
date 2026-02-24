@@ -50,7 +50,9 @@ public partial class App : Application
             services.AddSingleton<ISpriteManager, SpriteManager>();
             services.AddSingleton<IAudioManager, AudioManager>();
             services.AddSingleton<ICollisionDetector, CollisionDetector>();
-            services.AddSingleton<IProfileManager, ProfileManager>();
+            services.AddSingleton<ProfileManager>();
+            services.AddSingleton<IProfileManager>(provider => provider.GetRequiredService<ProfileManager>());
+            services.AddSingleton<IKeyBindingService, KeyBindingService>();
             services.AddTransient<IGameEngine, GameEngine>();
             services.AddSingleton<NetworkService>();
             services.AddSingleton<GlobalLeaderboardCache>();

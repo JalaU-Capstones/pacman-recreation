@@ -24,6 +24,21 @@
                 <Grid>
                     <ContentControl x:Name="ContentHost" Content="{Binding CurrentViewModel}" />
                     <views:ConsoleView DataContext="{Binding ConsoleViewModel}" />
+                    <Border HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="14"
+                            Padding="10,6"
+                            Background="{DynamicResource AppOverlayBrush}"
+                            BorderBrush="{DynamicResource AppDangerBrush}"
+                            BorderThickness="2"
+                            CornerRadius="8"
+                            IsVisible="{Binding IsMuted}"
+                            ZIndex="250">
+                        <TextBlock Text="MUTED"
+                                   FontFamily="{StaticResource ArcadeFont}"
+                                   Foreground="{DynamicResource AppDangerBrush}"
+                                   FontSize="16" />
+                    </Border>
                 </Grid>
             </Border>
         </Viewbox>

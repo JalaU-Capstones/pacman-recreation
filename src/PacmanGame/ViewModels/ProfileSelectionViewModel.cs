@@ -12,6 +12,7 @@ public class ProfileSelectionViewModel : ViewModelBase
     private readonly MainWindowViewModel _mainWindowViewModel;
     private readonly IProfileManager _profileManager;
     private readonly IAudioManager _audioManager;
+    private readonly IKeyBindingService _keyBindings;
     private readonly ILogger<ProfileSelectionViewModel> _logger;
 
     public ObservableCollection<Profile> Profiles { get; } = new();
@@ -20,11 +21,12 @@ public class ProfileSelectionViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> CreateNewProfileCommand { get; }
     public ReactiveCommand<Profile, Unit> DeleteProfileCommand { get; }
 
-    public ProfileSelectionViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, ILogger<ProfileSelectionViewModel> logger)
+    public ProfileSelectionViewModel(MainWindowViewModel mainWindowViewModel, IProfileManager profileManager, IAudioManager audioManager, IKeyBindingService keyBindings, ILogger<ProfileSelectionViewModel> logger)
     {
         _mainWindowViewModel = mainWindowViewModel;
         _profileManager = profileManager;
         _audioManager = audioManager;
+        _keyBindings = keyBindings;
         _logger = logger;
 
         SelectProfileCommand = ReactiveCommand.Create<Profile>(SelectProfile);
@@ -58,6 +60,10 @@ public class ProfileSelectionViewModel : ViewModelBase
         _audioManager.SetGameMusicVolume((float)settings.GameMusicVolume);
         _audioManager.SetSfxVolume((float)settings.SfxVolume);
         _audioManager.SetMuted(settings.IsMuted);
+        _mainWindowViewModel.IsMuted = settings.IsMuted;
+
+        // Ensure keybindings are loaded for this profile.
+        _keyBindings.GetBindingsForActiveProfile();
 
         _mainWindowViewModel.NavigateTo<MainMenuViewModel>();
     }

@@ -5,6 +5,7 @@ using PacmanGame.Helpers;
 using PacmanGame.Services.Interfaces;
 using PacmanGame.ViewModels;
 using System;
+using PacmanGame.Services.KeyBindings;
 using LocalDirection = PacmanGame.Models.Enums.Direction;
 using SharedDirection = PacmanGame.Shared.Direction;
 
@@ -108,28 +109,32 @@ public partial class GameView : UserControl
     {
         if (DataContext is GameViewModel gvm)
         {
-            if (e.Key == Key.F1)
+            if (gvm.IsLevelComplete || gvm.IsGameOver || gvm.IsVictory)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if (gvm.IsActionTriggered(KeyBindingActions.ShowFps, e.Key, e.KeyModifiers) || e.Key == Key.F1)
             {
                 gvm.ToggleFpsCommand.Execute(null);
                 e.Handled = true;
                 return;
             }
 
-            var direction = e.Key switch
-            {
-                Key.Up => LocalDirection.Up,
-                Key.Down => LocalDirection.Down,
-                Key.Left => LocalDirection.Left,
-                Key.Right => LocalDirection.Right,
-                _ => LocalDirection.None
-            };
+            var direction =
+                gvm.IsActionTriggered(KeyBindingActions.MoveUp, e.Key, e.KeyModifiers) ? LocalDirection.Up :
+                gvm.IsActionTriggered(KeyBindingActions.MoveDown, e.Key, e.KeyModifiers) ? LocalDirection.Down :
+                gvm.IsActionTriggered(KeyBindingActions.MoveLeft, e.Key, e.KeyModifiers) ? LocalDirection.Left :
+                gvm.IsActionTriggered(KeyBindingActions.MoveRight, e.Key, e.KeyModifiers) ? LocalDirection.Right :
+                LocalDirection.None;
 
             if (direction != LocalDirection.None)
             {
                 gvm.SetDirectionCommand.Execute(direction).Subscribe();
                 e.Handled = true;
             }
-            else if (e.Key == Key.Escape)
+            else if (gvm.IsActionTriggered(KeyBindingActions.PauseGame, e.Key, e.KeyModifiers) || e.Key == Key.Escape)
             {
                 if (gvm.IsPaused)
                     gvm.ResumeGameCommand.Execute(null);
@@ -140,26 +145,39 @@ public partial class GameView : UserControl
         }
         else if (DataContext is MultiplayerGameViewModel mgvm)
         {
-            if (e.Key == Key.F1)
+            var keyBindings = App.GetService<IKeyBindingService>();
+
+            if ((keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.ShowFps, e.Key, e.KeyModifiers)) || e.Key == Key.F1)
             {
                 mgvm.ToggleFpsCommand.Execute(null);
                 e.Handled = true;
                 return;
             }
 
-            // Map Avalonia Key to SharedDirection (which is what the ViewModel expects)
-            var direction = e.Key switch
-            {
-                Key.Up => SharedDirection.Up,
-                Key.Down => SharedDirection.Down,
-                Key.Left => SharedDirection.Left,
-                Key.Right => SharedDirection.Right,
-                _ => SharedDirection.None
-            };
+            var direction =
+                keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.MoveUp, e.Key, e.KeyModifiers) ? SharedDirection.Up :
+                keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.MoveDown, e.Key, e.KeyModifiers) ? SharedDirection.Down :
+                keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.MoveLeft, e.Key, e.KeyModifiers) ? SharedDirection.Left :
+                keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.MoveRight, e.Key, e.KeyModifiers) ? SharedDirection.Right :
+                e.Key switch
+                {
+                    Key.Up => SharedDirection.Up,
+                    Key.Down => SharedDirection.Down,
+                    Key.Left => SharedDirection.Left,
+                    Key.Right => SharedDirection.Right,
+                    _ => SharedDirection.None
+                };
 
             if (direction != SharedDirection.None)
             {
                 mgvm.SetDirectionCommand.Execute(direction).Subscribe();
+                e.Handled = true;
+                return;
+            }
+
+            if ((keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.PauseGame, e.Key, e.KeyModifiers)) || e.Key == Key.Escape)
+            {
+                mgvm.TogglePauseCommand.Execute(null);
                 e.Handled = true;
             }
         }

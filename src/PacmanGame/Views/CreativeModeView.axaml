@@ -23,13 +23,14 @@
     <Border Grid.Column="0" Margin="12" CornerRadius="8" BorderThickness="2" BorderBrush="{DynamicResource AppAccentBrush}" Background="{DynamicResource AppSurfaceBrush}">
       <StackPanel Margin="12" Spacing="8">
         <TextBlock Text="Keyboard" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AppAccentBrush}"/>
-        <TextBlock Text="Arrow Keys: Move cursor" />
-        <TextBlock Text="Enter: Place tile" />
-        <TextBlock Text="Delete: Clear tile" />
-        <TextBlock Text="Tab: Cycle tools" />
-        <TextBlock Text="R: Rotate wall" />
-        <TextBlock Text="Ctrl+P: Play test" />
-        <TextBlock Text="Ctrl+E: Export" />
+        <TextBlock Text="{Binding MoveCursorKeyText}" />
+        <TextBlock Text="{Binding PlaceTileKeyText}" />
+        <TextBlock Text="{Binding DeleteTileKeyText}" />
+        <TextBlock Text="{Binding CycleToolsKeyText}" />
+        <TextBlock Text="{Binding RotateTileKeyText}" />
+        <TextBlock Text="{Binding PlayTestKeyText}" />
+        <TextBlock Text="{Binding ExportKeyText}" />
+        <TextBlock Text="{Binding ImportKeyText}" />
       </StackPanel>
     </Border>
 

@@ -2,6 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
 using PacmanGame.Helpers;
+using PacmanGame.Services.Interfaces;
+using PacmanGame.Services.KeyBindings;
 using PacmanGame.ViewModels;
 using PacmanGame.Shared;
 using System;
@@ -28,28 +30,40 @@ public partial class MultiplayerGameView : UserControl
 
         if (DataContext is not MultiplayerGameViewModel vm) return;
 
-        if (e.Key == Key.F1)
+        var keyBindings = App.GetService<IKeyBindingService>();
+
+        if ((keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.ShowFps, e.Key, e.KeyModifiers)) || e.Key == Key.F1)
         {
             vm.ToggleFpsCommand.Execute(null);
             e.Handled = true;
             return;
         }
 
-        // Map key to direction
-        var direction = e.Key switch
-        {
-            Key.Up => Direction.Up,
-            Key.Down => Direction.Down,
-            Key.Left => Direction.Left,
-            Key.Right => Direction.Right,
-            Key.Escape => Direction.None, // For pause/menu
-            _ => Direction.None
-        };
+        var direction =
+            keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.MoveUp, e.Key, e.KeyModifiers) ? Direction.Up :
+            keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.MoveDown, e.Key, e.KeyModifiers) ? Direction.Down :
+            keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.MoveLeft, e.Key, e.KeyModifiers) ? Direction.Left :
+            keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.MoveRight, e.Key, e.KeyModifiers) ? Direction.Right :
+            e.Key switch
+            {
+                Key.Up => Direction.Up,
+                Key.Down => Direction.Down,
+                Key.Left => Direction.Left,
+                Key.Right => Direction.Right,
+                _ => Direction.None
+            };
 
         if (direction != Direction.None)
         {
             // Execute the ReactiveCommand with the direction
             vm.SetDirectionCommand.Execute(direction).Subscribe();
+            e.Handled = true;
+            return;
+        }
+
+        if ((keyBindings != null && keyBindings.IsActionTriggered(KeyBindingActions.PauseGame, e.Key, e.KeyModifiers)) || e.Key == Key.Escape)
+        {
+            vm.TogglePauseCommand.Execute(null);
             e.Handled = true;
         }
     }

@@ -38,6 +38,7 @@
     <PackageReference Include="System.Reactive" />
     <PackageReference Include="SFML.Audio" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" />
     <PackageReference Include="LiteNetLib" />
     <PackageReference Include="MessagePack" />
     <PackageReference Include="Microsoft.Extensions.Logging" />

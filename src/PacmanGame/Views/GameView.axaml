@@ -3,11 +3,16 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:PacmanGame.ViewModels"
+             xmlns:conv="using:PacmanGame.Converters"
              mc:Ignorable="d" d:DesignWidth="1156" d:DesignHeight="1020"
              x:Class="PacmanGame.Views.GameView"
              x:DataType="vm:GameViewModel"
              Background="{DynamicResource AppBackgroundBrush}"
              Focusable="True">
+
+    <UserControl.Resources>
+        <conv:StringNotEmptyConverter x:Key="StringNotEmpty" />
+    </UserControl.Resources>
 
     <Grid ColumnDefinitions="Auto,*,Auto" PointerPressed="OnPointerPressed" Focusable="True">
 
@@ -212,6 +217,13 @@
                           FontSize="28"
                           HorizontalAlignment="Center"
                           FontFamily="{StaticResource ArcadeFont}"/>
+
+                <TextBlock Text="{Binding VictoryUnlockMessage}"
+                          FontSize="22"
+                          HorizontalAlignment="Center"
+                          FontFamily="{StaticResource ArcadeFont}"
+                          Foreground="{DynamicResource AppSuccessBrush}"
+                          IsVisible="{Binding VictoryUnlockMessage, Converter={StaticResource StringNotEmpty}}"/>
 
                 <TextBlock Text="{Binding FinalScore, StringFormat='FINAL SCORE: {0}'}"
                           FontSize="40"
