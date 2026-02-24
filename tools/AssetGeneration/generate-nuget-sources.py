@@ -34,19 +34,20 @@ NUGET_DEST = "nuget-sources"
 NUGET_BASE_URL = "https://api.nuget.org/v3-flatcontainer"
 SCRIPT_DIR = Path(__file__).parent.resolve()
 
-# .NET 9 runtime packs required for --self-contained linux-x64 publish.
+# .NET 9 runtime packs required for --self-contained linux-x64/arm64 publish.
 # These are NOT in packages.lock.json because dotnet resolves them at publish time.
 # Version must match the .NET SDK version used in the Flatpak build.
-# Check with: dotnet --version  (in the build environment)
+# Check actual version:
+#   flatpak run --command=dotnet org.freedesktop.Sdk.Extension.dotnet9//24.08 --version
 DOTNET_VERSION = "9.0.13"
 
 RUNTIME_PACKS = [
-    f"microsoft.netcore.app.runtime.linux-x64",
-    f"microsoft.aspnetcore.app.runtime.linux-x64",
-    f"microsoft.netcore.app.host.linux-x64",
-    f"microsoft.netcore.app.runtime.linux-arm64",
-    f"microsoft.aspnetcore.app.runtime.linux-arm64",
-    f"microsoft.netcore.app.host.linux-arm64",
+    "microsoft.netcore.app.runtime.linux-x64",
+    "microsoft.aspnetcore.app.runtime.linux-x64",
+    "microsoft.netcore.app.host.linux-x64",
+    "microsoft.netcore.app.runtime.linux-arm64",
+    "microsoft.aspnetcore.app.runtime.linux-arm64",
+    "microsoft.netcore.app.host.linux-arm64",
 ]
 
 CANDIDATE_CSPROJ = [
@@ -106,26 +107,36 @@ async def fetch_package(session, name, version, semaphore):
     """Download a NuGet package and return its source entry."""
     url = f"{NUGET_BASE_URL}/{name.lower()}/{version.lower()}/{name.lower()}.{version.lower()}.nupkg"
     async with semaphore:
-        try:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=120)) as resp:
-                if resp.status == 404:
-                    print(f"  NOT FOUND: {name} {version}")
-                    return None
-                if resp.status != 200:
-                    print(f"  SKIP {name} {version} (HTTP {resp.status})")
-                    return None
-                data = await resp.read()
-                sha512 = hashlib.sha512(data).hexdigest()
-                return {
-                    "type": "file",
-                    "url": url,
-                    "sha512": sha512,
-                    "dest": NUGET_DEST,
-                    "dest-filename": f"{name.lower()}.{version.lower()}.nupkg"
-                }
-        except Exception as e:
-            print(f"  ERROR {name} {version}: {e}")
-            return None
+        # NuGet can occasionally throttle or drop connections; retry transient failures so the
+        # generated-sources.json is deterministic for CI/Flathub submissions.
+        attempts = 5
+        for attempt in range(1, attempts + 1):
+            try:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=180)) as resp:
+                    if resp.status == 404:
+                        print(f"  NOT FOUND: {name} {version}")
+                        return None
+                    if resp.status in (429, 500, 502, 503, 504) and attempt < attempts:
+                        await asyncio.sleep(0.5 * attempt * attempt)
+                        continue
+                    if resp.status != 200:
+                        print(f"  SKIP {name} {version} (HTTP {resp.status})")
+                        return None
+                    data = await resp.read()
+                    sha512 = hashlib.sha512(data).hexdigest()
+                    return {
+                        "type": "file",
+                        "url": url,
+                        "sha512": sha512,
+                        "dest": NUGET_DEST,
+                        "dest-filename": f"{name.lower()}.{version.lower()}.nupkg"
+                    }
+            except Exception as e:
+                if attempt < attempts:
+                    await asyncio.sleep(0.5 * attempt * attempt)
+                    continue
+                print(f"  ERROR {name} {version}: {repr(e)}")
+                return None
 
 
 async def main():
@@ -149,7 +160,7 @@ async def main():
         print("Then run: dotnet restore src/PacmanGame/PacmanGame.csproj\n")
         app_packages = get_packages_via_restore(csproj)
 
-    # Step 2: Add .NET runtime packs (required for --self-contained linux-x64)
+    # Step 2: Add .NET runtime packs (required for --self-contained linux-x64/arm64)
     runtime_packages = [(name, DOTNET_VERSION) for name in RUNTIME_PACKS]
 
     all_packages = app_packages + runtime_packages
@@ -182,7 +193,9 @@ async def main():
     )
     missing = [unique[i] for i, r in enumerate(results) if r is None]
 
-    output_path = SCRIPT_DIR / "generated-sources.json"
+    # For Flathub: output to the flathub directory at repo root.
+    output_path = SCRIPT_DIR.parent.parent / "flathub" / "generated-sources.json"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(sources, f, indent=2)
         f.write("\n")

@@ -551,3 +551,6 @@ FodyWeavers.xsd
 .flatpak-builder/
 build-dir/
 repo-dir/
+
+# Generated NuGet sources (regenerate with tools/AssetGeneration/generate-nuget-sources.py)
+flathub/generated-sources.json

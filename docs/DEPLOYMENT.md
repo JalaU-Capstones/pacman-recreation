@@ -12,6 +12,21 @@
 ### Generate Sources
 Run the `tools/generate-nuget-sources.py` script to generate the `generated-sources.json` file.
 
+### Generating NuGet Sources for Flathub
+Before submitting to Flathub, regenerate the NuGet sources:
+
+```bash
+# From repository root
+python3 tools/AssetGeneration/generate-nuget-sources.py
+```
+
+This creates `flathub/generated-sources.json` with all required packages and their SHA512 hashes.
+
+When to regenerate:
+- After updating any NuGet package versions
+- After changing .NET SDK version used by the Flatpak build
+- Before submitting to Flathub
+
 ### Flathub Directory Structure
 - `io.github.jalau_capstones.pacman-recreation.yaml`
 - `io.github.jalau_capstones.pacman-recreation.desktop`
