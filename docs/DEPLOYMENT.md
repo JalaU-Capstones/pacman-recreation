@@ -197,6 +197,17 @@ Users can install via:
 winget install CodeWithBotina.PacmanRecreation
 ```
 
+### Terminal Command (PATH)
+When the Winget manifest is authored as a ZIP + nested portable installer with `PortableCommandAlias`, Winget creates command shims in:
+- `%LOCALAPPDATA%\\Microsoft\\WinGet\\Links`
+
+New terminal sessions should be able to launch the game via:
+```powershell
+pacman-recreation
+```
+
+If the command is not found, restart the terminal after installing (PATH shims are picked up on new sessions).
+
 ### Publishing Steps (winget-pkgs)
 
 1. Produce a stable installer artifact:
@@ -209,6 +220,10 @@ winget install CodeWithBotina.PacmanRecreation
 4. Validate locally before PR:
    - `winget validate --manifest <path>`
    - `winget install --manifest <path>`
+
+### Manifest Source In This Repo
+This repo includes a ready-to-PR manifest folder under `winget/manifests/...` to keep Winget updates repeatable.
+Copy that folder into a fork of `microsoft/winget-pkgs` and replace `InstallerSha256` with the SHA256 of the release ZIP.
 
 ## Database Security (v1.0.2+)
 

@@ -15,13 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Custom keybindings system (per-profile)
-    - Movement, pause, system shortcuts, and Creative Mode controls can be remapped in Settings.
-    - Conflict detection with optional reassign (previous action becomes unbound).
-    - Changes apply immediately (no restart).
+  - Movement, pause, system shortcuts, and Creative Mode controls can be remapped in Settings.
+  - Conflict detection with optional reassign (previous action becomes unbound).
+  - Changes apply immediately (no restart).
 - Mute audio keybinding (default: `M`)
-    - Works globally (menus, gameplay, creative mode)
-    - Persists across sessions per profile
-    - Visual “MUTED” indicator in the UI
+  - Works globally (menus, gameplay, creative mode)
+  - Persists across sessions per profile
+  - Visual “MUTED” indicator in the UI
+- Winget manifest update (winget-pkgs) enabling terminal command shims:
+  - `pacman-recreation` (full)
+  - `pacman` (alias)
 
 ### Changed
 - Local profile database is now encrypted (SQLCipher) to prevent external tampering.

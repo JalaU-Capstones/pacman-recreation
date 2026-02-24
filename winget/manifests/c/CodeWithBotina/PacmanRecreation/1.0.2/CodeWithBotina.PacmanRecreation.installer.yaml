@@ -1,0 +1,15 @@
+PackageIdentifier: CodeWithBotina.PacmanRecreation
+PackageVersion: 1.0.2
+InstallerType: zip
+NestedInstallerType: portable
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/JalaU-Capstones/pacman-recreation/releases/download/v1.0.2/PacmanRecreation-Windows-v1.0.2.zip
+    InstallerSha256: REPLACE_WITH_SHA256
+    NestedInstallerFiles:
+      - RelativeFilePath: PacmanGame.exe
+        PortableCommandAlias: pacman-recreation
+      - RelativeFilePath: PacmanGame.exe
+        PortableCommandAlias: pacman
+ManifestType: installer
+ManifestVersion: 1.6.0

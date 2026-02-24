@@ -24,6 +24,11 @@ flatpak run io.github.jalau_capstones.pacman-recreation
 
 ```powershell
 winget install CodeWithBotina.PacmanRecreation
+
+# Launch from any terminal (Winget command shim)
+pacman-recreation
+# or
+pacman
 ```
 
 ### From Source
