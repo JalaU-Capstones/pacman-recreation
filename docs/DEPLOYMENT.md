@@ -1,6 +1,6 @@
 # Deployment Guide
 
-**Release target:** v1.0.2
+**Release target:** v1.0.3
 
 ## Flathub Submission
 
@@ -29,10 +29,12 @@ When to regenerate:
 
 ### Flathub Directory Structure
 - `io.github.jalau_capstones.pacman-recreation.yaml`
-- `io.github.jalau_capstones.pacman-recreation.desktop`
-- `io.github.jalau_capstones.pacman-recreation.metainfo.xml`
 - `generated-sources.json`
-- Icons (64x64.png, 128x128.png, etc.)
+
+The following files are maintained **upstream** (in this repository) and are installed by the manifest directly from the upstream git source:
+- `packaging/flatpak/io.github.jalau_capstones.pacman-recreation.desktop`
+- `packaging/flatpak/io.github.jalau_capstones.pacman-recreation.metainfo.xml`
+- `packaging/flatpak/icons/hicolor/*/apps/io.github.jalau_capstones.pacman-recreation.png`
 
 ### Update Commit Hash
 After each release, update the `commit` field in the manifest with the new commit hash.
@@ -40,7 +42,7 @@ After each release, update the `commit` field in the manifest with the new commi
 ### Submission Process
 1. Fork `flathub/flathub`.
 2. Create a branch with the App ID.
-3. Copy the files from the `flathub` directory to the fork.
+3. Copy `flathub/io.github.jalau_capstones.pacman-recreation.yaml` and `flathub/generated-sources.json` to the fork.
 4. Create a Pull Request.
 5. Wait for review and address feedback.
 
