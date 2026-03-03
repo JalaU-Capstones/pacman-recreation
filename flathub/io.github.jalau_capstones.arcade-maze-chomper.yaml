@@ -79,6 +79,7 @@ modules:
       - type: git
         url: https://github.com/JalaU-Capstones/arcade-maze-chomper.git
         tag: v1.1.1
+        commit: a749d3c8d9ea96f667e3ce24b2c2824346317561
       - generated-sources.json
       - type: script
         dest-filename: arcade-maze-chomper.sh
