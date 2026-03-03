@@ -1,6 +1,6 @@
 # Deployment Guide
 
-**Release target:** v1.1.0
+**Release target:** v1.1.1
 
 ## Flathub Submission
 

@@ -24,18 +24,18 @@
 
     <screenshots>
         <screenshot type="default">
-            <image type="source">https://raw.githubusercontent.com/JalaU-Capstones/pacman-recreation/v1.1.0/docs/images/screenshot1.png</image>
+            <image type="source">https://raw.githubusercontent.com/JalaU-Capstones/arcade-maze-chomper/v1.1.1/docs/images/screenshot1.png</image>
             <caption>Classic maze gameplay</caption>
         </screenshot>
         <screenshot>
-            <image type="source">https://raw.githubusercontent.com/JalaU-Capstones/pacman-recreation/v1.1.0/docs/images/screenshot2.png</image>
+            <image type="source">https://raw.githubusercontent.com/JalaU-Capstones/arcade-maze-chomper/v1.1.1/docs/images/screenshot2.png</image>
             <caption>Chasing ghosts in a tight corridor</caption>
         </screenshot>
     </screenshots>
 
-    <url type="homepage">https://github.com/JalaU-Capstones/pacman-recreation</url>
-    <url type="bugtracker">https://github.com/JalaU-Capstones/pacman-recreation/issues</url>
-    <url type="vcs-browser">https://github.com/JalaU-Capstones/pacman-recreation</url>
+    <url type="homepage">https://github.com/JalaU-Capstones/arcade-maze-chomper</url>
+    <url type="bugtracker">https://github.com/JalaU-Capstones/arcade-maze-chomper/issues</url>
+    <url type="vcs-browser">https://github.com/JalaU-Capstones/arcade-maze-chomper</url>
 
     <developer_name>Code With Botina</developer_name>
     <developer id="io.github.jalau_capstones">
@@ -43,9 +43,9 @@
     </developer>
 
     <releases>
-        <release version="1.1.0" date="2026-03-03">
+        <release version="1.1.1" date="2026-03-03">
             <description>
-                <p>Rebrand release</p>
+                <p>Rebrand follow-up</p>
                 <ul>
                     <li>Single-player mode with 3 levels</li>
                     <li>Multiplayer mode with up to 5 players</li>

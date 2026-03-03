@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Flatpak app-id to `io.github.jalau_capstones.arcade-maze-chomper`.
 - Updated Flatpak command to `arcade-maze-chomper`.
 
+## [1.1.1] - 03-03-2026
+
+### Fixed
+- Updated upstream metadata URLs (AppStream + Flathub sources) to match the rebranded repository name.
+
 ## [1.0.2] - 24-02-2026
 
 ### Fixed
