@@ -60,8 +60,8 @@ modules:
     sources:
       - type: git
         url: https://github.com/JalaU-Capstones/pacman-recreation.git
-        tag: v1.0.4
-        commit: b7788d557e16754129512d8cfbd09878f6686383
+        tag: v1.0.5
+        commit: 4b79bbe34c3909a13b1c77a91bc2bbe03232b620
       - generated-sources.json
       - type: script
         dest-filename: pacman-recreation.sh
